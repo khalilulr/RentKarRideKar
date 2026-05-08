@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  Auth_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-auth_db}
+    ports:
+      - "5432:5432" 
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  Auth_redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  
+  auth-service:
+    depends_on:
+      - Auth_db
+      - Auth_redis
+    build:
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env.development
+    # Added volume mapping for development
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
