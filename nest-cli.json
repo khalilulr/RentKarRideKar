@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/rent-kar-ride-kar/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/rent-kar-ride-kar/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/rent-kar-ride-kar",
+  "projects": {
+    "auth": {
+      "type": "application",
+      "root": "apps/auth",
+      "entryFile": "main",
+      "sourceRoot": "apps/auth/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/auth/tsconfig.app.json"
+      }
+    },
+    "booking": {
+      "type": "application",
+      "root": "apps/booking",
+      "entryFile": "main",
+      "sourceRoot": "apps/booking/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/booking/tsconfig.app.json"
+      }
+    },
+    "communication": {
+      "type": "application",
+      "root": "apps/communication",
+      "entryFile": "main",
+      "sourceRoot": "apps/communication/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/communication/tsconfig.app.json"
+      }
+    },
+    "payment": {
+      "type": "application",
+      "root": "apps/payment",
+      "entryFile": "main",
+      "sourceRoot": "apps/payment/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/payment/tsconfig.app.json"
+      }
+    },
+    "rating": {
+      "type": "application",
+      "root": "apps/rating",
+      "entryFile": "main",
+      "sourceRoot": "apps/rating/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/rating/tsconfig.app.json"
+      }
+    },
+    "rent-kar-ride-kar": {
+      "type": "application",
+      "root": "apps/rent-kar-ride-kar",
+      "entryFile": "main",
+      "sourceRoot": "apps/rent-kar-ride-kar/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/rent-kar-ride-kar/tsconfig.app.json"
+      }
+    },
+    "search": {
+      "type": "application",
+      "root": "apps/search",
+      "entryFile": "main",
+      "sourceRoot": "apps/search/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/search/tsconfig.app.json"
+      }
+    },
+    "verification": {
+      "type": "application",
+      "root": "apps/verification",
+      "entryFile": "main",
+      "sourceRoot": "apps/verification/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/verification/tsconfig.app.json"
+      }
+    }
+  }
+}
