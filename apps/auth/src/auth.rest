@@ -1,0 +1,20 @@
+@baseUrl = http://127.0.0.1:3001
+
+###
+# Send OTP
+POST {{baseUrl}}/auth/send-otp
+Content-Type: application/json
+
+{
+  "mobile": "+918409253381"
+}
+
+###
+# Verify OTP
+POST {{baseUrl}}/auth/verify-otp
+Content-Type: application/json
+
+{
+  "mobile": "+918409253381",
+  "otp": "1234"
+}
