@@ -4,13 +4,29 @@ import { AuthService } from './auth.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
+import { Session } from './entity/session.entity';
 import { CommonModule } from 'apps/common/src/common.module';
+import { JwtService } from './strategies/jwt/jwt.service';
+import { JwtModule } from '@nestjs/jwt';
+import * as fs from 'fs';
+import * as path from 'path';
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    JwtModule.register({
+      privateKey: fs.readFileSync(
+        path.join(process.cwd(), 'secrets/private.pem'),
+      ),
+      publicKey: fs.readFileSync(
+        path.join(process.cwd(), 'secrets/public.pem'),
+      ),
+      signOptions: {
+        algorithm: 'RS256',
+      },
+    }),
+    TypeOrmModule.forFeature([User, Session]),
     ConfigModule.forRoot({ isGlobal: true, envFilePath }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -29,6 +45,6 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     CommonModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtService],
 })
 export class AuthModule { }

@@ -3,10 +3,12 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     Entity,
-    PrimaryGeneratedColumn
+    PrimaryGeneratedColumn,
+    OneToMany
 } from "typeorm";
 import { KycStatus } from "../enum/kycStatus.enum";
 import { Role } from "../enum/role.enum";
+import { Session } from "./session.entity";
 
 @Entity('users') 
 export class User {
@@ -54,6 +56,9 @@ export class User {
     default: Role.PASSENGER 
     })
     activePerspective: Role;
+
+    @OneToMany(() => Session, session => session.user)
+    sessions: Session[];
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

@@ -14,4 +14,10 @@ export class CreateUserDto {
     @IsArray()
     @IsEnum(Role, { each: true }) // Validates each item in the array is a valid Role
     roles?: Role[];
+
+    @IsOptional()
+    @IsEnum(Role,{each:true})
+    activePerspective:Role
+
+    
 }

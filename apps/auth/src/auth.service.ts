@@ -10,9 +10,12 @@ import { ConfigService } from '@nestjs/config';
 
 import { Msg91Service } from 'apps/common/src/msg91.service';
 import { User } from './entity/user.entity';
+import { Session } from './entity/session.entity';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { KycStatus } from './enum/kycStatus.enum';
+import { JwtService } from './strategies/jwt/jwt.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -22,8 +25,11 @@ export class AuthService {
   constructor(
     @InjectRepository(User) 
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
     private readonly msg91Service: Msg91Service,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService
   ) {
     let templateId = this.configService.get<string>('MSG91_TEMPLATE_ID');
     if (!templateId) {
@@ -48,7 +54,7 @@ export class AuthService {
   /**
    * Verifies OTP and handles User Registration/Login
    */
-  async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<{ user: User; isNewUser: boolean }> {
+  async verifyOtp(verifyOtpDto: VerifyOtpDto, ipAddress: string, userAgent: string): Promise<{ user: User; refresh_token: string; access_token: string }> {
     const { mobile, otp } = verifyOtpDto;
 
     // 1. Verify OTP with MSG91
@@ -66,17 +72,46 @@ export class AuthService {
     if (!user) {
       isNewUser = true;
       // 3. Create new user if they don't exist
-      // By default, roles and kycStatus are handled by Entity defaults
-      const newUser = this.userRepository.create({ 
+      const newUser = this.userRepository.create({
         mobile,
-        kycStatus: KycStatus.PENDING // Passengers are verified once mobile is OTP-checked
+        kycStatus: KycStatus.PENDING
       });
-      
+
       user = await this.userRepository.save(newUser);
       this.logger.log(`New user registered: ${mobile}`);
     }
 
-    // 4. Return the user (In next step, you will generate a JWT here)
-    return { user, isNewUser };
+    const access_payload = {
+      userId: user.id,
+      Roles: user.roles,
+      activePerspective: user.activePerspective,
+      type: "access"
+    };
+
+    const refresh_payload = {
+      userId: user.id,
+      type: "refresh"
+    };
+
+    const accessToken: string = this.jwtService.generateAccessToken(access_payload);
+    const refreshToken: string = this.jwtService.generateRefreshToken(refresh_payload);
+
+    // 4. Store Session in Database
+    // In a real app, you should hash the refreshToken before storing it.
+    const refreshTokenHash =  bcrypt.hashSync(refreshToken, 12); // Use bcrypt to hash the refresh token
+    // For now, we follow the user's field name 'refreshTokenHash'.
+    const session = this.sessionRepository.create({
+      refreshTokenHash,
+      ipAddress,
+      userAgent,
+      user
+    });
+
+    await this.sessionRepository.save(session);
+
+    return { user, refresh_token: refreshToken, access_token: accessToken };
   }
+
+
 }
+
