@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
 
 import { Msg91Service } from 'apps/common/src/msg91.service';
 import { User } from './entity/user.entity';
@@ -15,7 +16,6 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { KycStatus } from './enum/kycStatus.enum';
 import { JwtService } from './strategies/jwt/jwt.service';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -31,12 +31,57 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService
   ) {
-    let templateId = this.configService.get<string>('MSG91_TEMPLATE_ID');
+    const templateId = this.configService.get<string>('MSG91_TEMPLATE_ID');
     if (!templateId) {
       throw new InternalServerErrorException('MSG91_TEMPLATE_ID is missing in .env');
     }
     this.templateId = templateId;
   }
+
+
+   // ====================================================================
+  // PRIVATE HELPER METHODS (DRY)
+  // ====================================================================
+
+  /**
+   * Helper to generate Access and Refresh tokens for a user
+   */
+  private generateTokens(user: User): { accessToken: string; refreshToken: string } {
+    const accessToken = this.jwtService.generateAccessToken({
+      userId: user.id,
+      Roles: user.roles,
+      activePerspective: user.activePerspective,
+      type: 'access'
+    });
+
+    const refreshToken = this.jwtService.generateRefreshToken({
+      userId: user.id,
+      type: 'refresh'
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Helper to hash the refresh token and save the session to the database
+   */
+  private async createAndSaveSession(user: User, refreshToken: string, ipAddress: string, userAgent: string): Promise<void> {
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10); 
+    
+    const session = this.sessionRepository.create({
+      refreshTokenHash,
+      ipAddress,
+      userAgent,
+      user
+    });
+
+    await this.sessionRepository.save(session);
+  }
+  
+
+  // ====================================================================
+  // PUBLIC METHODS
+  // ====================================================================
 
   /**
    * Triggers the OTP sending process via MSG91
@@ -60,58 +105,92 @@ export class AuthService {
     // 1. Verify OTP with MSG91
     const response = await this.msg91Service.verifyOtp(mobile, otp);
 
-    // MSG91 returns type: 'success' if verified
     if (response.type !== 'success') {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
-    // 2. Check if user exists
+    // 2. Check if user exists or create a new one
     let user = await this.userRepository.findOne({ where: { mobile } });
-    let isNewUser = false;
 
     if (!user) {
-      isNewUser = true;
-      // 3. Create new user if they don't exist
       const newUser = this.userRepository.create({
         mobile,
         kycStatus: KycStatus.PENDING
       });
-
       user = await this.userRepository.save(newUser);
       this.logger.log(`New user registered: ${mobile}`);
     }
 
-    const access_payload = {
-      userId: user.id,
-      Roles: user.roles,
-      activePerspective: user.activePerspective,
-      type: "access"
-    };
+    // 3. Generate Tokens
+    const { accessToken, refreshToken } = this.generateTokens(user);
 
-    const refresh_payload = {
-      userId: user.id,
-      type: "refresh"
-    };
-
-    const accessToken: string = this.jwtService.generateAccessToken(access_payload);
-    const refreshToken: string = this.jwtService.generateRefreshToken(refresh_payload);
-
-    // 4. Store Session in Database
-    // In a real app, you should hash the refreshToken before storing it.
-    const refreshTokenHash =  bcrypt.hashSync(refreshToken, 12); // Use bcrypt to hash the refresh token
-    // For now, we follow the user's field name 'refreshTokenHash'.
-    const session = this.sessionRepository.create({
-      refreshTokenHash,
-      ipAddress,
-      userAgent,
-      user
-    });
-
-    await this.sessionRepository.save(session);
+    // 4. Store Session
+    await this.createAndSaveSession(user, refreshToken, ipAddress, userAgent);
 
     return { user, refresh_token: refreshToken, access_token: accessToken };
   }
 
+  /**
+   * Refreshes the Access Token and rotates the Refresh Token
+   */
+  async refreshToken(refreshToken: string, ipAddress: string, userAgent: string) {
+    let tokenPayload;
+    
+    // 1. Validate the JWT itself
+    try {
+      tokenPayload = this.jwtService.verifyToken(refreshToken);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
+    if (tokenPayload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
+    // 2. Await the DB call to find the user
+    const user = await this.userRepository.findOne({
+      where: { id: tokenPayload.userId }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+
+    // 3. Find active sessions for this user
+    const activeSessions = await this.sessionRepository.find({
+      where: { 
+        user: { id: user.id }, 
+        isRevoked: false 
+      }
+    });
+
+    // 4. Compare bcrypt hashes to find the matching session
+    let currentSession ;
+    for (const session of activeSessions) {
+      const isMatch = await bcrypt.compare(refreshToken, session.refreshTokenHash);
+      if (isMatch) {
+        currentSession = session;
+        break;
+      }
+    }
+
+    if (!currentSession) {
+      throw new UnauthorizedException('Session expired or logged out');
+    }
+
+    // 5. Generate new tokens
+    const { accessToken, refreshToken: newRefreshToken } = this.generateTokens(user);
+
+    // 6. Token Rotation: Delete old session, save new one
+    await this.sessionRepository.delete(currentSession.id);
+    await this.createAndSaveSession(user, newRefreshToken, ipAddress, userAgent);
+
+    return { 
+      access_token: accessToken, 
+      refresh_token: newRefreshToken, 
+      user 
+    };
+  }
+
+ 
 }
-

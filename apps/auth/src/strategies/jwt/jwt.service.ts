@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService as NestJwtService } from '@nestjs/jwt';
 import { jwtPayloadAccessDTO,  } from '../../dto/jwt-payload-access.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,7 +31,7 @@ export class JwtService {
         try {
             return this.jwtService.verify(token);
         } catch (error) {
-            return null;
+            throw new UnauthorizedException('Invalid token type');
         }
     }
 }

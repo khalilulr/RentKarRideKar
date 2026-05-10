@@ -1,5 +1,5 @@
 @baseUrl = http://127.0.0.1:3001
-
+@refresh_token = eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjJhZTZjZjM2LWJlYjQtNGJkMC05MGNkLWYxZTc1YWM1NDE4YiIsInVzZXJJZCI6IjgzZWJiYzgyLWQyYjAtNDhmZS04MTI5LTIzYzgyYWZjMmI2ZCIsInR5cGUiOiJyZWZyZXNoIiwiaWF0IjoxNzc4NDI2ODY2LCJleHAiOjE3NzkwMzE2NjZ9.Uztp0IxVkeAWDyg_aIntSHH-aKuoy5N1JbEvliCUGWr9T5qiihmvrINUsJesgYXK69zs61GjaVUWbKtPYOFqUbgparKJlfrzeZ1BIvs4uth37V8FGLDOwLiPKAJyB7jT3TKlC3X7r_yGhG99UA5vxMs7aKKcrPBzX9J0PejqE1sSkqobLg5XsasFqQRfEo4DutA3jSc8Dbbxc3bjwxnbDzRIJ_WJgWgMMDRlXLfW8RyH5_D9eCRviKGB9bi6Hb9OjgWZ7Jup2Nx1xZTh9zWOV0687D6pxvjvaD4URj2eXDALHcA6o_-6t5yK747YDJZj6U6zgqegMBKZbifoeHN9Gg
 ###
 # Send OTP
 POST {{baseUrl}}/auth/send-otp
@@ -11,6 +11,8 @@ Content-Type: application/json
 
 ###
 # Verify OTP
+# This request will return a "Set-Cookie" header in the response 
+# containing your HTTP-Only refreshToken.
 POST {{baseUrl}}/auth/verify-otp
 Content-Type: application/json
 
@@ -18,3 +20,8 @@ Content-Type: application/json
   "mobile": "+918409253381",
   "otp": "1234"
 }
+
+###
+# Refresh Token
+POST {{baseUrl}}/auth/refresh
+Cookie: refreshToken={{refresh_token}}
