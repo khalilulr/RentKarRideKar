@@ -57,6 +57,13 @@ export class User {
     })
     activePerspective: Role;
 
+    @Column({
+        name: "profile_picture",
+        type: "varchar",
+        nullable: true
+    })
+    profilePicture?: string;
+
     @OneToMany(() => Session, session => session.user)
     sessions: Session[];
 

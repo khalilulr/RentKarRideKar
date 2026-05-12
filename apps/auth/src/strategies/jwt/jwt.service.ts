@@ -14,9 +14,7 @@ export class JwtService {
     private readonly logger = new Logger(JwtService.name);
     constructor(
         private jwtService: NestJwtService,
-        private redisService: RedisService,
-        @InjectRepository(User)
-        private userRepository: Repository<User>
+        private redisService: RedisService
     ) { }
 
     generateAccessToken(payload: jwtPayloadAccessDTO) {
@@ -62,12 +60,6 @@ export class JwtService {
                     if (payload.iat < logoutTime) {
                         throw new UnauthorizedException('All sessions were revoked. Please login again.');
                     }
-                }
-
-                // 3. Check User status
-                const user = await this.userRepository.findOne({ where: { id: payload.userId } })
-                if (!user || !user.isActive) {
-                    throw new UnauthorizedException('User no longer exists or is inactive');
                 }
             }
 

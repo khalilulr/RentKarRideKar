@@ -16,8 +16,10 @@ export class CreateUserDto {
     roles?: Role[];
 
     @IsOptional()
-    @IsEnum(Role,{each:true})
-    activePerspective:Role
+    @IsEnum(Role, { each: true })
+    activePerspective: Role
 
-    
+
+    @IsOptional()
+    profilePicture?: string;
 }

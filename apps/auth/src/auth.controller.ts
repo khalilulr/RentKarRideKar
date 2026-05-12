@@ -1,36 +1,58 @@
 import {
   Body,
   Controller,
-  Post,
-  UseInterceptors,
+  Get,
   HttpCode,
   HttpStatus,
+  Patch,
+  Post,
+  Req,
   Res,
+  UseGuards,
+  UseInterceptors,
   Ip,
   Headers,
-  Req,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
+import type { Response, Request } from 'express';
+
 import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 import { TransformInterceptor } from 'apps/common/src/transform.interceptor';
-import type { Response, Request } from 'express';
-import { LogoutDTO } from './dto/logout.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { Role } from './enum/role.enum';
+
+// ─── Cookie helpers ──────────────────────────────────────────────────────────
+
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+const REFRESH_COOKIE_CLEAR_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+};
+
+// ─── Controller ──────────────────────────────────────────────────────────────
 
 @Controller('auth')
 @UseInterceptors(TransformInterceptor)
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
 
+  // ── Public routes ──────────────────────────────────────────────────────────
+
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   async sendOtp(@Body() sendOtpDto: SendOtpDto) {
-    const result = await this.authService.sendOtp(sendOtpDto);
-    return {
-      message: 'OTP sent successfully',
-      result,
-    };
+    return this.authService.sendOtp(sendOtpDto);
   }
 
   @Post('verify-otp')
@@ -39,17 +61,11 @@ export class AuthController {
     @Body() verifyOtpDto: VerifyOtpDto,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.verifyOtp(verifyOtpDto, ip, userAgent);
 
-    // Set Refresh Token as an HTTP-Only Cookie
-    res.cookie('refreshToken', result.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie('refreshToken', result.refresh_token, REFRESH_COOKIE_OPTIONS);
 
     return {
       user: result.user,
@@ -57,33 +73,20 @@ export class AuthController {
     };
   }
 
-  /**
-   * Refresh Token Endpoint
-   * Reads the HTTP-Only cookie and issues a new Access & Refresh Token pair
-   */
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
     @Req() req: Request,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ) {
     const refreshToken = req.cookies?.refreshToken;
-
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token is missing');
-    }
+    if (!refreshToken) throw new UnauthorizedException('Refresh token is missing');
 
     const result = await this.authService.refreshToken(refreshToken, ip, userAgent);
 
-    // Set the new rotated Refresh Token
-    res.cookie('refreshToken', result.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie('refreshToken', result.refresh_token, REFRESH_COOKIE_OPTIONS);
 
     return {
       user: result.user,
@@ -91,57 +94,78 @@ export class AuthController {
     };
   }
 
+  // ── Protected routes ───────────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const authHeader = req.headers.authorization;
-    const accessToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-    if (!accessToken)
-      throw new UnauthorizedException('Access token is missing');
     const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken)
-      throw new UnauthorizedException('Refresh token is missing');
-    const logoutDto: LogoutDTO = {
-      accessToken,
-      refreshToken
-    };
+    if (!refreshToken) throw new UnauthorizedException('Refresh token is missing');
 
-    await this.authService.logout(logoutDto);
+    // req.user is set by JwtAuthGuard from the decoded JWT payload
+    // 'id' is the JTI (jwtid), 'exp' is the expiry Unix timestamp
+    const { userId, id: jti, exp: tokenExp } = req.user;
 
-    // Clear the refresh token cookie
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+    await this.authService.logout(userId, jti, tokenExp, refreshToken);
+
+    res.clearCookie('refreshToken', REFRESH_COOKIE_CLEAR_OPTIONS);
 
     return { message: 'Logged out successfully' };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout-all')
   @HttpCode(HttpStatus.OK)
   async logoutFromAllDevices(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const authHeader = req.headers.authorization;
-    const accessToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    // Use userId from decoded payload, NOT the raw token
+    const { userId } = req.user;
 
-    if (!accessToken) {
-      throw new UnauthorizedException('Access token is missing');
-    }
-    await this.authService.logoutAllDevices(accessToken);
+    await this.authService.logoutAllDevices(userId);
 
-    // Clear the refresh token cookie
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+    res.clearCookie('refreshToken', REFRESH_COOKIE_CLEAR_OPTIONS);
 
     return { message: 'Logged out from all devices successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@CurrentUser('userId') userId: string) {
+    const user = await this.authService.getMe(userId);
+    return { user };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateMe(
+    @CurrentUser('userId') userId: string,
+    @Body() updateMeDto: UpdateMeDto,
+  ) {
+    const result = await this.authService.updateMe(userId, updateMeDto);
+    return {
+      message: 'User updated successfully',
+      user: result.user,
+      accessToken: result.access_token,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('switch-perspective')
+  async switchPerspective(
+    @CurrentUser('userId') userId: string,
+    @Body() { perspective }: { perspective: Role },
+  ) {
+    const result = await this.authService.switchPerspective(userId, perspective);
+    return {
+      message: 'Perspective switched successfully',
+      user: result.user,
+      accessToken: result.access_token,
+    };
   }
 }
