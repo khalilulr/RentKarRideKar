@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  Auth_redis:
+  redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
@@ -20,7 +20,7 @@ services:
   auth-service:
     depends_on:
       - Auth_db
-      - Auth_redis
+      - redis
     build:
       context: .
       dockerfile: ./apps/auth/Dockerfile
@@ -33,19 +33,18 @@ services:
       - .:/app
       - /app/node_modules
       - ./secrets:/app/secrets
-
-  common-service:
-    build:
-      context: .
-      dockerfile: ./apps/common/Dockerfile
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env.development
-    # Added volume mapping for development
-    volumes:
-      - .:/app
-      - /app/node_modules
+  # common-service:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/common/Dockerfile
+  #   ports:
+  #     - "8000:8000"
+  #   env_file:
+  #     - .env.development
+  #   # Added volume mapping for development
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
 
 volumes:
   postgres_data:

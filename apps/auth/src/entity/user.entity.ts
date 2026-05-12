@@ -10,7 +10,7 @@ import { KycStatus } from "../enum/kycStatus.enum";
 import { Role } from "../enum/role.enum";
 import { Session } from "./session.entity";
 
-@Entity('users') 
+@Entity('users')
 export class User {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -51,9 +51,9 @@ export class User {
     kycStatus: KycStatus;
 
     @Column({
-    type: 'enum',
-    enum: Role,
-    default: Role.PASSENGER 
+        type: 'enum',
+        enum: Role,
+        default: Role.PASSENGER
     })
     activePerspective: Role;
 

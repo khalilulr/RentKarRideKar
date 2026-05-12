@@ -1,8 +1,8 @@
-import { 
-  Injectable, 
-  InternalServerErrorException, 
-  UnauthorizedException, 
-  Logger 
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+  Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,6 +16,8 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { KycStatus } from './enum/kycStatus.enum';
 import { JwtService } from './strategies/jwt/jwt.service';
+import { RedisService } from 'apps/common/src/redis/redis.service';
+import { LogoutDTO } from './dto/logout.dto';
 
 @Injectable()
 export class AuthService {
@@ -23,13 +25,14 @@ export class AuthService {
   private readonly templateId: string;
 
   constructor(
-    @InjectRepository(User) 
+    @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
     private readonly msg91Service: Msg91Service,
     private readonly configService: ConfigService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly redisService: RedisService
   ) {
     const templateId = this.configService.get<string>('MSG91_TEMPLATE_ID');
     if (!templateId) {
@@ -39,7 +42,7 @@ export class AuthService {
   }
 
 
-   // ====================================================================
+  // ====================================================================
   // PRIVATE HELPER METHODS (DRY)
   // ====================================================================
 
@@ -66,8 +69,8 @@ export class AuthService {
    * Helper to hash the refresh token and save the session to the database
    */
   private async createAndSaveSession(user: User, refreshToken: string, ipAddress: string, userAgent: string): Promise<void> {
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10); 
-    
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
     const session = this.sessionRepository.create({
       refreshTokenHash,
       ipAddress,
@@ -77,7 +80,28 @@ export class AuthService {
 
     await this.sessionRepository.save(session);
   }
-  
+
+  private async findActiveSession(user: User, refreshToken: string) {
+    const activeSessions = await this.sessionRepository.find({
+      where: {
+        user: { id: user.id },
+        isRevoked: false
+      }
+    });
+    let currentSession;
+    for (const session of activeSessions) {
+      const isMatch = await bcrypt.compare(refreshToken, session.refreshTokenHash);
+      if (isMatch) {
+        currentSession = session;
+        break;
+      }
+    }
+
+    if (!currentSession) {
+      throw new UnauthorizedException('Session expired or logged out');
+    }
+    return currentSession;
+  }
 
   // ====================================================================
   // PUBLIC METHODS
@@ -134,15 +158,15 @@ export class AuthService {
    * Refreshes the Access Token and rotates the Refresh Token
    */
   async refreshToken(refreshToken: string, ipAddress: string, userAgent: string) {
-    let tokenPayload;
-    
+    let tokenPayload: any;
+
     // 1. Validate the JWT itself
     try {
-      tokenPayload = this.jwtService.verifyToken(refreshToken);
+      tokenPayload = await this.jwtService.decodeToken(refreshToken);
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
-
+    this.logger.log(tokenPayload);
     if (tokenPayload.type !== 'refresh') {
       throw new UnauthorizedException('Invalid token type');
     }
@@ -156,41 +180,96 @@ export class AuthService {
       throw new UnauthorizedException('User no longer exists');
     }
 
-    // 3. Find active sessions for this user
-    const activeSessions = await this.sessionRepository.find({
-      where: { 
-        user: { id: user.id }, 
-        isRevoked: false 
-      }
-    });
+    let currentSession = await this.findActiveSession(user, refreshToken);
 
-    // 4. Compare bcrypt hashes to find the matching session
-    let currentSession ;
-    for (const session of activeSessions) {
-      const isMatch = await bcrypt.compare(refreshToken, session.refreshTokenHash);
-      if (isMatch) {
-        currentSession = session;
-        break;
-      }
-    }
-
-    if (!currentSession) {
-      throw new UnauthorizedException('Session expired or logged out');
-    }
-
-    // 5. Generate new tokens
     const { accessToken, refreshToken: newRefreshToken } = this.generateTokens(user);
 
-    // 6. Token Rotation: Delete old session, save new one
-    await this.sessionRepository.delete(currentSession.id);
+    // 6. Token Rotation: Revoke old session, save new one
+    await this.sessionRepository.update(currentSession.id, { isRevoked: true });
     await this.createAndSaveSession(user, newRefreshToken, ipAddress, userAgent);
 
-    return { 
-      access_token: accessToken, 
-      refresh_token: newRefreshToken, 
-      user 
+    return {
+      access_token: accessToken,
+      refresh_token: newRefreshToken,
+      user
     };
   }
 
- 
+  public async logout(logoutDto: LogoutDTO) {
+    const { accessToken, refreshToken } = logoutDto;
+
+    // 1. Decode and Validate Access Token (Will throw Unauthorized if invalid/tampered)
+    const decoded: any = await this.jwtService.decodeToken(accessToken);
+    this.logger.log(`Logging out user: ${decoded.userId}`);
+    this.logger.log(`Decoded token: ${JSON.stringify(decoded)}`);
+
+    try {
+      // 2. Blacklist the JTI in Redis
+      if (decoded && decoded.exp) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const timeToLive = decoded.exp - currentTime;
+
+        if (timeToLive > 0) {
+          this.logger.log(`Blacklisting token JTI: ${decoded.id} for ${timeToLive}s`);
+          await this.redisService.set(`blacklist:token:${decoded.id}`, 'true', timeToLive);
+        }
+      }
+
+      // 3. Find User
+      const user = await this.userRepository.findOne({
+        where: { id: decoded.userId }
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User no longer exists');
+      }
+
+      // 4. Find and Revoke Session (Soft delete as requested)
+      let currentSession = await this.findActiveSession(user, refreshToken);
+      await this.sessionRepository.update(currentSession.id, { isRevoked: true });
+
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      this.logger.error(`Logout failed for user ${decoded.userId}: ${err.message}`, err.stack);
+      throw new InternalServerErrorException("An error occurred during logout");
+    }
+  }
+
+  /**
+   * Logs out from ALL devices by revoking all active sessions in PostgreSQL.
+   * Also sets a "logout-all" flag in Redis to invalidate all current access tokens.
+   */
+  async logoutAllDevices(accessToken: string): Promise<{ message: string }> {
+    let decodedAccessToken: any;
+    try {
+      decodedAccessToken = await this.jwtService.decodeToken(accessToken);
+      const user = await this.userRepository.findOne({
+        where: {
+          id: decodedAccessToken.userId
+        }
+      })
+      if (!user) {
+        throw new UnauthorizedException('User no longer exists');
+      }
+
+      await this.sessionRepository.update({
+        user: {
+          id: decodedAccessToken.userId
+        },
+        isRevoked: false
+      }, {
+        isRevoked: true
+      })
+
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      await this.redisService.set(`blacklist:all:${decodedAccessToken.userId}`, currentTimestamp.toString(), 900);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    return { message: 'Logged out from all devices successfully' };
+  }
+
+
+
 }

@@ -16,6 +16,7 @@ import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { TransformInterceptor } from 'apps/common/src/transform.interceptor';
 import type { Response, Request } from 'express';
+import { LogoutDTO } from './dto/logout.dto';
 
 @Controller('auth')
 @UseInterceptors(TransformInterceptor)
@@ -68,7 +69,6 @@ export class AuthController {
     @Headers('user-agent') userAgent: string,
     @Res({ passthrough: true }) res: Response
   ) {
-    // Note: Ensure you have `cookie-parser` installed and configured in your main.ts
     const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
@@ -89,5 +89,59 @@ export class AuthController {
       user: result.user,
       accessToken: result.access_token,
     };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    if (!accessToken)
+      throw new UnauthorizedException('Access token is missing');
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken)
+      throw new UnauthorizedException('Refresh token is missing');
+    const logoutDto: LogoutDTO = {
+      accessToken,
+      refreshToken
+    };
+
+    await this.authService.logout(logoutDto);
+
+    // Clear the refresh token cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    return { message: 'Logged out successfully' };
+  }
+
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  async logoutFromAllDevices(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+    if (!accessToken) {
+      throw new UnauthorizedException('Access token is missing');
+    }
+    await this.authService.logoutAllDevices(accessToken);
+
+    // Clear the refresh token cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    return { message: 'Logged out from all devices successfully' };
   }
 }

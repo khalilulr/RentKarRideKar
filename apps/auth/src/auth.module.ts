@@ -10,6 +10,7 @@ import { JwtService } from './strategies/jwt/jwt.service';
 import { JwtModule } from '@nestjs/jwt';
 import * as fs from 'fs';
 import * as path from 'path';
+import { RedisModule } from 'apps/common/src/redis/redis.module';
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
 
@@ -28,6 +29,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     }),
     TypeOrmModule.forFeature([User, Session]),
     ConfigModule.forRoot({ isGlobal: true, envFilePath }),
+    RedisModule.registerAsync(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
