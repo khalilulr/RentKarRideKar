@@ -56,8 +56,8 @@ export class JwtService {
                 const logoutAllTimestamp = await this.redisService.get(`blacklist:all:${payload.userId}`);
                 if (logoutAllTimestamp) {
                     const logoutTime = parseInt(logoutAllTimestamp, 10);
-                    // If token was issued BEFORE the logout-all event, it's invalid
-                    if (payload.iat < logoutTime) {
+                    // If token was issued BEFORE or AT THE SAME TIME as the logout-all event, it's invalid
+                    if (payload.iat <= logoutTime) {
                         throw new UnauthorizedException('All sessions were revoked. Please login again.');
                     }
                 }
