@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: ./apps/auth/Dockerfile
     ports:
-      - "3001:3001"
+      - "50051:50051"
     env_file:
       - .env.development
     # Added volume mapping for development

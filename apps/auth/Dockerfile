@@ -8,7 +8,7 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 3001
+EXPOSE 50051
 
 ENV NODE_ENV=development
 
