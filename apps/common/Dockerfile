@@ -8,8 +8,8 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 50051
+EXPOSE 8000
 
 ENV NODE_ENV=development
 
-CMD ["npm", "run", "start:dev", "--", "auth"]
+CMD ["npm", "run", "start:dev", "--", "common"]

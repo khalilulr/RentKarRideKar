@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  test_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: rkrk_auth_test
+    ports:
+      - "5434:5432"
+
+  test_redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"

@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc SendOtp (SendOtpRequest) returns (MessageResponse);
+
+  rpc VerifyOtp (VerifyOtpRequest) returns (AuthResponse);
+
+  rpc RefreshToken (RefreshTokenRequest) returns (AuthResponse);
+
+  rpc Logout (LogoutRequest) returns (MessageResponse);
+
+  rpc LogoutAllDevices (LogoutAllDevicesRequest)
+      returns (MessageResponse);
+
+  rpc GetMe (GetMeRequest) returns (GetMeResponse);
+
+  rpc UpdateMe (UpdateMeRequest) returns (UpdateMeResponse);
+
+  rpc SwitchPerspective (SwitchPerspectiveRequest)
+      returns (UpdateMeResponse);
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  PASSENGER = 0;
+  DRIVER = 1;
+  ADMIN = 2;
+  VEHICLE_OWNER = 3;
+}
+
+enum KycStatus {
+  PENDING = 0;
+  APPROVED = 1;
+  REJECTED = 2;
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// COMMON MESSAGES
+// ─────────────────────────────────────────────────────────────
+
+message MessageResponse {
+  string message = 1;
+}
+
+message User {
+  string id = 1;
+  string mobile = 2;
+  string name = 3;
+  repeated Role roles = 4;
+  Role activePerspective = 5;
+  bool isActive = 6;
+  string profilePicture = 7;
+  KycStatus kycStatus = 8;
+
+  
+  string createdAt = 9;
+  string updatedAt = 10;
+}
+
+message AuthResponse {
+  User user = 1;
+  string accessToken = 2;
+  string refreshToken = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// SEND OTP
+// ─────────────────────────────────────────────────────────────
+
+message SendOtpRequest {
+  string mobile = 1;
+}
+
+// ─────────────────────────────────────────────────────────────
+// VERIFY OTP
+// ─────────────────────────────────────────────────────────────
+
+message VerifyOtpRequest {
+  string mobile = 1;
+  string otp = 2;
+  string ipAddress = 3;
+  string userAgent = 4;
+}
+
+// ─────────────────────────────────────────────────────────────
+// REFRESH TOKEN
+// ─────────────────────────────────────────────────────────────
+
+message RefreshTokenRequest {
+  string refreshToken = 1;
+
+  string ipAddress = 2;
+  string userAgent = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// LOGOUT
+// ─────────────────────────────────────────────────────────────
+
+message LogoutRequest {
+  string userId = 1;
+
+  string jti = 2;
+
+  int64 tokenExp = 3;
+
+  string refreshToken = 4;
+}
+
+// ─────────────────────────────────────────────────────────────
+// LOGOUT ALL DEVICES
+// ─────────────────────────────────────────────────────────────
+
+message LogoutAllDevicesRequest {
+  string userId = 1;
+}
+
+// ─────────────────────────────────────────────────────────────
+// GET ME
+// ─────────────────────────────────────────────────────────────
+
+message GetMeRequest {
+  string userId = 1;
+}
+
+message GetMeResponse {
+  User user = 1;
+}
+
+// ─────────────────────────────────────────────────────────────
+// UPDATE ME
+// ─────────────────────────────────────────────────────────────
+
+message UpdateMeRequest {
+  string userId = 1;
+
+  optional string name = 2;
+  optional string profileImage = 3;
+  repeated string roles = 4;
+  optional string activePerspective = 5;
+}
+
+
+message UpdateMeResponse {
+  string message = 1;
+
+  User user = 2;
+
+  string access_token = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// SWITCH PERSPECTIVE
+// ─────────────────────────────────────────────────────────────
+
+message SwitchPerspectiveRequest {
+  string userId = 1;
+
+  string perspective = 2;
+}
