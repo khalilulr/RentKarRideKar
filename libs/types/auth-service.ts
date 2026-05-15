@@ -48,13 +48,13 @@ export interface SendOtpRequest {
 export interface VerifyOtpRequest {
   mobile: string;
   otp: string;
-  ip: string;
+  ipAddress: string;
   userAgent: string;
 }
 
 export interface RefreshTokenRequest {
   refreshToken: string;
-  ip: string;
+  ipAddress: string;
   userAgent: string;
 }
 
@@ -81,6 +81,8 @@ export interface UpdateMeRequest {
   userId: string;
   name?: string | undefined;
   profileImage?: string | undefined;
+  roles?: string[] | undefined;
+  activePerspective?: string | undefined;
 }
 
 export interface UpdateMeResponse {
@@ -91,7 +93,7 @@ export interface UpdateMeResponse {
 
 export interface SwitchPerspectiveRequest {
   userId: string;
-  perspective: Role;
+  perspective: string;
 }
 
 export const AUTH_PACKAGE_NAME = "auth";

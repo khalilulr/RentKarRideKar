@@ -5,5 +5,12 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "moduleNameMapper": {
+    "^apps/common/src/(.*)$": "<rootDir>/../../../apps/common/src/$1",
+    "^apps/(.*)$": "<rootDir>/../../../apps/$1"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(uuid)/)"
+  ]
 }

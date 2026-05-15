@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -14,11 +15,18 @@ import { User } from './entity/user.entity';
 import { Session } from './entity/session.entity';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { UpdateMeDto } from './dto/update-me.dto';
 import { KycStatus } from './enum/kycStatus.enum';
 import { JwtService } from './strategies/jwt/jwt.service';
 import { RedisService } from 'apps/common/src/redis/redis.service';
 import { Role } from './enum/role.enum';
+import { RpcException } from '@nestjs/microservices';
+
+type UpdateMeInput = {
+  name?: string;
+  profilePicture?: string;
+  roles?: string[];
+  activePerspective?: string;
+};
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -94,8 +102,8 @@ export class AuthService {
 
     const session = this.sessionRepository.create({
       refreshTokenHash,
-      ipAddress,
-      userAgent,
+      ipAddress: ipAddress || 'unknown',
+      userAgent: userAgent || 'unknown',
       user,
     });
 
@@ -128,6 +136,42 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Maps roles from REST/gRPC strings or legacy numeric proto enums.
+   */
+  private mapRole(role: unknown): Role {
+    if (role === undefined || role === null) {
+      return Role.PASSENGER;
+    }
+    if (typeof role === 'string') {
+      const normalized = role.toUpperCase();
+      if (normalized in Role) {
+        return normalized as Role;
+      }
+      return Role.PASSENGER;
+    }
+    if (typeof role === 'number') {
+      const mapping: Record<number, Role> = {
+        0: Role.PASSENGER,
+        1: Role.DRIVER,
+        2: Role.ADMIN,
+        3: Role.VEHICLE_OWNER,
+      };
+      return mapping[role] ?? Role.PASSENGER;
+    }
+    return Role.PASSENGER;
+  }
+
+  private normalizeRoles(roles: unknown): string[] | undefined {
+    if (roles === undefined || roles === null) {
+      return undefined;
+    }
+    if (Array.isArray(roles)) {
+      return roles.length ? roles.map((r) => String(r)) : undefined;
+    }
+    return [String(roles)];
+  }
+
   // ====================================================================
   // PUBLIC METHODS
   // ====================================================================
@@ -136,7 +180,7 @@ export class AuthService {
     try {
       await this.msg91Service.sendOtp(sendOtpDto.mobile, this.templateId);
       return { message: 'OTP sent successfully' };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to send OTP to ${sendOtpDto.mobile}`, error.stack);
       throw new InternalServerErrorException('Failed to send OTP. Please try again.');
     }
@@ -179,7 +223,7 @@ export class AuthService {
     // 1. Validate JWT structure and type claim
     let tokenPayload: any;
     try {
-      tokenPayload = await this.jwtService.decodeToken(refreshToken);
+      tokenPayload = this.jwtService.decodeToken(refreshToken);
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -273,7 +317,7 @@ export class AuthService {
    */
   async updateMe(
     userId: string,
-    updateMeDto: UpdateMeDto,
+    updateMeDto: UpdateMeInput,
   ): Promise<{ user: User; access_token: string }> {
     const user = await this.findUserOrThrow(userId);
 
@@ -281,11 +325,32 @@ export class AuthService {
     const { name, profilePicture, roles, activePerspective } = updateMeDto;
     if (name !== undefined) user.name = name;
     if (profilePicture !== undefined) user.profilePicture = profilePicture;
-    if (roles !== undefined) user.roles = roles.map((role) => role.toUpperCase() as Role);
-    if (activePerspective !== undefined) user.activePerspective = activePerspective.toUpperCase() as Role;
+
+    const normalizedRoles = this.normalizeRoles(roles);
+    if (normalizedRoles?.length) {
+      const mappedRoles = normalizedRoles.map((r) => this.mapRole(r));
+
+      user.roles = Array.from(
+        new Set([
+          ...user.roles,
+          ...mappedRoles,
+        ]),
+      );
+    }
+
+    if (activePerspective !== undefined) {
+  const mappedPerspective = this.mapRole(activePerspective);
+
+  if (!user.roles.includes(mappedPerspective)) {
+     throw new RpcException(
+        `You do not have the ${mappedPerspective} role assigned.`
+      );
+  }
+
+  user.activePerspective = mappedPerspective;
+}
 
     const updatedUser = await this.userRepository.save(user);
-
     // Re-issue access token so claims (roles, perspective) are immediately up to date
     const accessToken = this.jwtService.generateAccessToken({
       userId: updatedUser.id,
@@ -297,19 +362,27 @@ export class AuthService {
     return { user: updatedUser, access_token: accessToken };
   }
 
-  async switchPerspective(userId: string, perspective: Role): Promise<{ user: User; access_token: string }> {
+  async switchPerspective(request: { userId: string; perspective: string }): Promise<{ user: User; access_token: string }> {
+    // 1. Destructure the properties from the incoming request object
+    const { userId, perspective } = request;
+
+    // 2. Add a safeguard in case the frontend sends an empty body
+    if (perspective === undefined || perspective === null) {
+      throw new RpcException('Perspective is required');
+    }
+
     const user = await this.findUserOrThrow(userId);
 
-    // Validate that the user actually has the role they are switching to
-    const normalizedPerspective: Role = perspective.toUpperCase() as Role;
+    // 3. Map the perspective (could be numeric from gRPC)
+    const normalizedPerspective = this.mapRole(perspective);
 
     if (!user.roles.includes(normalizedPerspective)) {
-      throw new UnauthorizedException(
+      throw new RpcException(
         `You do not have the ${normalizedPerspective} role assigned.`
       );
     }
 
-    user.activePerspective = perspective;
+    user.activePerspective = normalizedPerspective;
     const updatedUser = await this.userRepository.save(user);
 
     // Issue new token with the updated perspective claim

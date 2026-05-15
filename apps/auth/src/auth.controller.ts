@@ -1,10 +1,13 @@
 import {
   Controller,
+  Inject,
   UseInterceptors,
 } from '@nestjs/common';
-import { GrpcMethod } from '@nestjs/microservices';
+import {  GrpcMethod } from '@nestjs/microservices';
+import type { ClientGrpc } from '@nestjs/microservices';
 
 import { AuthService } from './auth.service';
+import { toGrpcUser } from './mappers/user-grpc.mapper';
 import { TransformInterceptor } from 'apps/common/src/transform.interceptor';
 import { AuthServiceControllerMethods } from '../../../libs/types/auth-service'
 import type {
@@ -27,9 +30,10 @@ import type {
 
 @Controller()
 @AuthServiceControllerMethods()
-@UseInterceptors(TransformInterceptor)
+// @UseInterceptors(TransformInterceptor)
 export class AuthController implements AuthServiceController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private  authService: AuthService) { }
 
   // ── Public methods ─────────────────────────────────────────────────────────
 
@@ -40,11 +44,11 @@ export class AuthController implements AuthServiceController {
 
   @GrpcMethod('AuthService', 'VerifyOtp')
   async verifyOtp(request: VerifyOtpRequest): Promise<AuthResponse> {
-    const { mobile, otp, ip, userAgent } = request;
-    const result = await this.authService.verifyOtp({ mobile, otp }, ip, userAgent);
+    const { mobile, otp, ipAddress, userAgent } = request;
+    const result = await this.authService.verifyOtp({ mobile, otp }, ipAddress, userAgent);
 
     return {
-      user: result.user as any,
+      user: toGrpcUser(result.user),
       accessToken: result.access_token,
       refreshToken: result.refresh_token,
     };
@@ -52,11 +56,11 @@ export class AuthController implements AuthServiceController {
 
   @GrpcMethod('AuthService', 'RefreshToken')
   async refreshToken(request: RefreshTokenRequest): Promise<AuthResponse> {
-    const { refreshToken, ip, userAgent } = request;
-    const result = await this.authService.refreshToken(refreshToken, ip, userAgent);
+    const { refreshToken, ipAddress, userAgent } = request;
+    const result = await this.authService.refreshToken(refreshToken, ipAddress, userAgent);
 
     return {
-      user: result.user as any,
+      user: toGrpcUser(result.user),
       accessToken: result.access_token,
       refreshToken: result.refresh_token,
     };
@@ -79,20 +83,23 @@ export class AuthController implements AuthServiceController {
   @GrpcMethod('AuthService', 'GetMe')
   async getMe(request: GetMeRequest): Promise<GetMeResponse> {
     const user = await this.authService.getMe(request.userId);
-    return { user: user as any };
+    return { user: toGrpcUser(user) };
   }
 
   @GrpcMethod('AuthService', 'UpdateMe')
   async updateMe(request: UpdateMeRequest): Promise<UpdateMeResponse> {
-    const { userId, name, profileImage } = request;
+    const { userId, name, profileImage, roles, activePerspective } = request;
     const result = await this.authService.updateMe(userId, {
       name,
       profilePicture: profileImage,
+      roles,
+      activePerspective,
     });
+
 
     return {
       message: 'User updated successfully',
-      user: result.user as any,
+      user: toGrpcUser(result.user),
       accessToken: result.access_token,
     };
   }
@@ -100,11 +107,11 @@ export class AuthController implements AuthServiceController {
   @GrpcMethod('AuthService', 'SwitchPerspective')
   async switchPerspective(request: SwitchPerspectiveRequest): Promise<UpdateMeResponse> {
     const { userId, perspective } = request;
-    const result = await this.authService.switchPerspective(userId, perspective as any);
+    const result = await this.authService.switchPerspective({ userId, perspective });
 
     return {
       message: 'Perspective switched successfully',
-      user: result.user as any,
+      user: toGrpcUser(result.user),
       accessToken: result.access_token,
     };
   }

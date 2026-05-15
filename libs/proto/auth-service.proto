@@ -33,6 +33,13 @@ enum Role {
   VEHICLE_OWNER = 3;
 }
 
+enum KycStatus {
+  PENDING = 0;
+  APPROVED = 1;
+  REJECTED = 2;
+}
+
+
 // ─────────────────────────────────────────────────────────────
 // COMMON MESSAGES
 // ─────────────────────────────────────────────────────────────
@@ -49,16 +56,17 @@ message User {
   Role activePerspective = 5;
   bool isActive = 6;
   string profilePicture = 7;
-  bool kycStatus = 8;
+  KycStatus kycStatus = 8;
+
   
-  string created_at = 9;
-  string updated_at = 10;
+  string createdAt = 9;
+  string updatedAt = 10;
 }
 
 message AuthResponse {
   User user = 1;
-  string access_token = 2;
-  string refresh_token = 3;
+  string accessToken = 2;
+  string refreshToken = 3;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -76,9 +84,8 @@ message SendOtpRequest {
 message VerifyOtpRequest {
   string mobile = 1;
   string otp = 2;
-
-  string ip = 3;
-  string user_agent = 4;
+  string ipAddress = 3;
+  string userAgent = 4;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -86,10 +93,10 @@ message VerifyOtpRequest {
 // ─────────────────────────────────────────────────────────────
 
 message RefreshTokenRequest {
-  string refresh_token = 1;
+  string refreshToken = 1;
 
-  string ip = 2;
-  string user_agent = 3;
+  string ipAddress = 2;
+  string userAgent = 3;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -97,13 +104,13 @@ message RefreshTokenRequest {
 // ─────────────────────────────────────────────────────────────
 
 message LogoutRequest {
-  string user_id = 1;
+  string userId = 1;
 
   string jti = 2;
 
-  int64 token_exp = 3;
+  int64 tokenExp = 3;
 
-  string refresh_token = 4;
+  string refreshToken = 4;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -111,7 +118,7 @@ message LogoutRequest {
 // ─────────────────────────────────────────────────────────────
 
 message LogoutAllDevicesRequest {
-  string user_id = 1;
+  string userId = 1;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -119,7 +126,7 @@ message LogoutAllDevicesRequest {
 // ─────────────────────────────────────────────────────────────
 
 message GetMeRequest {
-  string user_id = 1;
+  string userId = 1;
 }
 
 message GetMeResponse {
@@ -131,11 +138,14 @@ message GetMeResponse {
 // ─────────────────────────────────────────────────────────────
 
 message UpdateMeRequest {
-  string user_id = 1;
+  string userId = 1;
 
   optional string name = 2;
-  optional string profile_image = 3;
+  optional string profileImage = 3;
+  repeated string roles = 4;
+  optional string activePerspective = 5;
 }
+
 
 message UpdateMeResponse {
   string message = 1;
@@ -150,7 +160,7 @@ message UpdateMeResponse {
 // ─────────────────────────────────────────────────────────────
 
 message SwitchPerspectiveRequest {
-  string user_id = 1;
+  string userId = 1;
 
-  Role perspective = 2;
+  string perspective = 2;
 }
