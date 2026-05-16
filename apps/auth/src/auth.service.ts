@@ -15,7 +15,6 @@ import { User } from './entity/user.entity';
 import { Session } from './entity/session.entity';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { KycStatus } from './enum/kycStatus.enum';
 import { JwtService } from './strategies/jwt/jwt.service';
 import { RedisService } from 'apps/common/src/redis/redis.service';
 import { Role } from './enum/role.enum';
@@ -203,7 +202,7 @@ export class AuthService {
     let user = await this.userRepository.findOne({ where: { mobile } });
     if (!user) {
       user = await this.userRepository.save(
-        this.userRepository.create({ mobile, kycStatus: KycStatus.PENDING }),
+        this.userRepository.create({ mobile }),
       );
       this.logger.log(`New user registered: ${mobile}`);
     }

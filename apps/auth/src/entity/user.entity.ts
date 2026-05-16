@@ -6,7 +6,6 @@ import {
     PrimaryGeneratedColumn,
     OneToMany
 } from "typeorm";
-import { KycStatus } from "../enum/kycStatus.enum";
 import { Role } from "../enum/role.enum";
 import { Session } from "./session.entity";
 
@@ -41,14 +40,6 @@ export class User {
         default: true,
     })
     isActive: boolean;
-
-    @Column({
-        name: 'kyc_status',
-        type: 'enum', // Set type to enum
-        enum: KycStatus,
-        default: KycStatus.PENDING
-    })
-    kycStatus: KycStatus;
 
     @Column({
         type: 'enum',

@@ -33,11 +33,6 @@ enum Role {
   VEHICLE_OWNER = 3;
 }
 
-enum KycStatus {
-  PENDING = 0;
-  APPROVED = 1;
-  REJECTED = 2;
-}
 
 
 // ─────────────────────────────────────────────────────────────
@@ -56,7 +51,6 @@ message User {
   Role activePerspective = 5;
   bool isActive = 6;
   string profilePicture = 7;
-  KycStatus kycStatus = 8;
 
   
   string createdAt = 9;

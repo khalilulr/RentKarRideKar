@@ -15,7 +15,6 @@ export function toGrpcUser(user: User): GrpcUser {
     activePerspective: roleToGrpc(user.activePerspective),
     isActive: user.isActive,
     profilePicture: user.profilePicture ?? '',
-    kycStatus: user.kycStatus as unknown as boolean,
     createdAt: user.createdAt?.toString() ?? '',
     updatedAt: user.updatedAt?.toString() ?? '',
   };

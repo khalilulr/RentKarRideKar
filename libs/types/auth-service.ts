@@ -30,7 +30,6 @@ export interface User {
   activePerspective: Role;
   isActive: boolean;
   profilePicture: string;
-  kycStatus: boolean;
   createdAt: string;
   updatedAt: string;
 }
