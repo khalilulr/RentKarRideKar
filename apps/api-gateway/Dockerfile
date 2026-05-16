@@ -8,8 +8,10 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 50051
+# Expose the REST/GraphQL port
+EXPOSE 3000
+
 
 ENV NODE_ENV=development
 
-CMD ["npm", "run", "start:dev", "--", "auth"]
+CMD ["npm", "run", "start:dev", "--", "api-gateway"]

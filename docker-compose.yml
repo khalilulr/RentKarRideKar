@@ -1,37 +1,82 @@
 version: '3.8'
 
 services:
-  Auth_db:
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────────────────────────
+  auth_db:
     image: postgres:15-alpine
+    container_name: rkrk_auth_db
+    restart: always
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      POSTGRES_DB: ${DB_NAME:-auth_db}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
+      POSTGRES_DB: rkrk_auth_db
     ports:
-      - "5432:5432" 
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  
-  Auth_redis:
+    networks:
+      - rkrk_network
+
+  # ─────────────────────────────────────────────────────────────
+  # Redis
+  # ─────────────────────────────────────────────────────────────
+  redis:
     image: redis:7-alpine
+    container_name: rkrk_redis
+    restart: always
     ports:
       - "6379:6379"
-  
+    networks:
+      - rkrk_network
+
+  # ─────────────────────────────────────────────────────────────
+  # Auth gRPC Microservice
+  # ─────────────────────────────────────────────────────────────
   auth-service:
-    depends_on:
-      - Auth_db
-      - Auth_redis
     build:
       context: .
       dockerfile: ./apps/auth/Dockerfile
+    container_name: auth_service_app
+    restart: always
+    depends_on:
+      - auth_db
+      - redis
     ports:
-      - "3001:3001"
+      - "50051:50051"
     env_file:
       - .env.development
-    # Added volume mapping for development
     volumes:
       - .:/app
       - /app/node_modules
+    networks:
+      - rkrk_network
+
+  # ─────────────────────────────────────────────────────────────
+  # API Gateway
+  # ─────────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./apps/api-gateway/Dockerfile
+    container_name: api_gateway_app
+    restart: always
+    depends_on:
+      - auth-service
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
+
+networks:
+  rkrk_network:
+    driver: bridge
 
 volumes:
   postgres_data:

@@ -10,13 +10,36 @@
   "monorepo": true,
   "root": "apps/rent-kar-ride-kar",
   "projects": {
+    "api-gateway": {
+      "type": "application",
+      "root": "apps/api-gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/api-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/api-gateway/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/proto/*.proto",
+            "outDir": "../../../libs/proto",
+            "watchAssets": true
+          }
+        ]
+      }
+    },
     "auth": {
       "type": "application",
       "root": "apps/auth",
       "entryFile": "main",
       "sourceRoot": "apps/auth/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/auth/tsconfig.app.json"
+        "tsConfigPath": "apps/auth/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/proto/*.proto",
+            "outDir": "../../../libs/proto",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "booking": {
@@ -26,6 +49,15 @@
       "sourceRoot": "apps/booking/src",
       "compilerOptions": {
         "tsConfigPath": "apps/booking/tsconfig.app.json"
+      }
+    },
+    "common": {
+      "type": "application",
+      "root": "apps/common",
+      "entryFile": "main",
+      "sourceRoot": "apps/common/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/common/tsconfig.app.json"
       }
     },
     "communication": {
