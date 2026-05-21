@@ -14,4 +14,4 @@ EXPOSE 3000
 
 ENV NODE_ENV=development
 
-CMD ["npm", "run", "start:dev", "--", "api-gateway"]
+CMD ["npm", "run", "start", "--", "api-gateway"]

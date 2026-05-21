@@ -6,7 +6,6 @@ import {
     PrimaryGeneratedColumn,
     OneToMany
 } from "typeorm";
-import { KycStatus } from "../enum/kycStatus.enum";
 import { Role } from "../enum/role.enum";
 import { Session } from "./session.entity";
 
@@ -19,8 +18,22 @@ export class User {
         type: 'varchar',
         unique: true,
         length: 15,
+        nullable: true,
     })
-    mobile: string;
+    mobile?: string;
+
+    @Column({
+        type: 'varchar',
+        unique: true,
+        nullable: true,
+    })
+    email?: string;
+
+    @Column({
+        type: 'varchar',
+        nullable: true,
+    })
+    password?: string;
 
     @Column({
         type: 'varchar',
@@ -41,14 +54,6 @@ export class User {
         default: true,
     })
     isActive: boolean;
-
-    @Column({
-        name: 'kyc_status',
-        type: 'enum', // Set type to enum
-        enum: KycStatus,
-        default: KycStatus.PENDING
-    })
-    kycStatus: KycStatus;
 
     @Column({
         type: 'enum',

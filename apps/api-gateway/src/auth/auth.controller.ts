@@ -14,6 +14,8 @@ import type {
   LogoutRequest,
   UpdateMeRequest,
   SwitchPerspectiveRequest,
+  LoginAdminRequest,
+  CreateDemoAdminRequest,
 } from '../../../../libs/types/auth-service';
 
 // Use type imports for the interfaces/responses
@@ -64,6 +66,60 @@ export class AuthController implements OnModuleInit {
         });
 
         // 2. Strip the refreshToken and transform enums in user object
+        const { refreshToken, user, ...clientResponse } = response;
+        return {
+          ...clientResponse,
+          user: this.mapUserResponse(user),
+        };
+      }),
+    );
+  }
+
+  @Post('admin/login')
+  loginAdmin(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() body: LoginAdminRequest
+  ): Observable<Omit<AuthResponse, 'refreshToken'>> {
+    body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
+    body.userAgent = req.headers['user-agent'] || 'unknown';
+
+    return (this.authService.loginAdmin(body) as Observable<AuthResponse>).pipe(
+      map((response: AuthResponse) => {
+        res.cookie('refreshToken', response.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        const { refreshToken, user, ...clientResponse } = response;
+        return {
+          ...clientResponse,
+          user: this.mapUserResponse(user),
+        };
+      }),
+    );
+  }
+
+  @Post('admin/demo')
+  createDemoAdmin(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() body: CreateDemoAdminRequest
+  ): Observable<Omit<AuthResponse, 'refreshToken'>> {
+    body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
+    body.userAgent = req.headers['user-agent'] || 'unknown';
+
+    return (this.authService.createDemoAdmin(body) as Observable<AuthResponse>).pipe(
+      map((response: AuthResponse) => {
+        res.cookie('refreshToken', response.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
         const { refreshToken, user, ...clientResponse } = response;
         return {
           ...clientResponse,

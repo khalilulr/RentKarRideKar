@@ -24,6 +24,8 @@ import type {
   MessageResponse,
   GetMeResponse,
   UpdateMeResponse,
+  LoginAdminRequest,
+  CreateDemoAdminRequest,
 } from '../../../libs/types/auth-service';
 
 // ─── Controller ──────────────────────────────────────────────────────────────
@@ -113,6 +115,30 @@ export class AuthController implements AuthServiceController {
       message: 'Perspective switched successfully',
       user: toGrpcUser(result.user),
       accessToken: result.access_token,
+    };
+  }
+
+  @GrpcMethod('AuthService', 'LoginAdmin')
+  async loginAdmin(request: LoginAdminRequest): Promise<AuthResponse> {
+    const { email, password, ipAddress, userAgent } = request;
+    const result = await this.authService.loginAdmin(email, password, ipAddress, userAgent);
+
+    return {
+      user: toGrpcUser(result.user),
+      accessToken: result.access_token,
+      refreshToken: result.refresh_token,
+    };
+  }
+
+  @GrpcMethod('AuthService', 'CreateDemoAdmin')
+  async createDemoAdmin(request: CreateDemoAdminRequest): Promise<AuthResponse> {
+    const { email, password, ipAddress, userAgent } = request;
+    const result = await this.authService.createDemoAdmin(email, password, ipAddress, userAgent);
+
+    return {
+      user: toGrpcUser(result.user),
+      accessToken: result.access_token,
+      refreshToken: result.refresh_token,
     };
   }
 }

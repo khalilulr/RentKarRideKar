@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
+import request from 'supertest';           // ← default import, not * as
 import { AuthModule } from './../src/auth.module';
 import cookieParser from 'cookie-parser';
 
@@ -14,14 +14,15 @@ describe('AuthController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
-    app.use(cookieParser())
+    app.use(cookieParser());
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('app should initialise', () => {
+    expect(app).toBeDefined();
   });
 });

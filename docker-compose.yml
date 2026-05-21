@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   # ─────────────────────────────────────────────────────────────
-  # PostgreSQL Database
+  # PostgreSQL — Auth
   # ─────────────────────────────────────────────────────────────
   auth_db:
     image: postgres:15-alpine
@@ -15,9 +15,37 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
     networks:
       - rkrk_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d rkrk_auth_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — Verification
+  # ─────────────────────────────────────────────────────────────
+  verification_db:
+    image: postgres:15-alpine
+    container_name: rkrk_verification_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
+      POSTGRES_DB: rkrk_verification_db
+    ports:
+      - "5434:5432" # host 5434 → container 5432 (avoids clash with auth_db)
+    volumes:
+      - postgres_verification_data:/var/lib/postgresql/data
+    networks:
+      - rkrk_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d rkrk_verification_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ─────────────────────────────────────────────────────────────
   # Redis
@@ -30,6 +58,11 @@ services:
       - "6379:6379"
     networks:
       - rkrk_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ─────────────────────────────────────────────────────────────
   # Auth gRPC Microservice
@@ -41,8 +74,10 @@ services:
     container_name: auth_service_app
     restart: always
     depends_on:
-      - auth_db
-      - redis
+      auth_db:
+        condition: service_healthy # ← waits for Postgres to be ready
+      redis:
+        condition: service_healthy
     ports:
       - "50051:50051"
     env_file:
@@ -74,9 +109,34 @@ services:
     networks:
       - rkrk_network
 
+  # ─────────────────────────────────────────────────────────────
+  # Verification gRPC Microservice
+  # ─────────────────────────────────────────────────────────────
+  verification-service:
+    build:
+      context: .
+      dockerfile: ./apps/verification/Dockerfile
+    container_name: verification_service_app
+    restart: always
+    depends_on:
+      verification_db:
+        condition: service_healthy # ← waits for Postgres to be ready
+      redis:
+        condition: service_healthy
+    ports:
+      - "50052:50052"
+    env_file:
+      - .env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
+
 networks:
   rkrk_network:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_auth_data:
+  postgres_verification_data:

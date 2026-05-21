@@ -9,13 +9,13 @@ function roleToGrpc(role: Role): GrpcRole {
 export function toGrpcUser(user: User): GrpcUser {
   return {
     id: user.id,
-    mobile: user.mobile,
+    mobile: user.mobile ?? '',
     name: user.name ?? '',
     roles: (user.roles ?? []).map(roleToGrpc),
     activePerspective: roleToGrpc(user.activePerspective),
     isActive: user.isActive,
     profilePicture: user.profilePicture ?? '',
-    kycStatus: user.kycStatus as unknown as boolean,
+    email: user.email ?? undefined,
     createdAt: user.createdAt?.toString() ?? '',
     updatedAt: user.updatedAt?.toString() ?? '',
   };

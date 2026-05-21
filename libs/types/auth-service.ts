@@ -30,7 +30,7 @@ export interface User {
   activePerspective: Role;
   isActive: boolean;
   profilePicture: string;
-  kycStatus: boolean;
+  email?: string | undefined;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +96,20 @@ export interface SwitchPerspectiveRequest {
   perspective: string;
 }
 
+export interface LoginAdminRequest {
+  email: string;
+  password?: string;
+  ipAddress: string;
+  userAgent: string;
+}
+
+export interface CreateDemoAdminRequest {
+  email: string;
+  password?: string;
+  ipAddress: string;
+  userAgent: string;
+}
+
 export const AUTH_PACKAGE_NAME = "auth";
 
 export interface AuthServiceClient {
@@ -114,6 +128,10 @@ export interface AuthServiceClient {
   updateMe(request: UpdateMeRequest): Observable<UpdateMeResponse>;
 
   switchPerspective(request: SwitchPerspectiveRequest): Observable<UpdateMeResponse>;
+
+  loginAdmin(request: LoginAdminRequest): Observable<AuthResponse>;
+
+  createDemoAdmin(request: CreateDemoAdminRequest): Observable<AuthResponse>;
 }
 
 export interface AuthServiceController {
@@ -136,6 +154,12 @@ export interface AuthServiceController {
   switchPerspective(
     request: SwitchPerspectiveRequest,
   ): Promise<UpdateMeResponse> | Observable<UpdateMeResponse> | UpdateMeResponse;
+
+  loginAdmin(request: LoginAdminRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+
+  createDemoAdmin(
+    request: CreateDemoAdminRequest,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 }
 
 export function AuthServiceControllerMethods() {
@@ -149,6 +173,8 @@ export function AuthServiceControllerMethods() {
       "getMe",
       "updateMe",
       "switchPerspective",
+      "loginAdmin",
+      "createDemoAdmin",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

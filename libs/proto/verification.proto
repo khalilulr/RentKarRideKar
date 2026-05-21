@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package verification;
+
+service VerificationService {
+  rpc UploadDoc (UploadDocRequest) returns (VerificationStatusResponse);
+  rpc GetVerificationStatus (GetVerificationStatusRequest) returns (VerificationStatusResponse);
+  rpc SubmitKycDoc (SubmitKycDocRequest) returns (SubmitKycDocResponse);
+  rpc PendingStatusDocs (Empty) returns (PendingStatusDocsResponse);
+  rpc ReviewDocument (ReviewDocumentRequest) returns (ReviewDocumentResponse);
+  rpc RejectVerification (RejectVerificationRequest) returns (RejectVerificationResponse);
+  rpc ApproveVerification (ApproveVerificationRequest) returns (ApproveVerificationResponse);
+}
+
+message Empty {}
+
+message UploadDocRequest {
+  string userId = 1;
+  string role = 2;
+  string docType = 3;
+  string fileUrl = 4;
+}
+
+message GetVerificationStatusRequest {
+  string userId = 1;
+  string role = 2;
+}
+
+message VerificationStatusResponse {
+  string verificationId = 1;
+  string status = 2;
+  string rejectionReason = 3;
+  bool isComplete = 4;
+  repeated string missingDocs = 5;
+  repeated Document documents = 6;
+}
+
+message SubmitKycDocRequest {
+  string userId = 1;
+  string role = 2;
+}
+
+message SubmitKycDocResponse {
+  string message = 1;
+  string role = 2;
+  string status = 3;
+}
+
+message PendingStatusDocsResponse {
+  string message = 1;
+  int32 total = 2;
+  repeated PendingUserDetail data = 3;
+}
+
+message PendingUserDetail {
+  string verificationId = 1;
+  string userId = 2;
+  string role = 3;
+  string status = 4;
+  string submittedAt = 5;
+  string rejectionReason = 6;
+  repeated Document documents = 7;
+}
+
+message Document {
+  string documentId = 1;
+  string documentType = 2;
+  string documentUrl = 3;
+  string status = 4;
+  string rejectionReason = 5;
+  string uploadedAt = 6;
+}
+
+message ReviewDocumentRequest {
+  string documentId = 1;
+  string adminUserId = 2;
+  string status = 3;
+  string rejectionReason = 4;
+}
+
+message ReviewDocumentResponse {
+  string message = 1;
+  ReviewDocumentData data = 2;
+}
+
+message ReviewDocumentData {
+  string documentId = 1;
+  string documentType = 2;
+  string status = 3;
+  string rejectionReason = 4;
+  string verificationId = 5;
+}
+
+message RejectVerificationRequest {
+  string verificationId = 1;
+  string adminUserId = 2;
+  string rejectionReason = 3;
+}
+
+message RejectVerificationResponse {
+  string message = 1;
+  string verificationId = 2;
+  string status = 3;
+  string rejectionReason = 4;
+}
+
+message ApproveVerificationRequest {
+  string verificationId = 1;
+  string adminUserId = 2;
+}
+
+message ApproveVerificationResponse {
+  string message = 1;
+  string verificationId = 2;
+  string status = 3;
+}
