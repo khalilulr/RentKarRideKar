@@ -18,6 +18,7 @@ export interface UploadDocRequest {
   role: string;
   docType: string;
   fileUrl: string;
+  vehicleId?: string;
 }
 
 export interface GetVerificationStatusRequest {
@@ -114,6 +115,17 @@ export interface ApproveVerificationResponse {
   status: string;
 }
 
+export interface SubmitVehicleDocsRequest {
+  vehicleId: string;
+  role: string;
+}
+
+export interface SubmitVehicleDocsResponse {
+  message: string;
+  vehicleId: string;
+  status: string;
+}
+
 export const VERIFICATION_PACKAGE_NAME = "verification";
 
 export interface VerificationServiceClient {
@@ -130,6 +142,8 @@ export interface VerificationServiceClient {
   rejectVerification(request: RejectVerificationRequest): Observable<RejectVerificationResponse>;
 
   approveVerification(request: ApproveVerificationRequest): Observable<ApproveVerificationResponse>;
+
+  submitVehicleDocs(request: SubmitVehicleDocsRequest): Observable<SubmitVehicleDocsResponse>;
 }
 
 export interface VerificationServiceController {
@@ -160,6 +174,10 @@ export interface VerificationServiceController {
   approveVerification(
     request: ApproveVerificationRequest,
   ): Promise<ApproveVerificationResponse> | Observable<ApproveVerificationResponse> | ApproveVerificationResponse;
+
+  submitVehicleDocs(
+    request: SubmitVehicleDocsRequest,
+  ): Promise<SubmitVehicleDocsResponse> | Observable<SubmitVehicleDocsResponse> | SubmitVehicleDocsResponse;
 }
 
 export function VerificationServiceControllerMethods() {
@@ -172,6 +190,7 @@ export function VerificationServiceControllerMethods() {
       "reviewDocument",
       "rejectVerification",
       "approveVerification",
+      "submitVehicleDocs",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

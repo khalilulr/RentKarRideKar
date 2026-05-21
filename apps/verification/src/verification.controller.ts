@@ -14,6 +14,7 @@ import type {
   ReviewDocumentRequest,
   RejectVerificationRequest,
   ApproveVerificationRequest,
+  SubmitVehicleDocsRequest,
 } from '../../../libs/types/verification';
 import { GrpcMethod } from '@nestjs/microservices';
 
@@ -32,6 +33,7 @@ export class VerificationController implements VerificationServiceController {
       request.role as Role,
       request.docType as DocumentType,
       request.fileUrl,
+      request.vehicleId || undefined,  // pass vehicleId if present
     );
   }
 
@@ -80,6 +82,14 @@ export class VerificationController implements VerificationServiceController {
     return this.verificationService.approveVerification(
       request.verificationId,
       request.adminUserId,
+    );
+  }
+
+  @GrpcMethod('VerificationService', 'SubmitVehicleDocs')
+  async submitVehicleDocs(request: SubmitVehicleDocsRequest) {
+    return this.verificationService.submitVehicleDocs(
+      request.vehicleId,
+      request.role as Role,
     );
   }
 }

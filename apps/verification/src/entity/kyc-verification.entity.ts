@@ -19,6 +19,11 @@ export class KycVerificationEntity {
   @Column({ type: 'uuid', name: 'user_id' })
   userId: string;
 
+  @Column({ type: 'uuid', nullable: true, name: 'vehicle_id' })
+  vehicleId?: string;
+  // null = user KYC verification
+  // populated = vehicle document verification
+
   @Column({
     type: 'enum',
     enum: Role
