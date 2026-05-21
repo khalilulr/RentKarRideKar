@@ -18,8 +18,22 @@ export class User {
         type: 'varchar',
         unique: true,
         length: 15,
+        nullable: true,
     })
-    mobile: string;
+    mobile?: string;
+
+    @Column({
+        type: 'varchar',
+        unique: true,
+        nullable: true,
+    })
+    email?: string;
+
+    @Column({
+        type: 'varchar',
+        nullable: true,
+    })
+    password?: string;
 
     @Column({
         type: 'varchar',

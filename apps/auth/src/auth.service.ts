@@ -338,16 +338,16 @@ export class AuthService {
     }
 
     if (activePerspective !== undefined) {
-  const mappedPerspective = this.mapRole(activePerspective);
+      const mappedPerspective = this.mapRole(activePerspective);
 
-  if (!user.roles.includes(mappedPerspective)) {
-     throw new RpcException(
-        `You do not have the ${mappedPerspective} role assigned.`
-      );
-  }
+      if (!user.roles.includes(mappedPerspective)) {
+        throw new RpcException(
+          `You do not have the ${mappedPerspective} role assigned.`
+        );
+      }
 
-  user.activePerspective = mappedPerspective;
-}
+      user.activePerspective = mappedPerspective;
+    }
 
     const updatedUser = await this.userRepository.save(user);
     // Re-issue access token so claims (roles, perspective) are immediately up to date
@@ -393,5 +393,69 @@ export class AuthService {
     });
 
     return { user: updatedUser, access_token: accessToken };
+  }
+
+  async loginAdmin(
+    email?: string,
+    password?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<AuthResult> {
+    if (!email || !password) {
+      throw new RpcException('Email and password are required');
+    }
+
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user || !user.password) {
+      throw new RpcException('Invalid credentials');
+    }
+
+    if (!user.roles.includes(Role.ADMIN)) {
+      throw new RpcException('Access denied');
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new RpcException('Invalid credentials');
+    }
+
+    const { accessToken, refreshToken } = this.generateTokens(user);
+    await this.createAndSaveSession(user, refreshToken, ipAddress || 'unknown', userAgent || 'unknown');
+
+    return { user, access_token: accessToken, refresh_token: refreshToken };
+  }
+
+  async createDemoAdmin(
+    email?: string,
+    password?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<AuthResult> {
+    if (!email || !password) {
+      throw new RpcException('Email and password are required');
+    }
+
+    let user = await this.userRepository.findOne({ where: { email } });
+    if (user) {
+      throw new RpcException('Admin user already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+    user = this.userRepository.create({
+      email,
+      password: hashedPassword,
+      name: 'Demo Admin',
+      roles: [Role.ADMIN],
+      activePerspective: Role.ADMIN,
+      isActive: true
+    });
+
+    user = await this.userRepository.save(user);
+
+    const { accessToken, refreshToken } = this.generateTokens(user);
+    await this.createAndSaveSession(user, refreshToken, ipAddress || 'unknown', userAgent || 'unknown');
+
+    return { user, access_token: accessToken, refresh_token: refreshToken };
   }
 }

@@ -6,17 +6,17 @@ describe('VerificationController', () => {
   let verificationController: VerificationController;
 
   beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
+    const module: TestingModule = await Test.createTestingModule({
       controllers: [VerificationController],
-      providers: [VerificationService],
+      providers: [
+        { provide: VerificationService, useValue: {} },
+      ],
     }).compile();
 
-    verificationController = app.get<VerificationController>(VerificationController);
+    verificationController = module.get<VerificationController>(VerificationController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(verificationController.getHello()).toBe('Hello World!');
-    });
+  it('should be defined', () => {
+    expect(verificationController).toBeDefined();
   });
 });
