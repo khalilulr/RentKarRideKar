@@ -10,6 +10,7 @@ service VerificationService {
   rpc ReviewDocument (ReviewDocumentRequest) returns (ReviewDocumentResponse);
   rpc RejectVerification (RejectVerificationRequest) returns (RejectVerificationResponse);
   rpc ApproveVerification (ApproveVerificationRequest) returns (ApproveVerificationResponse);
+  rpc SubmitVehicleDocs(SubmitVehicleDocsRequest) returns (SubmitVehicleDocsResponse);
 }
 
 message Empty {}
@@ -19,6 +20,7 @@ message UploadDocRequest {
   string role = 2;
   string docType = 3;
   string fileUrl = 4;
+  string vehicleId = 5; // empty string = user KYC, uuid = vehicle doc
 }
 
 message GetVerificationStatusRequest {
@@ -112,5 +114,16 @@ message ApproveVerificationRequest {
 message ApproveVerificationResponse {
   string message = 1;
   string verificationId = 2;
+  string status = 3;
+}
+
+message SubmitVehicleDocsRequest {
+  string vehicleId = 1;
+  string role = 2;
+}
+
+message SubmitVehicleDocsResponse {
+  string message = 1;
+  string vehicleId = 2;
   string status = 3;
 }

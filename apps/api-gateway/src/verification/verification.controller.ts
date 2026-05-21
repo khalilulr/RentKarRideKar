@@ -25,31 +25,23 @@ export class VerificationController implements OnModuleInit {
   @UseInterceptors(FileInterceptor('file'))
   uploadDoc(
     @CurrentUser() user: any,
-
     @Query('role') role: string,
-
     @Query('documentType') documentType: string,
-
+    @Query('vehicleId') vehicleId: string | undefined,  // NEW
     @UploadedFile() file: Express.Multer.File,
   ): Observable<any> {
-
     if (!file) {
       throw new BadRequestException('File is required');
     }
 
-    const fileUrl =
-      file.path ||
-      file.filename ||
-      file.originalname;
+    const fileUrl = file.path || file.filename || file.originalname;
 
     return this.verificationService.uploadDoc({
       userId: user.userId,
-
       role: role.toUpperCase(),
-
       docType: documentType.toUpperCase(),
-
       fileUrl,
+      vehicleId: vehicleId ?? '',   // NEW — empty string if not provided
     });
   }
 
@@ -121,6 +113,18 @@ export class VerificationController implements OnModuleInit {
     return this.verificationService.approveVerification({
       verificationId,
       adminUserId: admin.userId,
+    });
+  }
+
+  @Patch('submit-vehicle')
+  @UseGuards(JwtAuthGuard)
+  submitVehicleDocs(
+    @Query('vehicleId') vehicleId: string,
+    @Body('role') role: string,
+  ): Observable<any> {
+    return this.verificationService.submitVehicleDocs({
+      vehicleId,
+      role,
     });
   }
 }
