@@ -1,0 +1,6 @@
+export enum Reason {
+    BOOKED = "BOOKED",
+    MAINTENANCE = "MAINTENANCE",
+    OWNER_BLOCKED = "OWNER_BLOCKED",
+    OTHER = "OTHER",
+}

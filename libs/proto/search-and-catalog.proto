@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package searchAndCatalog;
+
+service SearchAndCatalogService {
+  // Catalog / Vehicle CRUD
+  rpc RegisterVehicle(RegisterVehicleRequest) returns (VehicleResponse);
+  rpc GetVehicle(GetVehicleRequest) returns (VehicleResponse);
+  rpc ListVehicles(ListVehiclesRequest) returns (ListVehiclesResponse);
+  rpc UpdateVehicle(UpdateVehicleRequest) returns (VehicleResponse);
+  rpc DeleteVehicle(DeleteVehicleRequest) returns (DeleteVehicleResponse);
+
+  // Admin Controls
+  rpc ActivateVehicle(ActivateVehicleRequest) returns (VehicleResponse);
+  rpc SuspendVehicle(SuspendVehicleRequest) returns (VehicleResponse);
+
+  // Online/Offline Toggles
+  rpc UpdateVehicleOnlineStatus(UpdateVehicleOnlineStatusRequest) returns (VehicleResponse);
+  rpc UpdateOwnerVehiclesAvailability(UpdateOwnerVehiclesAvailabilityRequest) returns (ListVehiclesResponse);
+
+  // Date-Specific Blocking
+  rpc BlockVehicle(BlockVehicleRequest) returns (VehicleResponse);
+  rpc BlockAllOwnerVehicles(BlockAllOwnerVehiclesRequest) returns (ListVehiclesResponse);
+  rpc UnblockVehicle(UnblockVehicleRequest) returns (UnblockVehicleResponse);
+  rpc UnblockAllOwnerVehicles(UnblockAllOwnerVehiclesRequest) returns (ListVehiclesResponse);
+
+  // Availability Check
+  rpc IsVehicleAvailable(IsVehicleAvailableRequest) returns (IsVehicleAvailableResponse);
+
+  // Search
+  rpc SearchVehicles(SearchVehiclesRequest) returns (ListVehiclesResponse);
+  rpc GetMyVehicles(GetMyVehiclesRequest) returns (ListVehiclesResponse);
+  rpc GetVehicleById(GetVehicleByIdRequest) returns (VehicleResponse);
+  rpc SearchVehiclesByCity(SearchVehiclesByCityRequest) returns (ListVehiclesResponse);
+}
+
+message Vehicle {
+  string id = 1;
+  string ownerId = 2;
+  string vehicleCategory = 3;
+  string make = 4;
+  string model = 5;
+  string variant = 6;
+  string registrationNumber = 7;
+  string seatingCapacity = 8;
+  string color = 9;
+  bool hasAC = 10;
+  int32 manufacturingYear = 11;
+  int32 serviceRadius = 12;
+  double homeLat = 13;
+  double homeLng = 14;
+  string homeAddress = 15;
+  repeated string vehiclePhotos = 16;
+  string status = 17;
+  bool isAvailable = 18;
+  string createdAt = 19;
+  string updatedAt = 20;
+  repeated Block blocks = 21;
+}
+
+message Block {
+  string id = 1;
+  string startDate = 2;
+  string endDate = 3;
+  string reason = 4;
+  string bookingId = 5;
+  string createdAt = 6;
+}
+
+message RegisterVehicleRequest {
+  string ownerId = 1;
+  string vehicleCategory = 2;
+  string make = 3;
+  string model = 4;
+  string variant = 5;
+  string registrationNumber = 6;
+  string seatingCapacity = 7;
+  string color = 8;
+  bool hasAC = 9;
+  int32 manufacturingYear = 10;
+  int32 serviceRadius = 11;
+  double homeLat = 12;
+  double homeLng = 13;
+  string homeAddress = 14;
+  repeated string vehiclePhotos = 15;
+}
+
+message GetVehicleRequest {
+  string id = 1;
+}
+
+message ListVehiclesRequest {
+  string ownerId = 1;
+  string status = 2;
+}
+
+message UpdateVehicleRequest {
+  string id = 1;
+  string ownerId = 2;
+  string vehicleCategory = 3;
+  string make = 4;
+  string model = 5;
+  string variant = 6;
+  string registrationNumber = 7;
+  string seatingCapacity = 8;
+  string color = 9;
+  bool hasAC = 10;
+  int32 manufacturingYear = 11;
+  int32 serviceRadius = 12;
+  double homeLat = 13;
+  double homeLng = 14;
+  string homeAddress = 15;
+  repeated string vehiclePhotos = 16;
+}
+
+message DeleteVehicleRequest {
+  string id = 1;
+  string ownerId = 2;
+}
+
+message DeleteVehicleResponse {
+  bool deleted = 1;
+}
+
+message ActivateVehicleRequest {
+  string id = 1;
+}
+
+message SuspendVehicleRequest {
+  string id = 1;
+}
+
+message UpdateVehicleOnlineStatusRequest {
+  string id = 1;
+  string ownerId = 2;
+  bool isAvailable = 3;
+}
+
+message UpdateOwnerVehiclesAvailabilityRequest {
+  string ownerId = 1;
+  bool isAvailable = 2;
+}
+
+message BlockVehicleRequest {
+  string id = 1;
+  string ownerId = 2;
+  string startDate = 3; // 'YYYY-MM-DD'
+  string endDate = 4;   // 'YYYY-MM-DD'
+  string reason = 5;
+  string bookingId = 6;
+}
+
+message BlockAllOwnerVehiclesRequest {
+  string ownerId = 1;
+  string startDate = 2; // 'YYYY-MM-DD'
+  string endDate = 3;   // 'YYYY-MM-DD'
+  string reason = 4;
+}
+
+message UnblockVehicleRequest {
+  string blockId = 1;
+  string ownerId = 2;
+}
+
+message UnblockVehicleResponse {
+  bool unblocked = 1;
+}
+
+message UnblockAllOwnerVehiclesRequest {
+  string ownerId = 1;
+}
+
+message IsVehicleAvailableRequest {
+  string vehicleId = 1;
+  string startDate = 2;
+  string endDate = 3;
+}
+
+message IsVehicleAvailableResponse {
+  bool isAvailable = 1;
+}
+
+message SearchVehiclesRequest {
+  string from = 1;
+  string to = 2;
+  string date = 3;
+  string time = 4;
+  string vehicleType = 5;
+  int32 seats = 6;
+  string color = 7;
+  optional bool ac = 8;
+}
+
+message GetMyVehiclesRequest {
+  string ownerId = 1;
+}
+
+message GetVehicleByIdRequest {
+  string id = 1;
+}
+
+message SearchVehiclesByCityRequest {
+  string city = 1;
+}
+
+message VehicleResponse {
+  Vehicle vehicle = 1;
+}
+
+message ListVehiclesResponse {
+  repeated Vehicle vehicles = 1;
+}

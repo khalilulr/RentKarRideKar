@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import { RedisModule } from 'apps/common/src/redis/redis.module';
 import { AuthController } from './auth/auth.controller';
 import { VerificationController } from './verification/verification.controller';
+import { SearchAndCatalogController } from './search-and-catalog/search-and-catalog.controller';
 import {
   assertAuthServiceProtoExists,
   AUTH_SERVICE_PROTO_PATH,
@@ -17,9 +18,14 @@ import {
   assertVerificationServiceProtoExists,
   VERIFICATION_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/verification.grpc-options';
+import {
+  assertSearchAndCatalogServiceProtoExists,
+  SEARCH_AND_CATALOG_SERVICE_PROTO_PATH,
+} from '../../../libs/proto/search-and-catalog.grpc-options';
 
 assertAuthServiceProtoExists();
 assertVerificationServiceProtoExists();
+assertSearchAndCatalogServiceProtoExists();
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
 @Module({
@@ -53,9 +59,18 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           url: 'verification-service:50052',
         },
       },
+      {
+        name: 'SEARCH_AND_CATALOG_SERVICE',
+        transport: Transport.GRPC,
+        options: {
+          package: 'searchAndCatalog',
+          protoPath: SEARCH_AND_CATALOG_SERVICE_PROTO_PATH,
+          url: 'search-and-catalog-service:50055',
+        },
+      },
     ]),
   ],
-  controllers: [ApiGatewayController, AuthController, VerificationController],
+  controllers: [ApiGatewayController, AuthController, VerificationController, SearchAndCatalogController],
   providers: [ApiGatewayService],
 })
 export class ApiGatewayModule {}

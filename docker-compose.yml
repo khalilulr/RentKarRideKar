@@ -48,6 +48,29 @@ services:
       retries: 5
 
   # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — Catalog & Search
+  # ─────────────────────────────────────────────────────────────
+  catalog_db:
+    image: postgres:15-alpine
+    container_name: rkrk_catalog_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
+      POSTGRES_DB: rkrk_catalog_db
+    ports:
+      - "5435:5432" # host 5435 → container 5432
+    volumes:
+      - postgres_catalog_data:/var/lib/postgresql/data
+    networks:
+      - rkrk_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d rkrk_catalog_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
   # Redis
   # ─────────────────────────────────────────────────────────────
   redis:
@@ -99,6 +122,7 @@ services:
     restart: always
     depends_on:
       - auth-service
+      - search-and-catalog-service
     ports:
       - "3000:3000"
     env_file:
@@ -133,6 +157,30 @@ services:
     networks:
       - rkrk_network
 
+  # ─────────────────────────────────────────────────────────────
+  # Search & Catalog gRPC Microservice
+  # ─────────────────────────────────────────────────────────────
+  search-and-catalog-service:
+    build:
+      context: .
+      dockerfile: ./apps/search/Dockerfile
+    container_name: search_catalog_service_app
+    restart: always
+    depends_on:
+      catalog_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50055:50055"
+    env_file:
+      - .env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
+
 networks:
   rkrk_network:
     driver: bridge
@@ -140,3 +188,4 @@ networks:
 volumes:
   postgres_auth_data:
   postgres_verification_data:
+  postgres_catalog_data:
