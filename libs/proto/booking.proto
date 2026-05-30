@@ -1,0 +1,490 @@
+syntax = "proto3";
+
+package booking;
+
+service BookingService {
+  // Cart
+  rpc AddToCart(AddToCartRequest) returns (AddToCartResponse);
+  rpc ViewCart(ViewCartRequest) returns (ViewCartResponse);
+  rpc RemoveCartItem(RemoveCartItemRequest) returns (RemoveCartItemResponse);
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
+
+  // Orders
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  rpc GetOrderDetails(GetOrderDetailsRequest) returns (GetOrderDetailsResponse);
+
+  // Owner Response Workflows
+  rpc OwnerAccept(OwnerAcceptRequest) returns (OwnerAcceptResponse);
+  rpc OwnerReject(OwnerRejectRequest) returns (OwnerRejectResponse);
+  rpc OwnerRemoveDriver(OwnerRemoveDriverRequest) returns (OwnerRemoveDriverResponse);
+
+  // Driver Response Workflows
+  rpc DriverAccept(DriverAcceptRequest) returns (DriverAcceptResponse);
+  rpc DriverReject(DriverRejectRequest) returns (DriverRejectResponse);
+
+  // Trip Execution
+  rpc DriverArrive(DriverArriveRequest) returns (DriverArriveResponse);
+  rpc VerifyOtp(VerifyOtpRequest) returns (VerifyOtpResponse);
+  rpc CompleteVehicleTrip(CompleteVehicleTripRequest) returns (CompleteVehicleTripResponse);
+  rpc CompleteOrder(CompleteOrderRequest) returns (CompleteOrderResponse);
+
+  // Cancellations
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+  rpc OwnerCancelVehicle(OwnerCancelVehicleRequest) returns (OwnerCancelVehicleResponse);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Common Types
+// ─────────────────────────────────────────────────────────────
+
+message CartItem {
+  string cartItemId = 1;
+  VehicleSummary vehicle = 2;
+  OwnerSummary owner = 3;
+  string pickupDatetime = 4;
+  string route = 5;
+  string tripType = 6;
+  double price = 7;
+  string expiresAt = 8;
+}
+
+message VehicleSummary {
+  string id = 1;
+  string make = 2;
+  string model = 3;
+  string color = 4;
+  string seatingCapacity = 5;
+  double rating = 6;
+  repeated string photos = 7;
+  string variant = 8;
+  string registrationNumber = 9;
+  bool hasAC = 10;
+  int32 totalTrips = 11;
+}
+
+message OwnerSummary {
+  string id = 1;
+  string name = 2;
+  double rating = 3;
+  int32 totalTrips = 4;
+}
+
+message DriverSummary {
+  string id = 1;
+  string name = 2;
+  double rating = 3;
+  int32 totalTrips = 4;
+  string assignmentType = 5;
+  string proxyContact = 6;
+}
+
+message PricingSummary {
+  double total = 1;
+  double advance = 2;
+  double remaining = 3;
+}
+
+message TimelineSummary {
+  string status = 1;
+  string timestamp = 2;
+  string description = 3;
+}
+
+message CartSummary {
+  int32 totalVehicles = 1;
+  double totalAmount = 2;
+  double totalAdvance = 3;
+}
+
+message OrderVehicleSummary {
+  string orderVehicleId = 1;
+  VehicleSummary vehicle = 2;
+  OwnerSummary owner = 3;
+  DriverSummary driver = 4;
+  PricingSummary pricing = 5;
+}
+
+message PaymentSummary {
+  string status = 1;
+  double advanceAmount = 2;
+  bool advanceDue = 3;
+  string paymentLink = 4;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Request & Response Messages
+// ─────────────────────────────────────────────────────────────
+
+message AddToCartRequest {
+  string passengerId = 1;
+  string vehicleId = 2;
+  string pickupAddress = 3;
+  double pickupLat = 4;
+  double pickupLng = 5;
+  string dropAddress = 6;
+  double dropLat = 7;
+  double dropLng = 8;
+  string pickupDatetime = 9;
+  string tripType = 10;
+  string returnDatetime = 11;
+  int32 totalDays = 12;
+}
+
+message AddToCartResponse {
+  string cartItemId = 1;
+  VehicleSummary vehicle = 2;
+  OwnerSummary owner = 3;
+  PricingSummary pricing = 4;
+  string pickupDatetime = 5;
+  string tripType = 6;
+  string expiresAt = 7;
+}
+
+message ViewCartRequest {
+  string passengerId = 1;
+}
+
+message ViewCartResponse {
+  string cartId = 1;
+  repeated CartItem items = 2;
+  CartSummary summary = 3;
+  string expiresAt = 4;
+}
+
+message RemoveCartItemRequest {
+  string passengerId = 1;
+  string cartItemId = 2;
+}
+
+message RemoveCartItemResponse {
+  string message = 1;
+  string cartItemId = 2;
+  CartSummary updatedCart = 3;
+}
+
+message ClearCartRequest {
+  string passengerId = 1;
+}
+
+message ClearCartResponse {
+  string message = 1;
+  int32 removedItems = 2;
+}
+
+message CreateOrderRequest {
+  string passengerId = 1;
+  string cartId = 2;
+  string passengerNote = 3;
+}
+
+message OrderVehicleResponse {
+  string vehicleId = 1;
+  string orderVehicleId = 2;
+  OwnerSummary owner = 3;
+  VehicleSummary vehicle = 4;
+  string status = 5;
+  double price = 6;
+  string ownerResponseDeadline = 7;
+}
+
+message CreateOrderResponse {
+  string orderId = 1;
+  string status = 2;
+  string visibleStatus = 3;
+  repeated OrderVehicleResponse vehicles = 4;
+  CartSummary summary = 5;
+  string whatsappStatus = 6;
+  string nextStep = 7;
+  string createdAt = 8;
+}
+
+message ListOrdersRequest {
+  string userId = 1;
+  string role = 2;
+  string status = 3;
+  int32 page = 4;
+  int32 limit = 5;
+}
+
+message OrderListItem {
+  string orderId = 1;
+  string status = 2;
+  string visibleStatus = 3;
+  string route = 4;
+  string pickupDatetime = 5;
+  string tripType = 6;
+  double totalAmount = 7;
+  double advancePaid = 8;
+  double remainingAmount = 9;
+  repeated OrderListItemVehicle vehicles = 10;
+  string createdAt = 11;
+  string orderVehicleId = 12;
+  OwnerSummary passenger = 13;
+  string yourVehicle = 14;
+  double yourEarnings = 15;
+  string responseDeadline = 16;
+  DriverArrangementSummary driverArrangement = 17;
+}
+
+message DriverArrangementSummary {
+  string mode = 1;
+  string mustConfirmDriverBy = 2;
+}
+
+message OrderListItemVehicle {
+  string vehicle = 1;
+  string driver = 2;
+  string status = 3;
+}
+
+message ListOrdersResponse {
+  repeated OrderListItem data = 1;
+  PaginationSummary pagination = 2;
+}
+
+message PaginationSummary {
+  int32 page = 1;
+  int32 limit = 2;
+  int32 total = 3;
+  int32 totalPages = 4;
+}
+
+message GetOrderDetailsRequest {
+  string orderId = 1;
+  string userId = 2;
+}
+
+message GetOrderDetailsResponse {
+  string orderId = 1;
+  string status = 2;
+  string visibleStatus = 3;
+  RouteSummary route = 4;
+  string pickupDatetime = 5;
+  string returnDatetime = 6;
+  string tripType = 7;
+  int32 totalDays = 8;
+  string passengerNote = 9;
+  repeated OrderVehicleSummary vehicles = 10;
+  PaymentSummary payment = 11;
+  repeated TimelineSummary timeline = 12;
+  string createdAt = 13;
+  string updatedAt = 14;
+}
+
+message RouteNode {
+  string address = 1;
+  double lat = 2;
+  double lng = 3;
+}
+
+message RouteSummary {
+  RouteNode pickup = 1;
+  RouteNode drop = 2;
+}
+
+message OwnerAcceptRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string assignmentPreference = 3;
+  string driverId = 4;
+  string ownerId = 5;
+}
+
+message OwnerAcceptResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string message = 3;
+  string nextStep = 4;
+  AssignedDriverDetail assignedDriver = 5;
+}
+
+message AssignedDriverDetail {
+  string name = 1;
+  string driverResponseDeadline = 2;
+}
+
+message OwnerRejectRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string reason = 3;
+  string ownerId = 4;
+}
+
+message OwnerRejectResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message OwnerRemoveDriverRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string ownerId = 3;
+}
+
+message OwnerRemoveDriverResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message DriverAcceptRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string driverId = 3;
+}
+
+message DriverAcceptResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string message = 3;
+  DriverTripDetails tripDetails = 4;
+  string nextStep = 5;
+}
+
+message DriverTripDetails {
+  string orderId = 1;
+  string route = 2;
+  string pickupDatetime = 3;
+  string pickupAddress = 4;
+  string tripType = 5;
+  VehicleSummary vehicle = 6;
+  OwnerSummary owner = 7;
+}
+
+message DriverRejectRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string reason = 3;
+  string driverId = 4;
+}
+
+message DriverRejectResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message DriverArriveRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string driverId = 3;
+}
+
+message DriverArriveResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string arrivedAt = 3;
+  string otpPlaintext = 4;
+  string message = 5;
+  FleetStatusSummary fleetStatus = 6;
+}
+
+message FleetStatusSummary {
+  int32 totalVehicles = 1;
+  int32 arrived = 2;
+  int32 pending = 3;
+  bool allArrived = 4;
+  string message = 5;
+  bool allStarted = 6;
+}
+
+message VerifyOtpRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string otp = 3;
+}
+
+message VerifyOtpResponse {
+  string orderVehicleId = 1;
+  string orderId = 2;
+  string status = 3;
+  bool otpVerified = 4;
+  string tripStartedAt = 5;
+  string message = 6;
+  FleetStatusSummary fleetStatus = 7;
+}
+
+message CompleteVehicleTripRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  int32 finalOdometerReading = 3;
+  double actualDistanceKm = 4;
+  string driverId = 5;
+}
+
+message CompleteVehicleTripResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string completedAt = 3;
+  string message = 4;
+  FleetOrderStatus orderStatus = 5;
+}
+
+message FleetOrderStatus {
+  int32 vehiclesCompleted = 1;
+  int32 vehiclesRemaining = 2;
+  bool orderFullyCompleted = 3;
+  string message = 4;
+}
+
+message CompleteOrderRequest {
+  string orderId = 1;
+}
+
+message CompleteOrderResponse {
+  string orderId = 1;
+  string status = 2;
+  string completedAt = 3;
+  int32 vehiclesCompleted = 4;
+  bool paymentTriggered = 5;
+  string message = 6;
+}
+
+message CancelOrderRequest {
+  string orderId = 1;
+  string reason = 2;
+  string additionalNote = 3;
+}
+
+message RefundSummary {
+  double amount = 1;
+  double percentage = 2;
+  string reason = 3;
+  string refundStatus = 4;
+  string estimatedCreditTime = 5;
+  double forfeitedAmount = 6;
+  string forfeitedTo = 7;
+}
+
+message CancelOrderResponse {
+  string orderId = 1;
+  string status = 2;
+  string cancelledBy = 3;
+  string cancelledAt = 4;
+  RefundSummary refund = 5;
+  bool ownerNotified = 6;
+}
+
+message OwnerCancelVehicleRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string reason = 3;
+  string additionalNote = 4;
+  string ownerId = 5;
+}
+
+message PenaltySummary {
+  string ratingImpact = 1;
+  string futurePriority = 2;
+}
+
+message OwnerCancelVehicleResponse {
+  string orderVehicleId = 1;
+  string status = 2;
+  string cancelledAt = 3;
+  string message = 4;
+  PenaltySummary penalty = 5;
+  bool passengerNotified = 6;
+}

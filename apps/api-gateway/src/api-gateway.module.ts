@@ -10,6 +10,7 @@ import { RedisModule } from 'apps/common/src/redis/redis.module';
 import { AuthController } from './auth/auth.controller';
 import { VerificationController } from './verification/verification.controller';
 import { SearchAndCatalogController } from './search-and-catalog/search-and-catalog.controller';
+import { BookingController } from './booking/booking.controller';
 import {
   assertAuthServiceProtoExists,
   AUTH_SERVICE_PROTO_PATH,
@@ -22,10 +23,16 @@ import {
   assertSearchAndCatalogServiceProtoExists,
   SEARCH_AND_CATALOG_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/search-and-catalog.grpc-options';
+import {
+  assertBookingServiceProtoExists,
+  BOOKING_SERVICE_PROTO_PATH,
+} from '../../../libs/proto/booking.grpc-options';
 
 assertAuthServiceProtoExists();
 assertVerificationServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
+assertBookingServiceProtoExists();
+
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
 @Module({
@@ -68,9 +75,20 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           url: 'search-and-catalog-service:50055',
         },
       },
+      {
+        name: 'BOOKING_SERVICE',
+        transport: Transport.GRPC,
+        options: {
+          package: 'booking',
+          protoPath: BOOKING_SERVICE_PROTO_PATH,
+          url: 'booking-service:50053',
+        },
+      },
     ]),
   ],
-  controllers: [ApiGatewayController, AuthController, VerificationController, SearchAndCatalogController],
+  controllers: [ApiGatewayController, AuthController, VerificationController, SearchAndCatalogController, BookingController],
+
+
   providers: [ApiGatewayService],
 })
 export class ApiGatewayModule {}
