@@ -72,6 +72,13 @@ export class User {
     @OneToMany(() => Session, session => session.user)
     sessions: Session[];
 
+    @Column({
+        type: 'float',
+        nullable: true,
+        default: 0
+    })
+    rating?: number;
+    
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 
