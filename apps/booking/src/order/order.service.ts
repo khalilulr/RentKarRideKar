@@ -1228,4 +1228,59 @@ export class OrderService implements OnModuleInit {
       message: 'Driver removed successfully. You can assign another driver.',
     };
   }
+
+  async getBooking(orderId: string) {
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (!order) {
+      throw new NotFoundException({
+        error: 'BOOKING_NOT_FOUND',
+        message: 'Booking not found',
+      });
+    }
+
+    const vehicles = await this.orderVehicleRepository.find({ where: { orderId } });
+    const tripStartDate = vehicles.length > 0 
+      ? new Date(Math.min(...vehicles.map(v => new Date(v.pickupDatetime).getTime())))
+      : new Date();
+
+    return {
+      id: order.id,
+      passengerId: order.passengerId,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      advanceAmount: Number(order.advanceAmount),
+      totalAmount: Number(order.totalAmount),
+      createdAt: order.createdAt.toISOString(),
+      tripStartDate: tripStartDate.toISOString(),
+    };
+  }
+
+  async getOrderVehicles(orderId: string) {
+    const vehicles = await this.orderVehicleRepository.find({ where: { orderId } });
+    const mapped = vehicles.map(v => ({
+      id: v.id,
+      orderId: v.orderId,
+      vehicleId: v.vehicleId,
+      ownerId: v.ownerId,
+      status: v.status,
+      price: Number(v.price),
+      completedAt: v.completedAt ? v.completedAt.toISOString() : '',
+    }));
+    return { vehicles: mapped };
+  }
+
+  async updateBookingStatus(orderId: string, status: string, visibleStatus: string) {
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (!order) {
+      throw new NotFoundException({
+        error: 'BOOKING_NOT_FOUND',
+        message: 'Booking not found',
+      });
+    }
+
+    order.status = status as OrderStatus;
+    order.visibleStatus = visibleStatus;
+    await this.orderRepository.save(order);
+    return { success: true };
+  }
 }

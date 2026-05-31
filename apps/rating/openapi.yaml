@@ -1,0 +1,381 @@
+openapi: 3.1.0
+info:
+  title: Convoy Reviews, Ratings and Cancellation Tracking Service
+  description: API specification for Ratings, Reviews, and Cancellation tracking in Convoy.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3005
+    description: Local development server
+paths:
+  /api/reviews:
+    post:
+      summary: Submit a blind review
+      description: Allows a passenger or owner to review the other party after booking completion. Blind-submitted for up to 7 days before auto-reveal.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bookingId
+                - revieweeId
+                - reviewerRole
+                - overallRating
+              properties:
+                bookingId:
+                  type: string
+                  format: uuid
+                revieweeId:
+                  type: string
+                  format: uuid
+                reviewerRole:
+                  type: string
+                  enum: [owner, passenger]
+                overallRating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                categoryScores:
+                  type: object
+                  properties:
+                    punctuality:
+                      type: integer
+                      minimum: 1
+                      maximum: 5
+                    cleanliness:
+                      type: integer
+                      minimum: 1
+                      maximum: 5
+                    safety:
+                      type: integer
+                      minimum: 1
+                      maximum: 5
+                    communication:
+                      type: integer
+                      minimum: 1
+                      maximum: 5
+                reviewText:
+                  type: string
+                  maxLength: 1000
+      responses:
+        '201':
+          description: Review submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+                    format: uuid
+        '400':
+          description: Validation error or review period expired
+        '403':
+          description: Requester role forbidden for this booking
+        '404':
+          description: Booking not found
+        '409':
+          description: Duplicate review submitted
+        '500':
+          description: Internal Server Error
+
+  /api/users/{userId}/rating:
+    get:
+      summary: Get user rating breakdown and trend
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully fetched rating details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overallRating:
+                    type: number
+                  categoryBreakdown:
+                    type: object
+                    properties:
+                      punctuality:
+                        type: number
+                      cleanliness:
+                        type: number
+                      safety:
+                        type: number
+                      communication:
+                        type: number
+                  trend:
+                    type: string
+                    enum: [up, down, stable]
+                  totalReviews:
+                    type: integer
+                  reliabilityScore:
+                    type: number
+                  reliabilityBadge:
+                    type: string
+                    enum: [Excellent, VeryGood, Fair, Concerning, Poor]
+        '500':
+          description: Internal Server Error
+
+  /api/users/{userId}/reviews:
+    get:
+      summary: Fetch revealed reviews for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [owner, passenger]
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [date, rating]
+            default: date
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: Paginated reviews list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  nextCursor:
+                    type: string
+                    nullable: true
+                  total:
+                    type: integer
+        '500':
+          description: Internal Server Error
+
+  /api/reviews/{reviewId}/respond:
+    post:
+      summary: Respond to a revealed review
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - responseText
+              properties:
+                responseText:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        '200':
+          description: Response submitted successfully
+        '400':
+          description: Review is not revealed yet
+        '403':
+          description: Requester is not the reviewee
+        '404':
+          description: Review not found
+        '409':
+          description: Response already exists
+        '500':
+          description: Internal Server Error
+
+  /api/bookings/{bookingId}/cancel:
+    post:
+      summary: Cancel a booking
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cancelledByRole
+              properties:
+                cancelledByRole:
+                  type: string
+                  enum: [owner, passenger]
+      responses:
+        '200':
+          description: Booking cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isLate:
+                    type: boolean
+                  penaltyApplied:
+                    type: boolean
+                  penaltyAmount:
+                    type: number
+                  cancellationDeadline:
+                    type: string
+                    format: date-time
+        '400':
+          description: Booking is not in a cancellable state
+        '403':
+          description: Forbidden cancellation attempt
+        '404':
+          description: Booking not found
+        '500':
+          description: Internal Server Error
+
+  /api/users/{userId}/cancellation-stats:
+    get:
+      summary: Fetch cancellation stats and reliability badge for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully fetched cancellation stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalCancellations:
+                    type: integer
+                  lateCancellations:
+                    type: integer
+                  lateRate:
+                    type: number
+                  reliabilityScore:
+                    type: number
+                  badgeLevel:
+                    type: string
+                    enum: [Excellent, VeryGood, Fair, Concerning, Poor]
+        '500':
+          description: Internal Server Error
+
+  /api/bookings/{bookingId}/cancellation-deadline:
+    get:
+      summary: Calculate the cancellation deadline for a booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cancellation deadline computed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cancellationDeadline:
+                    type: string
+                    format: date-time
+                  hoursRemaining:
+                    type: number
+                  isInsideWindow:
+                    type: boolean
+        '404':
+          description: Booking not found
+        '500':
+          description: Internal Server Error
+
+  /api/users/{userId}/reputation:
+    get:
+      summary: Get user reputation overview (cached or freshly calculated)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully fetched reputation overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overallRating:
+                    type: number
+                  starVisualization:
+                    type: string
+                  categoryBreakdown:
+                    type: object
+                  reliabilityScore:
+                    type: number
+                  badgeLevel:
+                    type: string
+                  recentReviews:
+                    type: array
+                    items:
+                      type: object
+                  tripCompletionCount:
+                    type: integer
+                  ratingTrend:
+                    type: string
+        '500':
+          description: Internal Server Error
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

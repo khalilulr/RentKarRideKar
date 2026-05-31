@@ -243,4 +243,35 @@ export class BookingController {
       this.handleError('OwnerCancelVehicle', e);
     }
   }
+
+  @GrpcMethod('BookingService', 'GetBooking')
+  async getBooking(request: any) {
+    try {
+      return await this.orderService.getBooking(request.bookingId);
+    } catch (e) {
+      this.handleError('GetBooking', e);
+    }
+  }
+
+  @GrpcMethod('BookingService', 'GetOrderVehicles')
+  async getOrderVehicles(request: any) {
+    try {
+      return await this.orderService.getOrderVehicles(request.bookingId);
+    } catch (e) {
+      this.handleError('GetOrderVehicles', e);
+    }
+  }
+
+  @GrpcMethod('BookingService', 'UpdateBookingStatus')
+  async updateBookingStatus(request: any) {
+    try {
+      return await this.orderService.updateBookingStatus(
+        request.bookingId,
+        request.status,
+        request.visibleStatus,
+      );
+    } catch (e) {
+      this.handleError('UpdateBookingStatus', e);
+    }
+  }
 }

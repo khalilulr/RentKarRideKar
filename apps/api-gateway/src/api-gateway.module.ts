@@ -11,6 +11,7 @@ import { AuthController } from './auth/auth.controller';
 import { VerificationController } from './verification/verification.controller';
 import { SearchAndCatalogController } from './search-and-catalog/search-and-catalog.controller';
 import { BookingController } from './booking/booking.controller';
+import { RatingController } from './rating/rating.controller';
 import {
   assertAuthServiceProtoExists,
   AUTH_SERVICE_PROTO_PATH,
@@ -27,11 +28,16 @@ import {
   assertBookingServiceProtoExists,
   BOOKING_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/booking.grpc-options';
+import {
+  assertRatingServiceProtoExists,
+  RATING_SERVICE_PROTO_PATH,
+} from '../../../libs/proto/rating.grpc-options';
 
 assertAuthServiceProtoExists();
 assertVerificationServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
 assertBookingServiceProtoExists();
+assertRatingServiceProtoExists();
 
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
@@ -84,9 +90,25 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           url: 'booking-service:50053',
         },
       },
+      {
+        name: 'RATING_SERVICE',
+        transport: Transport.GRPC,
+        options: {
+          package: 'rating',
+          protoPath: RATING_SERVICE_PROTO_PATH,
+          url: 'rating-service:50054',
+        },
+      },
     ]),
   ],
-  controllers: [ApiGatewayController, AuthController, VerificationController, SearchAndCatalogController, BookingController],
+  controllers: [
+    ApiGatewayController,
+    AuthController,
+    VerificationController,
+    SearchAndCatalogController,
+    BookingController,
+    RatingController,
+  ],
 
 
   providers: [ApiGatewayService],
