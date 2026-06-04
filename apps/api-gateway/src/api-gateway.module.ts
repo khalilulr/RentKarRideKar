@@ -11,6 +11,7 @@ import { AuthController } from './auth/auth.controller';
 import { VerificationController } from './verification/verification.controller';
 import { SearchAndCatalogController } from './search-and-catalog/search-and-catalog.controller';
 import { BookingController } from './booking/booking.controller';
+import { CommunicationController } from './communication/communication.controller';
 import {
   assertAuthServiceProtoExists,
   AUTH_SERVICE_PROTO_PATH,
@@ -86,7 +87,14 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
       },
     ]),
   ],
-  controllers: [ApiGatewayController, AuthController, VerificationController, SearchAndCatalogController, BookingController],
+  controllers: [
+    ApiGatewayController,
+    AuthController,
+    VerificationController,
+    SearchAndCatalogController,
+    BookingController,
+    CommunicationController,
+  ],
 
 
   providers: [ApiGatewayService],

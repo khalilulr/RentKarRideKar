@@ -243,4 +243,13 @@ export class BookingController {
       this.handleError('OwnerCancelVehicle', e);
     }
   }
+
+  @GrpcMethod('BookingService', 'ConfirmPayment')
+  async confirmPayment(request: any) {
+    try {
+      return await this.orderService.confirmPayment(request.orderId);
+    } catch (e) {
+      this.handleError('ConfirmPayment', e);
+    }
+  }
 }

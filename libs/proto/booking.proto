@@ -32,6 +32,7 @@ service BookingService {
   // Cancellations
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
   rpc OwnerCancelVehicle(OwnerCancelVehicleRequest) returns (OwnerCancelVehicleResponse);
+  rpc ConfirmPayment(ConfirmPaymentRequest) returns (ConfirmPaymentResponse);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -487,4 +488,16 @@ message OwnerCancelVehicleResponse {
   string message = 4;
   PenaltySummary penalty = 5;
   bool passengerNotified = 6;
+}
+
+message ConfirmPaymentRequest {
+  string orderId = 1;
+}
+
+message ConfirmPaymentResponse {
+  string orderId = 1;
+  string status = 2;
+  bool success = 3;
+  string message = 4;
+  string chatRoomsJson = 5;
 }

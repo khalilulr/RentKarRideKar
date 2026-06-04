@@ -22,6 +22,7 @@ export interface BookingServiceClient {
   completeOrder(request: any): Observable<any>;
   cancelOrder(request: any): Observable<any>;
   ownerCancelVehicle(request: any): Observable<any>;
+  confirmPayment(request: any): Observable<any>;
 }
 
 export interface BookingServiceController {
@@ -43,4 +44,5 @@ export interface BookingServiceController {
   completeOrder(request: any): Promise<any> | Observable<any> | any;
   cancelOrder(request: any): Promise<any> | Observable<any> | any;
   ownerCancelVehicle(request: any): Promise<any> | Observable<any> | any;
+  confirmPayment(request: any): Promise<any> | Observable<any> | any;
 }

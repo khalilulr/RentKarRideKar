@@ -229,6 +229,60 @@ services:
     networks:
       - rkrk_network
 
+# ─────────────────────────────────────────────────────────────
+  # PostgreSQL — Communication
+  # ─────────────────────────────────────────────────────────────
+  communication_db:
+    image: postgres:15-alpine
+    container_name: rkrk_communication_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
+      POSTGRES_DB: rkrk_communication_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_communication_data:/var/lib/postgresql/data
+    networks:
+      - rkrk_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rkrk_communication_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # Communication Service (HTTP :3003 + gRPC :50054)
+  # ─────────────────────────────────────────────────────────────
+  communication-service:
+    build:
+      context: .
+      dockerfile: ./apps/communication/Dockerfile
+    container_name: communication_service_app
+    restart: always
+    depends_on:
+      communication_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3003:3003"
+      - "50054:50054"
+    env_file:
+      - .env.development
+    environment:
+      - PORT=3003
+      - COMMUNICATION_DB_HOST=communication_db
+      - COMMUNICATION_DB_PORT=5432
+      - COMMUNICATION_DB_USER=postgres
+      - COMMUNICATION_DB_PASSWORD=ashif1234
+      - COMMUNICATION_DB_NAME=rkrk_communication_db
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
 networks:
   rkrk_network:
     driver: bridge
@@ -238,4 +292,5 @@ volumes:
   postgres_verification_data:
   postgres_catalog_data:
   postgres_booking_data:
+  postgres_communication_data:
 
