@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Unique } from 'typeorm';
 
 @Entity('reviews')
-@Unique(['bookingId', 'reviewerRole'])
+@Unique(['bookingId', 'reviewerRole', 'targetType'])
 export class Review {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -18,20 +18,17 @@ export class Review {
   @Column({ type: 'varchar', name: 'reviewer_role' })
   reviewerRole: 'owner' | 'passenger';
 
+  @Column({ type: 'varchar', name: 'target_type' })
+  targetType: 'driver' | 'vehicle' | 'passenger';
+
   @Column({ type: 'smallint', name: 'overall_rating' })
   overallRating: number;
 
-  @Column({ type: 'smallint', name: 'punctuality_score', nullable: true })
-  punctualityScore?: number;
+  @Column({ type: 'boolean', name: 'is_liked', default: false })
+  isLiked?: boolean;
 
-  @Column({ type: 'smallint', name: 'cleanliness_score', nullable: true })
-  cleanlinessScore?: number;
-
-  @Column({ type: 'smallint', name: 'safety_score', nullable: true })
-  safetyScore?: number;
-
-  @Column({ type: 'smallint', name: 'communication_score', nullable: true })
-  communicationScore?: number;
+  @Column({ type: 'integer', name: 'likes_count', default: 0 })
+  likesCount: number;
 
   @Column({ type: 'text', name: 'review_text', nullable: true })
   reviewText?: string;

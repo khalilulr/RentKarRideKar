@@ -23,8 +23,8 @@ export class ReviewRepository {
     return this.repo.findOne({ where: { id } });
   }
 
-  async findByBookingAndRole(bookingId: string, reviewerRole: 'owner' | 'passenger'): Promise<Review | null> {
-    return this.repo.findOne({ where: { bookingId, reviewerRole } });
+  async findByBookingRoleAndTarget(bookingId: string, reviewerRole: 'owner' | 'passenger', targetType: 'driver' | 'vehicle' | 'passenger'): Promise<Review | null> {
+    return this.repo.findOne({ where: { bookingId, reviewerRole, targetType } });
   }
 
   async findBothReviewsForBooking(bookingId: string): Promise<Review[]> {

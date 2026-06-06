@@ -12,6 +12,7 @@ export interface RatingServiceClient {
   getCancellationStats(request: any): Observable<any>;
   getCancellationDeadline(request: any): Observable<any>;
   getUserReputation(request: any): Observable<any>;
+  likeReview(request: any): Observable<any>;
 }
 
 export interface RatingServiceController {
@@ -23,4 +24,5 @@ export interface RatingServiceController {
   getCancellationStats(request: any): Promise<any> | Observable<any> | any;
   getCancellationDeadline(request: any): Promise<any> | Observable<any> | any;
   getUserReputation(request: any): Promise<any> | Observable<any> | any;
+  likeReview(request: any): Promise<any> | Observable<any> | any;
 }

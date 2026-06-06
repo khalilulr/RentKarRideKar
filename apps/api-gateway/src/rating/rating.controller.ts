@@ -90,6 +90,15 @@ export class RatingController implements OnModuleInit {
     });
   }
 
+  @Post('reviews/:reviewId/like')
+  @UseGuards(JwtAuthGuard)
+  likeReview(
+    @CurrentUser() user: any,
+    @Param('reviewId') reviewId: string,
+  ): Observable<any> {
+    return this.ratingService.likeReview({ reviewId, userId: user.userId });
+  }
+
   // ─────────────────────────────────────────────────────────────
   // 2. Cancellation Routes
   // ─────────────────────────────────────────────────────────────

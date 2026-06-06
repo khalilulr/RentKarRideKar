@@ -11,6 +11,7 @@ service RatingService {
   rpc GetCancellationStats(GetCancellationStatsRequest) returns (GetCancellationStatsResponse);
   rpc GetCancellationDeadline(GetCancellationDeadlineRequest) returns (GetCancellationDeadlineResponse);
   rpc GetUserReputation(GetUserReputationRequest) returns (GetUserReputationResponse);
+  rpc LikeReview(LikeReviewRequest) returns (LikeReviewResponse);
 }
 
 message SubmitReviewRequest {
@@ -18,16 +19,10 @@ message SubmitReviewRequest {
   string revieweeId = 2;
   string reviewerRole = 3;
   int32 overallRating = 4;
-  CategoryScores categoryScores = 5;
-  string reviewText = 6;
-  string reviewerId = 7;
-}
-
-message CategoryScores {
-  int32 punctuality = 1;
-  int32 cleanliness = 2;
-  int32 safety = 3;
-  int32 communication = 4;
+  string reviewText = 5;
+  string reviewerId = 6;
+  bool isLiked = 7;
+  string targetType = 8;
 }
 
 message SubmitReviewResponse {
@@ -121,4 +116,16 @@ message GetUserReputationResponse {
   string recentReviewsJson = 6;
   int32 tripCompletionCount = 7;
   string ratingTrend = 8;
+}
+
+message CategoryScores {}
+
+message LikeReviewRequest {
+  string reviewId = 1;
+  string userId = 2;
+}
+
+message LikeReviewResponse {
+  bool success = 1;
+  int32 likesCount = 2;
 }

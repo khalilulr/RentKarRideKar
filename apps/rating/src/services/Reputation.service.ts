@@ -28,12 +28,7 @@ export class ReputationService {
       return {
         overallRating: Number(cached.overallRating || 0),
         starVisualization: this.getStarVisualization(Number(cached.overallRating || 0)),
-        categoryBreakdown: {
-          punctuality: Number(cached.punctualityAvg || 0),
-          cleanliness: Number(cached.cleanlinessAvg || 0),
-          safety: Number(cached.safetyAvg || 0),
-          communication: Number(cached.communicationAvg || 0),
-        },
+        categoryBreakdown: {},
         reliabilityScore: Number(cached.reliabilityScore || 5.0),
         badgeLevel: cached.badgeLevel || 'Excellent',
         recentReviews,
@@ -47,10 +42,6 @@ export class ReputationService {
     const cancellationStats = await this.cancellationService.getCancellationStats(userId);
 
     let overallRating = 0;
-    let punctualityAvg = 0;
-    let cleanlinessAvg = 0;
-    let safetyAvg = 0;
-    let communicationAvg = 0;
     let ratingTrend: 'up' | 'down' | 'stable' = 'stable';
 
     if (reviews.length > 0) {
@@ -69,37 +60,7 @@ export class ReputationService {
       }
       overallRating = Number((weightedSum / weightSum).toFixed(2));
 
-      // B. Category Averages
-      let pSum = 0, pCount = 0;
-      let cSum = 0, cCount = 0;
-      let sSum = 0, sCount = 0;
-      let comSum = 0, comCount = 0;
-
-      for (const r of reviews) {
-        if (r.punctualityScore !== undefined && r.punctualityScore !== null) {
-          pSum += r.punctualityScore;
-          pCount++;
-        }
-        if (r.cleanlinessScore !== undefined && r.cleanlinessScore !== null) {
-          cSum += r.cleanlinessScore;
-          cCount++;
-        }
-        if (r.safetyScore !== undefined && r.safetyScore !== null) {
-          sSum += r.safetyScore;
-          sCount++;
-        }
-        if (r.communicationScore !== undefined && r.communicationScore !== null) {
-          comSum += r.communicationScore;
-          comCount++;
-        }
-      }
-
-      punctualityAvg = pCount > 0 ? Number((pSum / pCount).toFixed(2)) : 0;
-      cleanlinessAvg = cCount > 0 ? Number((cSum / cCount).toFixed(2)) : 0;
-      safetyAvg = sCount > 0 ? Number((sSum / sCount).toFixed(2)) : 0;
-      communicationAvg = comCount > 0 ? Number((comSum / comCount).toFixed(2)) : 0;
-
-      // C. Trend Analysis
+      // B. Trend Analysis
       const allTimeAvg = Number((reviews.reduce((acc, r) => acc + r.overallRating, 0) / reviews.length).toFixed(2));
       const recent10 = reviews.slice(0, 10);
       const recent10Avg = Number((recent10.reduce((acc, r) => acc + r.overallRating, 0) / recent10.length).toFixed(2));
@@ -117,10 +78,10 @@ export class ReputationService {
     const freshCache: Partial<ReputationCache> = {
       userId,
       overallRating,
-      punctualityAvg,
-      cleanlinessAvg,
-      safetyAvg,
-      communicationAvg,
+      punctualityAvg: 0,
+      cleanlinessAvg: 0,
+      safetyAvg: 0,
+      communicationAvg: 0,
       reliabilityScore: cancellationStats.reliabilityScore,
       badgeLevel: cancellationStats.badgeLevel,
       totalReviews: reviews.length,
@@ -133,12 +94,7 @@ export class ReputationService {
     return {
       overallRating,
       starVisualization: this.getStarVisualization(overallRating),
-      categoryBreakdown: {
-        punctuality: punctualityAvg,
-        cleanliness: cleanlinessAvg,
-        safety: safetyAvg,
-        communication: communicationAvg,
-      },
+      categoryBreakdown: {},
       reliabilityScore: cancellationStats.reliabilityScore,
       badgeLevel: cancellationStats.badgeLevel,
       recentReviews,

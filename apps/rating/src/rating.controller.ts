@@ -10,6 +10,7 @@ import {
   RespondReviewSchema,
   CancelBookingSchema,
   GetReviewsQuerySchema,
+  LikeReviewSchema,
 } from './schemas/rating.schemas';
 
 @Controller()
@@ -40,6 +41,18 @@ export class RatingController {
       return { success: true, id };
     } catch (e) {
       this.handleError('SubmitReview', e);
+    }
+  }
+
+  @GrpcMethod('RatingService', 'LikeReview')
+  async likeReview(request: any) {
+    try {
+      console.log('Received LikeReview request:', request);
+      const validated = new ZodValidationPipe(LikeReviewSchema).transform(request) as any;
+      const likesCount = await this.reviewService.likeReview(validated.reviewId, validated.userId);
+      return { success: true, likesCount };
+    } catch (e) {
+      this.handleError('LikeReview', e);
     }
   }
 

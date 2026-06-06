@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ReviewRepository } from '../repositories/Review.repository';
 import { ReputationRepository } from '../repositories/Reputation.repository';
+import { ReviewLikeRepository } from '../repositories/ReviewLike.repository';
 import { BookingIntegrationService } from './BookingIntegration.service';
 import { Review } from '../entities/Review.entity';
 import { AppError } from '../errors/AppError';
@@ -11,6 +12,7 @@ export class ReviewService {
     private readonly reviewRepo: ReviewRepository,
     private readonly reputationRepo: ReputationRepository,
     private readonly bookingIntegration: BookingIntegrationService,
+    private readonly reviewLikeRepo: ReviewLikeRepository,
   ) {}
 
   async submitReview(
@@ -19,17 +21,13 @@ export class ReviewService {
       bookingId: string;
       revieweeId: string;
       reviewerRole: 'owner' | 'passenger';
+      targetType: 'driver' | 'vehicle' | 'passenger';
       overallRating: number;
-      categoryScores?: {
-        punctuality?: number;
-        cleanliness?: number;
-        safety?: number;
-        communication?: number;
-      };
+      isLiked?: boolean;
       reviewText?: string;
     },
   ): Promise<string> {
-    const { bookingId, revieweeId, reviewerRole, overallRating, categoryScores, reviewText } = body;
+    const { bookingId, revieweeId, reviewerRole, targetType, overallRating, isLiked, reviewText } = body;
 
     // 1. Validate booking exists and is completed
     const booking = await this.bookingIntegration.getBooking(bookingId);
@@ -53,21 +51,27 @@ export class ReviewService {
       throw new AppError(403, 'FORBIDDEN_ROLE', 'You are not the owner for this booking');
     }
 
-    // Validate reviewee exists on this booking and matches the opposite role
-    const isRevieweePassenger = booking.passengerId === revieweeId;
-    const isRevieweeOwner = vehicles.some(v => v.owner_id === revieweeId);
-
-    if (reviewerRole === 'passenger' && !isRevieweeOwner) {
-      throw new AppError(400, 'INVALID_REVIEWEE', 'Reviewee must be the vehicle owner');
+    // Validate reviewee exists on this booking and matches the target type
+    if (targetType === 'driver') {
+      const isRevieweeOwner = vehicles.some(v => v.owner_id === revieweeId);
+      if (!isRevieweeOwner) {
+        throw new AppError(400, 'INVALID_REVIEWEE', 'Reviewee must be the vehicle owner/driver');
+      }
+    } else if (targetType === 'vehicle') {
+      const isRevieweeVehicle = vehicles.some(v => v.vehicle_id === revieweeId || v.vehicleId === revieweeId);
+      if (!isRevieweeVehicle) {
+        throw new AppError(400, 'INVALID_REVIEWEE', 'Reviewee must be a vehicle on this booking');
+      }
+    } else if (targetType === 'passenger') {
+      if (booking.passengerId !== revieweeId) {
+        throw new AppError(400, 'INVALID_REVIEWEE', 'Reviewee must be the passenger');
+      }
     }
-    if (reviewerRole === 'owner' && !isRevieweePassenger) {
-      throw new AppError(400, 'INVALID_REVIEWEE', 'Reviewee must be the passenger');
-    }
 
-    // 3. Enforce unique (booking_id, reviewer_role)
-    const existing = await this.reviewRepo.findByBookingAndRole(bookingId, reviewerRole);
+    // 3. Enforce unique (booking_id, reviewer_role, target_type)
+    const existing = await this.reviewRepo.findByBookingRoleAndTarget(bookingId, reviewerRole, targetType);
     if (existing) {
-      throw new AppError(409, 'DUPLICATE_REVIEW', 'You have already reviewed this booking');
+      throw new AppError(409, 'DUPLICATE_REVIEW', `You have already reviewed this booking's ${targetType}`);
     }
 
     // 4. Reject if trip completed more than 7 days ago
@@ -87,28 +91,34 @@ export class ReviewService {
       reviewerId,
       revieweeId,
       reviewerRole,
+      targetType,
       overallRating,
-      punctualityScore: categoryScores?.punctuality,
-      cleanlinessScore: categoryScores?.cleanliness,
-      safetyScore: categoryScores?.safety,
-      communicationScore: categoryScores?.communication,
+      isLiked: !!isLiked,
+      likesCount: 0,
       reviewText,
       expiresAt,
-      revealedAt: undefined, // null initially
+      revealedAt: targetType === 'vehicle' ? now : undefined, // vehicle reviews are revealed immediately
     });
 
-    // 6. Check if both roles have now reviewed this booking
-    const bothReviews = await this.reviewRepo.findBothReviewsForBooking(bookingId);
-    if (bothReviews.length === 2) {
-      // Both submitted -> Reveal both immediately
-      for (const r of bothReviews) {
-        r.revealedAt = now;
-        await this.reviewRepo.save(r);
+    // 6. Check if both roles have now reviewed each other
+    if (targetType !== 'vehicle') {
+      const allReviews = await this.reviewRepo.findBothReviewsForBooking(bookingId);
+      const driverReview = allReviews.find(r => r.targetType === 'driver');
+      const passengerReview = allReviews.find(r => r.targetType === 'passenger');
+
+      if (driverReview && passengerReview) {
+        // Both submitted -> Reveal both immediately
+        driverReview.revealedAt = now;
+        passengerReview.revealedAt = now;
+        await this.reviewRepo.save(driverReview);
+        await this.reviewRepo.save(passengerReview);
       }
     }
 
-    // 7. Invalidate cache for reviewee
-    await this.reputationRepo.invalidate(revieweeId);
+    // 7. Invalidate cache for reviewee (if it's a user)
+    if (targetType !== 'vehicle') {
+      await this.reputationRepo.invalidate(revieweeId);
+    }
 
     return review.id;
   }
@@ -141,5 +151,23 @@ export class ReviewService {
     review.responseText = responseText;
     review.responseSubmittedAt = new Date();
     await this.reviewRepo.save(review);
+  }
+
+  async likeReview(reviewId: string, userId: string): Promise<number> {
+    const review = await this.reviewRepo.findById(reviewId);
+    if (!review) {
+      throw new AppError(404, 'REVIEW_NOT_FOUND', 'Review not found');
+    }
+
+    const alreadyLiked = await this.reviewLikeRepo.exists(reviewId, userId);
+    if (alreadyLiked) {
+      throw new AppError(400, 'ALREADY_LIKED', 'You have already liked this review');
+    }
+
+    await this.reviewLikeRepo.create(reviewId, userId);
+
+    review.likesCount = (review.likesCount || 0) + 1;
+    await this.reviewRepo.save(review);
+    return review.likesCount;
   }
 }

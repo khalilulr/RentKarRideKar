@@ -3,14 +3,10 @@ import { z } from 'zod';
 export const CreateReviewSchema = z.object({
   bookingId: z.string().uuid(),
   revieweeId: z.string().uuid(),
-  reviewerRole: z.enum(['owner', 'passenger']),
+  reviewerRole: z.enum(['owner','driver', 'passenger']),
+  targetType: z.enum(['driver', 'vehicle', 'passenger']),
   overallRating: z.number().int().min(1).max(5),
-  categoryScores: z.object({
-    punctuality: z.number().int().min(1).max(5).optional(),
-    cleanliness: z.number().int().min(1).max(5).optional(),
-    safety: z.number().int().min(1).max(5).optional(),
-    communication: z.number().int().min(1).max(5).optional(),
-  }).optional(),
+  isLiked: z.boolean().optional().default(false),
   reviewText: z.string().max(1000).optional(),
 });
 
@@ -27,4 +23,9 @@ export const GetReviewsQuerySchema = z.object({
   sortBy: z.enum(['date', 'rating']).default('date'),
   cursor: z.string().optional(),
   limit: z.string().regex(/^\d+$/).transform(val => parseInt(val, 10)).default('20' as any),
+});
+
+export const LikeReviewSchema = z.object({
+  reviewId: z.string().uuid(),
+  userId: z.string().uuid(),
 });

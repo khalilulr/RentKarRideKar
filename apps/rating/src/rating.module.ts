@@ -13,6 +13,8 @@ import { ReputationRepository } from './repositories/Reputation.repository';
 import { Review } from './entities/Review.entity';
 import { Cancellation } from './entities/Cancellation.entity';
 import { ReputationCache } from './entities/ReputationCache.entity';
+import { ReviewLike } from './entities/ReviewLike.entity';
+import { ReviewLikeRepository } from './repositories/ReviewLike.repository';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { BOOKING_SERVICE_PROTO_PATH } from '../../../libs/proto/booking.grpc-options';
 
@@ -54,7 +56,7 @@ const envFilePath =
         },
       },
     ]),
-    TypeOrmModule.forFeature([Review, Cancellation, ReputationCache]),
+    TypeOrmModule.forFeature([Review, Cancellation, ReputationCache, ReviewLike]),
   ],
   controllers: [RatingController],
   providers: [
@@ -66,6 +68,7 @@ const envFilePath =
     ReviewRepository,
     CancellationRepository,
     ReputationRepository,
+    ReviewLikeRepository,
   ],
 })
 export class RatingModule {}
