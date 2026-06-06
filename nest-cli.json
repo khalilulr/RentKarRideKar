@@ -84,7 +84,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/rating/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/rating/tsconfig.app.json"
+        "tsConfigPath": "apps/rating/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/proto/*.proto",
+            "outDir": "../../../libs/proto",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "rent-kar-ride-kar": {

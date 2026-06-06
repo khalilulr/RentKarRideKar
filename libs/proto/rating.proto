@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package rating;
+
+service RatingService {
+  rpc SubmitReview(SubmitReviewRequest) returns (SubmitReviewResponse);
+  rpc GetUserRating(GetUserRatingRequest) returns (GetUserRatingResponse);
+  rpc GetUserReviews(GetUserReviewsRequest) returns (GetUserReviewsResponse);
+  rpc RespondToReview(RespondToReviewRequest) returns (RespondToReviewResponse);
+  rpc CancelBooking(CancelBookingRequest) returns (CancelBookingResponse);
+  rpc GetCancellationStats(GetCancellationStatsRequest) returns (GetCancellationStatsResponse);
+  rpc GetCancellationDeadline(GetCancellationDeadlineRequest) returns (GetCancellationDeadlineResponse);
+  rpc GetUserReputation(GetUserReputationRequest) returns (GetUserReputationResponse);
+  rpc LikeReview(LikeReviewRequest) returns (LikeReviewResponse);
+}
+
+message SubmitReviewRequest {
+  string bookingId = 1;
+  string revieweeId = 2;
+  string reviewerRole = 3;
+  int32 overallRating = 4;
+  string reviewText = 5;
+  string reviewerId = 6;
+  bool isLiked = 7;
+  string targetType = 8;
+}
+
+message SubmitReviewResponse {
+  bool success = 1;
+  string id = 2;
+}
+
+message GetUserRatingRequest {
+  string userId = 1;
+}
+
+message GetUserRatingResponse {
+  double overallRating = 1;
+  CategoryScores categoryBreakdown = 2;
+  string trend = 3;
+  int32 totalReviews = 4;
+  double reliabilityScore = 5;
+  string reliabilityBadge = 6;
+}
+
+message GetUserReviewsRequest {
+  string userId = 1;
+  string role = 2;
+  string sortBy = 3;
+  string cursor = 4;
+  int32 limit = 5;
+}
+
+message GetUserReviewsResponse {
+  string dataJson = 1;
+  string nextCursor = 2;
+  int32 total = 3;
+}
+
+message RespondToReviewRequest {
+  string reviewId = 1;
+  string responseText = 2;
+  string userId = 3;
+}
+
+message RespondToReviewResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CancelBookingRequest {
+  string bookingId = 1;
+  string cancelledByRole = 2;
+  string userId = 3;
+}
+
+message CancelBookingResponse {
+  bool isLate = 1;
+  bool penaltyApplied = 2;
+  double penaltyAmount = 3;
+  string cancellationDeadline = 4;
+}
+
+message GetCancellationStatsRequest {
+  string userId = 1;
+}
+
+message GetCancellationStatsResponse {
+  int32 totalCancellations = 1;
+  int32 lateCancellations = 2;
+  double lateRate = 3;
+  double reliabilityScore = 4;
+  string badgeLevel = 5;
+}
+
+message GetCancellationDeadlineRequest {
+  string bookingId = 1;
+}
+
+message GetCancellationDeadlineResponse {
+  string cancellationDeadline = 1;
+  double hoursRemaining = 2;
+  bool isInsideWindow = 3;
+}
+
+message GetUserReputationRequest {
+  string userId = 1;
+}
+
+message GetUserReputationResponse {
+  double overallRating = 1;
+  string starVisualization = 2;
+  CategoryScores categoryBreakdown = 3;
+  double reliabilityScore = 4;
+  string badgeLevel = 5;
+  string recentReviewsJson = 6;
+  int32 tripCompletionCount = 7;
+  string ratingTrend = 8;
+}
+
+message CategoryScores {}
+
+message LikeReviewRequest {
+  string reviewId = 1;
+  string userId = 2;
+}
+
+message LikeReviewResponse {
+  bool success = 1;
+  int32 likesCount = 2;
+}

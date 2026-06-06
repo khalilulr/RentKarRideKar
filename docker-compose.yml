@@ -229,6 +229,55 @@ services:
     networks:
       - rkrk_network
 
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — Rating & Reviews
+  # ─────────────────────────────────────────────────────────────
+  rating_db:
+    image: postgres:15-alpine
+    container_name: rkrk_rating_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
+      POSTGRES_DB: rkrk_rating_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_rating_data:/var/lib/postgresql/data
+    networks:
+      - rkrk_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d rkrk_rating_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # Rating & Reviews gRPC Microservice
+  # ─────────────────────────────────────────────────────────────
+  rating-service:
+    build:
+      context: .
+      dockerfile: ./apps/rating/Dockerfile
+    container_name: rating_service_app
+    restart: always
+    depends_on:
+      rating_db:
+        condition: service_healthy
+      booking_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50054:50054"
+    env_file:
+      - .env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
+
 networks:
   rkrk_network:
     driver: bridge
@@ -238,4 +287,5 @@ volumes:
   postgres_verification_data:
   postgres_catalog_data:
   postgres_booking_data:
+  postgres_rating_data:
 

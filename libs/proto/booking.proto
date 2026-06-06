@@ -32,6 +32,11 @@ service BookingService {
   // Cancellations
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
   rpc OwnerCancelVehicle(OwnerCancelVehicleRequest) returns (OwnerCancelVehicleResponse);
+
+  // Integration queries for Ratings/Cancellations
+  rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
+  rpc GetOrderVehicles(GetOrderVehiclesRequest) returns (GetOrderVehiclesResponse);
+  rpc UpdateBookingStatus(UpdateBookingStatusRequest) returns (UpdateBookingStatusResponse);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -487,4 +492,47 @@ message OwnerCancelVehicleResponse {
   string message = 4;
   PenaltySummary penalty = 5;
   bool passengerNotified = 6;
+}
+
+message GetBookingRequest {
+  string bookingId = 1;
+}
+
+message GetBookingResponse {
+  string id = 1;
+  string passengerId = 2;
+  string status = 3;
+  string paymentStatus = 4;
+  double advanceAmount = 5;
+  double totalAmount = 6;
+  string createdAt = 7;
+  string tripStartDate = 8;
+}
+
+message GetOrderVehiclesRequest {
+  string bookingId = 1;
+}
+
+message OrderVehicleItem {
+  string id = 1;
+  string orderId = 2;
+  string vehicleId = 3;
+  string ownerId = 4;
+  string status = 5;
+  double price = 6;
+  string completedAt = 7;
+}
+
+message GetOrderVehiclesResponse {
+  repeated OrderVehicleItem vehicles = 1;
+}
+
+message UpdateBookingStatusRequest {
+  string bookingId = 1;
+  string status = 2;
+  string visibleStatus = 3;
+}
+
+message UpdateBookingStatusResponse {
+  bool success = 1;
 }
