@@ -51,6 +51,9 @@ export class AuthController implements OnModuleInit {
     @Res({ passthrough: true }) res: Response,
     @Body() body: VerifyOtpRequest
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
+    if (!body || !body.mobile || !body.otp) {
+      throw new BadRequestException('Request body with mobile and otp is required');
+    }
 
     body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
     body.userAgent = req.headers['user-agent'] || 'unknown';
@@ -81,6 +84,9 @@ export class AuthController implements OnModuleInit {
     @Res({ passthrough: true }) res: Response,
     @Body() body: LoginAdminRequest
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
+    if (!body || !body.email || !body.password) {
+      throw new BadRequestException('Request body with email and password is required');
+    }
     body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
     body.userAgent = req.headers['user-agent'] || 'unknown';
 
@@ -108,6 +114,9 @@ export class AuthController implements OnModuleInit {
     @Res({ passthrough: true }) res: Response,
     @Body() body: CreateDemoAdminRequest
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
+    if (!body || !body.email || !body.password) {
+      throw new BadRequestException('Request body with email and password is required');
+    }
     body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
     body.userAgent = req.headers['user-agent'] || 'unknown';
 

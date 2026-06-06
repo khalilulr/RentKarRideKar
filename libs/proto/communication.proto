@@ -1,0 +1,82 @@
+syntax = "proto3";
+package communication;
+
+service CommunicationService {
+  // Called by booking-service after payment confirmed
+  rpc OpenChatRooms (OpenChatRoomsRequest) returns (OpenChatRoomsResponse);
+
+  // Called by booking-service 45 min before pickup
+  rpc ActivateCallProxy (ActivateProxyRequest) returns (ActivateProxyResponse);
+
+  // Called by booking-service on ride start or cancellation
+  rpc DeactivateCallProxy (DeactivateProxyRequest) returns (DeactivateProxyResponse);
+
+  // Called by booking-service on trip end
+  rpc CloseChatRooms (CloseChatRoomsRequest) returns (CloseChatRoomsResponse);
+
+  // Called by booking-service 90 days after trip end (cron)
+  rpc ArchiveChatRooms (ArchiveChatRoomsRequest) returns (ArchiveChatRoomsResponse);
+
+  // Internal: verify chat room access (called by API gateway before proxying chat)
+  rpc VerifyChatAccess (VerifyChatAccessRequest) returns (VerifyChatAccessResponse);
+}
+
+message OpenChatRoomsRequest {
+  string booking_id = 1;
+  string passenger_id = 2;
+  string driver_id = 3;
+  string owner_id = 4;
+}
+
+message OpenChatRoomsResponse {
+  string passenger_driver_room_id = 1;
+  string passenger_owner_room_id = 2;
+  bool success = 3;
+}
+
+message ActivateProxyRequest {
+  string booking_id = 1;
+  string passenger_id = 2;
+  string driver_id = 3;
+  string owner_id = 4;
+}
+
+message ActivateProxyResponse {
+  string proxy_session_id = 1;
+  bool success = 2;
+}
+
+message DeactivateProxyRequest {
+  string booking_id = 1;
+  string reason = 2; // 'ride_started' | 'cancelled'
+}
+
+message DeactivateProxyResponse {
+  bool success = 1;
+}
+
+message CloseChatRoomsRequest {
+  string booking_id = 1;
+}
+
+message CloseChatRoomsResponse {
+  bool success = 1;
+}
+
+message ArchiveChatRoomsRequest {
+  string booking_id = 1;
+}
+
+message ArchiveChatRoomsResponse {
+  bool success = 1;
+}
+
+message VerifyChatAccessRequest {
+  string room_id = 1;
+  string user_id = 2;
+}
+
+message VerifyChatAccessResponse {
+  bool allowed = 1;
+  string room_status = 2;
+}

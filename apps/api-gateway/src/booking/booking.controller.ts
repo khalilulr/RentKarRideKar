@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { ClientGrpc } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VehicleOwnerGuard } from '../auth/guards/vehicle_owner.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -292,5 +292,25 @@ export class BookingController implements OnModuleInit {
       ownerId: user.userId,
       ...body,
     });
+  }
+
+  @Post('orders/:orderId/confirm-payment')
+  @UseGuards(JwtAuthGuard)
+  confirmPayment(
+    @Param('orderId') orderId: string,
+  ): Observable<any> {
+    return this.bookingService.confirmPayment({
+      orderId,
+    }).pipe(
+      map((res: any) => {
+        if (res.chatRoomsJson) {
+          try {
+            res.chatRooms = JSON.parse(res.chatRoomsJson);
+            delete res.chatRoomsJson;
+          } catch (e) {}
+        }
+        return res;
+      }),
+    );
   }
 }

@@ -25,6 +25,7 @@ export interface BookingServiceClient {
   getBooking(request: any): Observable<any>;
   getOrderVehicles(request: any): Observable<any>;
   updateBookingStatus(request: any): Observable<any>;
+  confirmPayment(request: any): Observable<any>;
 }
 
 export interface BookingServiceController {
@@ -49,4 +50,5 @@ export interface BookingServiceController {
   getBooking(request: any): Promise<any> | Observable<any> | any;
   getOrderVehicles(request: any): Promise<any> | Observable<any> | any;
   updateBookingStatus(request: any): Promise<any> | Observable<any> | any;
+  confirmPayment(request: any): Promise<any> | Observable<any> | any;
 }

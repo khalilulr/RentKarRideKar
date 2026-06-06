@@ -28,9 +28,22 @@ import {
   assertSearchAndCatalogServiceProtoExists,
   SEARCH_AND_CATALOG_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/search-and-catalog.grpc-options';
+import {
+  assertCommunicationServiceProtoExists,
+  COMMUNICATION_SERVICE_PROTO_PATH,
+} from '../../../libs/proto/communication.grpc-options';
+
+import { OrderGrpcService } from './order/services/order-grpc.service';
+import { OrderCreationService } from './order/services/order-creation.service';
+import { OrderQueryService } from './order/services/order-query.service';
+import { OrderPaymentService } from './order/services/order-payment.service';
+import { OrderOwnerService } from './order/services/order-owner.service';
+import { OrderDriverService } from './order/services/order-driver.service';
+import { OrderPassengerService } from './order/services/order-passenger.service';
 
 assertAuthServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
+assertCommunicationServiceProtoExists();
 
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
@@ -80,9 +93,30 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           url: 'search-and-catalog-service:50055',
         },
       },
+      {
+        name: 'COMMUNICATION_SERVICE',
+        transport: Transport.GRPC,
+        options: {
+          package: 'communication',
+          protoPath: COMMUNICATION_SERVICE_PROTO_PATH,
+          url: 'communication-service:50054',
+        },
+      },
     ]),
   ],
   controllers: [BookingController],
-  providers: [BookingService, CartService, OrderService, PricingService],
+  providers: [
+    BookingService,
+    CartService,
+    OrderService,
+    PricingService,
+    OrderGrpcService,
+    OrderCreationService,
+    OrderQueryService,
+    OrderPaymentService,
+    OrderOwnerService,
+    OrderDriverService,
+    OrderPassengerService,
+  ],
 })
 export class BookingModule {}

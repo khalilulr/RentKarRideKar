@@ -37,6 +37,7 @@ service BookingService {
   rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
   rpc GetOrderVehicles(GetOrderVehiclesRequest) returns (GetOrderVehiclesResponse);
   rpc UpdateBookingStatus(UpdateBookingStatusRequest) returns (UpdateBookingStatusResponse);
+  rpc ConfirmPayment(ConfirmPaymentRequest) returns (ConfirmPaymentResponse);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -535,4 +536,16 @@ message UpdateBookingStatusRequest {
 
 message UpdateBookingStatusResponse {
   bool success = 1;
+}
+
+message ConfirmPaymentRequest {
+  string orderId = 1;
+}
+
+message ConfirmPaymentResponse {
+  string orderId = 1;
+  string status = 2;
+  bool success = 3;
+  string message = 4;
+  string chatRoomsJson = 5;
 }
