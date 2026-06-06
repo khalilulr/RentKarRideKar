@@ -229,18 +229,12 @@ services:
     networks:
       - rkrk_network
 
-  # ─────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────
   # PostgreSQL — Rating & Reviews
   # ─────────────────────────────────────────────────────────────
   rating_db:
     image: postgres:15-alpine
     container_name: rkrk_rating_db
-# ─────────────────────────────────────────────────────────────
-  # PostgreSQL — Communication
-  # ─────────────────────────────────────────────────────────────
-  communication_db:
-    image: postgres:15-alpine
-    container_name: rkrk_communication_db
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -253,10 +247,24 @@ services:
     networks:
       - rkrk_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d rkrk_rating_db" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rkrk_rating_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — Communication
+  # ─────────────────────────────────────────────────────────────
+  communication_db:
+    image: postgres:15-alpine
+    container_name: rkrk_communication_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
       POSTGRES_DB: rkrk_communication_db
     ports:
-      - "5437:5432"
+      - "5438:5432"
     volumes:
       - postgres_communication_data:/var/lib/postgresql/data
     networks:
@@ -280,7 +288,21 @@ services:
       rating_db:
         condition: service_healthy
       booking_db:
-  # Communication Service (HTTP :3003 + gRPC :50054)
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50054:50054"
+    env_file:
+      - .env.development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
+
+  # ─────────────────────────────────────────────────────────────
+  # Communication Service
   # ─────────────────────────────────────────────────────────────
   communication-service:
     build:
@@ -294,11 +316,8 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "50054:50054"
-    env_file:
-      - .env.development
       - "3003:3003"
-      - "50054:50054"
+      - "50056:50056"
     env_file:
       - .env.development
     environment:
