@@ -39,6 +39,15 @@ export class Order {
   @Column('decimal', { precision: 10, scale: 2, name: 'advance_amount' })
   advanceAmount: number;
 
+  @Column('decimal', { precision: 10, scale: 2, name: 'original_amount', nullable: true })
+  originalAmount: number;
+
+  @Column('decimal', { precision: 10, scale: 2, name: 'discount_amount', default: 0 })
+  discountAmount: number;
+
+  @Column({ name: 'promo_code', type: 'varchar', nullable: true })
+  promoCode: string;
+
   @Column({ name: 'payment_status', type: 'varchar', default: 'PENDING' })
   paymentStatus: string; // PENDING, PAID, REFUNDED
 

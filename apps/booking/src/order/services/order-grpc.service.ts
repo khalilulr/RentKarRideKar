@@ -13,17 +13,23 @@ import {
   CommunicationServiceClient,
   COMMUNICATION_SERVICE_NAME,
 } from 'libs/types/communication';
+import {
+  DiscountServiceClient,
+  DISCOUNT_SERVICE_NAME,
+} from 'libs/types/discount';
 
 @Injectable()
 export class OrderGrpcService implements OnModuleInit {
   private searchAndCatalogService: SearchAndCatalogServiceClient;
   private authService: AuthServiceClient;
   private communicationService: CommunicationServiceClient;
+  private discountService: DiscountServiceClient;
 
   constructor(
     @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly searchClient: ClientGrpc,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
     @Inject('COMMUNICATION_SERVICE') private readonly communicationClient: ClientGrpc,
+    @Inject('DISCOUNT_SERVICE') private readonly discountClient: ClientGrpc,
   ) {}
 
   onModuleInit() {
@@ -41,6 +47,11 @@ export class OrderGrpcService implements OnModuleInit {
       this.clientGetService<CommunicationServiceClient>(
         this.communicationClient,
         COMMUNICATION_SERVICE_NAME,
+      );
+    this.discountService =
+      this.clientGetService<DiscountServiceClient>(
+        this.discountClient,
+        DISCOUNT_SERVICE_NAME,
       );
   }
 
@@ -156,6 +167,31 @@ export class OrderGrpcService implements OnModuleInit {
       }
     } catch (e: any) {
       console.error('[CommunicationService] Failed to close chat rooms:', e?.message);
+    }
+  }
+
+  async validateCode(code: string, userId: string, originalPrice: number) {
+    try {
+      if (this.discountService && typeof this.discountService.validateCode === 'function') {
+        return await lastValueFrom(
+          this.discountService.validateCode({ code, userId, originalPrice }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[DiscountService] Failed to validate offer code:', e?.message);
+    }
+    return { isValid: false, discountedPrice: originalPrice, discountAmount: 0, message: 'Discount service unavailable.' };
+  }
+
+  async recordOfferUsage(userId: string, code: string, bookingId: string, discountAmount: number) {
+    try {
+      if (this.discountService && typeof this.discountService.recordOfferUsage === 'function') {
+        await lastValueFrom(
+          this.discountService.recordOfferUsage({ userId, code, bookingId, discountAmount }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[DiscountService] Failed to record offer usage:', e?.message);
     }
   }
 }

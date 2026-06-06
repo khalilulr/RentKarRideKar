@@ -333,6 +333,59 @@ services:
     networks:
       - rkrk_network
 
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — Discount & Offers
+  # ─────────────────────────────────────────────────────────────
+  discount_db:
+    image: postgres:15-alpine
+    container_name: rkrk_discount_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ashif1234
+      POSTGRES_DB: rkrk_discount_db
+    ports:
+      - "5439:5432"
+    volumes:
+      - postgres_discount_data:/var/lib/postgresql/data
+    networks:
+      - rkrk_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rkrk_discount_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────
+  # Discount & Offers Service
+  # ─────────────────────────────────────────────────────────────
+  discount-service:
+    build:
+      context: .
+      dockerfile: ./apps/discount/Dockerfile
+    container_name: discount_service_app
+    restart: always
+    depends_on:
+      discount_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50057:50057"
+    env_file:
+      - .env.development
+    environment:
+      - DISCOUNT_DB_HOST=discount_db
+      - DISCOUNT_DB_PORT=5432
+      - DISCOUNT_DB_USER=postgres
+      - DISCOUNT_DB_PASSWORD=ashif1234
+      - DISCOUNT_DB_NAME=rkrk_discount_db
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - rkrk_network
+
 networks:
   rkrk_network:
     driver: bridge
@@ -344,4 +397,5 @@ volumes:
   postgres_booking_data:
   postgres_rating_data:
   postgres_communication_data:
+  postgres_discount_data:
 

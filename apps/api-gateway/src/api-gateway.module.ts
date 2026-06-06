@@ -13,6 +13,7 @@ import { SearchAndCatalogController } from './search-and-catalog/search-and-cata
 import { BookingController } from './booking/booking.controller';
 import { RatingController } from './rating/rating.controller';
 import { CommunicationController } from './communication/communication.controller';
+import { DiscountController } from './discount/discount.controller';
 import {
   assertAuthServiceProtoExists,
   AUTH_SERVICE_PROTO_PATH,
@@ -33,12 +34,17 @@ import {
   assertRatingServiceProtoExists,
   RATING_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/rating.grpc-options';
+import {
+  assertDiscountServiceProtoExists,
+  DISCOUNT_SERVICE_PROTO_PATH,
+} from '../../../libs/proto/discount.grpc-options';
 
 assertAuthServiceProtoExists();
 assertVerificationServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
 assertBookingServiceProtoExists();
 assertRatingServiceProtoExists();
+assertDiscountServiceProtoExists();
 
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
@@ -100,6 +106,15 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           url: 'rating-service:50054',
         },
       },
+      {
+        name: 'DISCOUNT_SERVICE',
+        transport: Transport.GRPC,
+        options: {
+          package: 'discount',
+          protoPath: DISCOUNT_SERVICE_PROTO_PATH,
+          url: process.env.DISCOUNT_SERVICE_URL || 'discount-service:50057',
+        },
+      },
     ]),
   ],
   controllers: [
@@ -110,6 +125,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     BookingController,
     RatingController,
     CommunicationController,
+    DiscountController,
   ],
 
 

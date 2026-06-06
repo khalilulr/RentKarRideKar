@@ -101,6 +101,9 @@ message CartSummary {
   int32 totalVehicles = 1;
   double totalAmount = 2;
   double totalAdvance = 3;
+  double originalAmount = 4;
+  double discountAmount = 5;
+  string promoCode = 6;
 }
 
 message OrderVehicleSummary {
@@ -116,6 +119,10 @@ message PaymentSummary {
   double advanceAmount = 2;
   bool advanceDue = 3;
   string paymentLink = 4;
+  double totalAmount = 5;
+  double originalAmount = 6;
+  double discountAmount = 7;
+  string promoCode = 8;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -149,6 +156,7 @@ message AddToCartResponse {
 
 message ViewCartRequest {
   string passengerId = 1;
+  string promoCode = 2;
 }
 
 message ViewCartResponse {
@@ -182,6 +190,7 @@ message CreateOrderRequest {
   string passengerId = 1;
   string cartId = 2;
   string passengerNote = 3;
+  string promoCode = 4;
 }
 
 message OrderVehicleResponse {

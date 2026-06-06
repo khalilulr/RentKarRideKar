@@ -32,7 +32,7 @@ export class BookingController {
   @GrpcMethod('BookingService', 'ViewCart')
   async viewCart(request: any) {
     try {
-      return await this.cartService.viewCart(request.passengerId);
+      return await this.cartService.viewCart(request.passengerId, request.promoCode);
     } catch (e) {
       this.handleError('ViewCart', e);
     }

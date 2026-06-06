@@ -32,6 +32,10 @@ import {
   assertCommunicationServiceProtoExists,
   COMMUNICATION_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/communication.grpc-options';
+import {
+  assertDiscountServiceProtoExists,
+  DISCOUNT_SERVICE_PROTO_PATH,
+} from '../../../libs/proto/discount.grpc-options';
 
 import { OrderGrpcService } from './order/services/order-grpc.service';
 import { OrderCreationService } from './order/services/order-creation.service';
@@ -44,6 +48,7 @@ import { OrderPassengerService } from './order/services/order-passenger.service'
 assertAuthServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
 assertCommunicationServiceProtoExists();
+assertDiscountServiceProtoExists();
 
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
@@ -100,6 +105,15 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           package: 'communication',
           protoPath: COMMUNICATION_SERVICE_PROTO_PATH,
           url: 'communication-service:50054',
+        },
+      },
+      {
+        name: 'DISCOUNT_SERVICE',
+        transport: Transport.GRPC,
+        options: {
+          package: 'discount',
+          protoPath: DISCOUNT_SERVICE_PROTO_PATH,
+          url: process.env.DISCOUNT_SERVICE_URL || 'discount-service:50057',
         },
       },
     ]),

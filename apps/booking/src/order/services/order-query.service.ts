@@ -268,6 +268,10 @@ export class OrderQueryService {
         advanceDue: order.paymentStatus === PaymentStatus.PENDING,
         paymentLink:
           order.paymentStatus === PaymentStatus.PENDING ? order.paymentLink : null,
+        totalAmount: Number(order.totalAmount),
+        originalAmount: Number(order.originalAmount || order.totalAmount),
+        discountAmount: Number(order.discountAmount),
+        promoCode: order.promoCode || '',
       },
       communication:
         order.paymentStatus === PaymentStatus.COMPLETED

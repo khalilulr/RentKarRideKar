@@ -73,8 +73,7 @@ export class OrderCreationService {
       }
     }
 
-    let totalAmount = 0;
-    let totalAdvance = 0;
+    let originalAmount = 0;
     const orderVehiclesData: OrderVehicle[] = [];
 
     for (const item of cart.items) {
@@ -82,8 +81,7 @@ export class OrderCreationService {
       const vehicle = vehicleRes?.vehicle;
 
       const pricing = this.pricingService.calculatePricing(item.totalDays);
-      totalAmount += pricing.total;
-      totalAdvance += pricing.advanceRequired;
+      originalAmount += pricing.total;
 
       const ownerResponseDeadline = new Date();
       ownerResponseDeadline.setHours(ownerResponseDeadline.getHours() + 1);
@@ -109,11 +107,31 @@ export class OrderCreationService {
       orderVehiclesData.push(ov);
     }
 
+    let discountAmount = 0;
+    let totalAmount = originalAmount;
+
+    if (body.promoCode) {
+      const validateRes = await this.orderGrpcService.validateCode(body.promoCode, passengerId, originalAmount);
+      if (!validateRes || !validateRes.isValid) {
+        throw new BadRequestException({
+          error: 'INVALID_PROMO_CODE',
+          message: validateRes?.message || 'The promo code is invalid.',
+        });
+      }
+      discountAmount = Number(validateRes.discountAmount);
+      totalAmount = Number(validateRes.discountedPrice);
+    }
+
+    const totalAdvance = Math.round(totalAmount * 0.25);
+
     const order = this.orderRepository.create({
       passengerId,
       passengerNote,
       totalAmount,
       advanceAmount: totalAdvance,
+      originalAmount,
+      discountAmount,
+      promoCode: body.promoCode || '',
       status: OrderStatus.OWNER_PENDING,
       visibleStatus: VisibleStatus.REQUEST_SENT,
       paymentStatus: PaymentStatus.PENDING,
@@ -131,6 +149,11 @@ export class OrderCreationService {
     ];
 
     await this.orderRepository.save(order);
+
+    if (body.promoCode && discountAmount > 0) {
+      await this.orderGrpcService.recordOfferUsage(passengerId, body.promoCode, order.id, discountAmount);
+    }
+
     await this.cartService.clearCart(passengerId);
 
     const vehiclesResponse: any[] = [];
@@ -166,7 +189,10 @@ export class OrderCreationService {
       summary: {
         totalVehicles: order.vehicles.length,
         totalAmount,
-        advanceRequired: totalAdvance,
+        totalAdvance,
+        originalAmount,
+        discountAmount,
+        promoCode: order.promoCode,
       },
       whatsappStatus: order.whatsappStatus,
       nextStep: 'Waiting for owner response. You will be notified within 1 hour.',

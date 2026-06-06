@@ -49,9 +49,13 @@ export class BookingController implements OnModuleInit {
 
   @Get('cart')
   @UseGuards(JwtAuthGuard)
-  viewCart(@CurrentUser() user: any): Observable<any> {
+  viewCart(
+    @CurrentUser() user: any,
+    @Query('promoCode') promoCode?: string,
+  ): Observable<any> {
     return this.bookingService.viewCart({
       passengerId: user.userId,
+      promoCode: promoCode || '',
     });
   }
 

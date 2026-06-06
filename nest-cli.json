@@ -120,6 +120,22 @@
       "compilerOptions": {
         "tsConfigPath": "apps/verification/tsconfig.app.json"
       }
+    },
+    "discount": {
+      "type": "application",
+      "root": "apps/discount",
+      "entryFile": "main",
+      "sourceRoot": "apps/discount/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/discount/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/proto/*.proto",
+            "outDir": "../../../libs/proto",
+            "watchAssets": true
+          }
+        ]
+      }
     }
   }
 }

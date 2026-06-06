@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package discount;
+
+service DiscountService {
+  // Admin APIs
+  rpc CreateOffer(CreateOfferRequest) returns (CreateOfferResponse);
+  rpc ToggleOffer(ToggleOfferRequest) returns (ToggleOfferResponse);
+  rpc ListOffers(ListOffersRequest) returns (ListOffersResponse);
+
+  // User APIs
+  rpc ValidateCode(ValidateCodeRequest) returns (ValidateCodeResponse);
+  rpc CheckEligibility(CheckEligibilityRequest) returns (CheckEligibilityResponse);
+  rpc GetOfferHistory(GetOfferHistoryRequest) returns (GetOfferHistoryResponse);
+  rpc RecordOfferUsage(RecordOfferUsageRequest) returns (RecordOfferUsageResponse);
+}
+
+message OfferCondition {
+  bool firstBookingOnly = 1;
+  double minBookingAmount = 2;
+}
+
+message Offer {
+  string id = 1;
+  string code = 2;
+  string type = 3;
+  double value = 4;
+  bool isActive = 5;
+  OfferCondition conditions = 6;
+  string description = 7;
+}
+
+message CreateOfferRequest {
+  string code = 1;
+  string type = 2;
+  double value = 3;
+  OfferCondition conditions = 4;
+  string description = 5;
+}
+
+message CreateOfferResponse {
+  bool success = 1;
+  Offer offer = 2;
+}
+
+message ToggleOfferRequest {
+  string id = 1;
+  bool isActive = 2;
+}
+
+message ToggleOfferResponse {
+  bool success = 1;
+  Offer offer = 2;
+}
+
+message ListOffersRequest {
+  string filter = 1; // "active", "inactive", "all"
+}
+
+message ListOffersResponse {
+  repeated Offer offers = 1;
+}
+
+message ValidateCodeRequest {
+  string code = 1;
+  string userId = 2;
+  double originalPrice = 3;
+}
+
+message ValidateCodeResponse {
+  bool isValid = 1;
+  double discountedPrice = 2;
+  double discountAmount = 3;
+  string message = 4;
+}
+
+message CheckEligibilityRequest {
+  string userId = 1;
+  double originalPrice = 2;
+}
+
+message CheckEligibilityResponse {
+  repeated Offer eligibleOffers = 1;
+}
+
+message GetOfferHistoryRequest {
+  string userId = 1;
+}
+
+message OfferHistoryItem {
+  string id = 1;
+  string offerCode = 2;
+  string bookingId = 3;
+  double discountAmount = 4;
+  string usedAt = 5;
+}
+
+message GetOfferHistoryResponse {
+  repeated OfferHistoryItem history = 1;
+}
+
+message RecordOfferUsageRequest {
+  string userId = 1;
+  string code = 2;
+  string bookingId = 3;
+  double discountAmount = 4;
+}
+
+message RecordOfferUsageResponse {
+  bool success = 1;
+}

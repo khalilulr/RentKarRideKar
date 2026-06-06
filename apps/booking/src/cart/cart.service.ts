@@ -15,11 +15,16 @@ import {
   AuthServiceClient,
   AUTH_SERVICE_NAME,
 } from 'libs/types/auth-service';
+import {
+  DiscountServiceClient,
+  DISCOUNT_SERVICE_NAME,
+} from 'libs/types/discount';
 
 @Injectable()
 export class CartService implements OnModuleInit {
   private searchAndCatalogService: SearchAndCatalogServiceClient;
   private authService: AuthServiceClient;
+  private discountService: DiscountServiceClient;
 
   constructor(
     @InjectRepository(Cart)
@@ -29,6 +34,7 @@ export class CartService implements OnModuleInit {
     private readonly pricingService: PricingService,
     @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly searchClient: ClientGrpc,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
+    @Inject('DISCOUNT_SERVICE') private readonly discountClient: ClientGrpc,
   ) {}
 
   onModuleInit() {
@@ -41,6 +47,11 @@ export class CartService implements OnModuleInit {
       this.clientGetService<AuthServiceClient>(
         this.authClient,
         AUTH_SERVICE_NAME,
+      );
+    this.discountService =
+      this.clientGetService<DiscountServiceClient>(
+        this.discountClient,
+        DISCOUNT_SERVICE_NAME,
       );
   }
 
@@ -241,11 +252,10 @@ export class CartService implements OnModuleInit {
     };
   }
 
-  async viewCart(passengerId: string) {
+  async viewCart(passengerId: string, promoCode?: string) {
     const cart = await this.getOrCreateCart(passengerId);
     const items:any = [];
-    let totalAmount = 0;
-    let totalAdvance = 0;
+    let originalAmount = 0;
 
     for (const item of cart.items) {
       let vehicle;
@@ -271,9 +281,7 @@ export class CartService implements OnModuleInit {
 
       // Read directly from the locked cart prices snapshot
       const price = Number(item.lockedTotalPrice);
-      const advanceRequired = Math.round(price * 0.25);
-      totalAmount += price;
-      totalAdvance += advanceRequired;
+      originalAmount += price;
 
       const pickupArea = item.pickupAddress.split(',')[0].trim();
       const dropArea = item.dropAddress.split(',')[0].trim();
@@ -301,6 +309,31 @@ export class CartService implements OnModuleInit {
       });
     }
 
+    let discountAmount = 0;
+    let totalAmount = originalAmount;
+
+    if (promoCode && originalAmount > 0) {
+      try {
+        if (this.discountService && typeof this.discountService.validateCode === 'function') {
+          const validateRes = await lastValueFrom(
+            this.discountService.validateCode({
+              code: promoCode,
+              userId: passengerId,
+              originalPrice: originalAmount,
+            }),
+          );
+          if (validateRes && validateRes.isValid) {
+            discountAmount = Number(validateRes.discountAmount);
+            totalAmount = Number(validateRes.discountedPrice);
+          }
+        }
+      } catch (e: any) {
+        console.error('[DiscountService] Failed to validate code during viewCart:', e?.message);
+      }
+    }
+
+    const totalAdvance = Math.round(totalAmount * 0.25);
+
     const minExpiresAt = cart.items.length > 0
       ? new Date(Math.min(...cart.items.map((i) => i.expiresAt.getTime())))
       : new Date();
@@ -312,6 +345,9 @@ export class CartService implements OnModuleInit {
         totalVehicles: items.length,
         totalAmount,
         totalAdvance,
+        originalAmount,
+        discountAmount,
+        promoCode: promoCode || '',
       },
       expiresAt: minExpiresAt.toISOString(),
     };
