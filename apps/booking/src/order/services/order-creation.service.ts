@@ -38,14 +38,7 @@ export class OrderCreationService {
       });
     }
 
-    const now = new Date();
-    const expired = cart.items.some((item) => new Date(item.expiresAt) < now);
-    if (expired) {
-      throw new BadRequestException({
-        error: 'CART_EXPIRED',
-        message: 'Your cart has expired. Please search and add vehicles again.',
-      });
-    }
+
 
     // Re-verify availability
     for (const item of cart.items) {
@@ -149,6 +142,25 @@ export class OrderCreationService {
     ];
 
     await this.orderRepository.save(order);
+
+    // Send notifications to vehicle owners
+    for (const v of order.vehicles) {
+      await this.orderGrpcService.sendNotification(
+        v.ownerId,
+        'New Ride Request',
+        `You have received a new ride request (Order ID: ${order.id}) for your vehicle.`,
+        'in-app',
+      );
+
+      await this.orderGrpcService.sendNotification(
+        v.ownerId,
+        'Pending Ride Request Reminder',
+        `You have a pending ride request (Order ID: ${order.id}). Please accept or reject it.`,
+        'whatsapp',
+        5,
+        `order_request:${order.id}`,
+      );
+    }
 
     if (body.promoCode && discountAmount > 0) {
       await this.orderGrpcService.recordOfferUsage(passengerId, body.promoCode, order.id, discountAmount);

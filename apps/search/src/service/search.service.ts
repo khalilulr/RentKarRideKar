@@ -43,7 +43,7 @@ export class SearchService {
           sin(radians(:fromLat)) *
           sin(radians(v.homeLat))
         )
-      ) <= 50
+      ) <= "v"."service_radius"
       `,
         {
           fromLat: dto.fromLat,
@@ -56,7 +56,7 @@ export class SearchService {
     /**
      * Vehicle category
      */
-    if (dto.vehicleType) {
+    if (dto.vehicleType && dto.vehicleType.toUpperCase() !== 'ALL') {
       qb.andWhere(
         'v.vehicleCategory = :vehicleCategory',
         {
@@ -69,10 +69,19 @@ export class SearchService {
      * Seating capacity
      */
     if (dto.seats) {
+      let allowedCapacities: string[] = [];
+      if (dto.seats <= 5) {
+        allowedCapacities = ['FOUR_FIVE', 'SIX_SEVEN', 'EIGHT_PLUS'];
+      } else if (dto.seats <= 7) {
+        allowedCapacities = ['SIX_SEVEN', 'EIGHT_PLUS'];
+      } else {
+        allowedCapacities = ['EIGHT_PLUS'];
+      }
+
       qb.andWhere(
-        'v.seatingCapacity >= :seats',
+        'v.seatingCapacity IN (:...allowedCapacities)',
         {
-          seats: dto.seats,
+          allowedCapacities,
         },
       );
     }
@@ -198,6 +207,17 @@ export class SearchService {
     );
   }
 
+  async getAllVehicles(): Promise<VehicleEntity[]> {
+    const vehicles = await this.vehicleRepository.find({
+      where: {
+        status: VehicleStatus.ACTIVE,
+        isAvailable: true,
+      },
+      order: { createdAt: 'DESC' },
+    });
+    return vehicles.map((v) => this.transformVehicleResponse(v));
+  }
+
   /**
    * Data Sanitizer Utility
    * Prevents leaking critical raw PII to the search frontend
@@ -216,4 +236,4 @@ export class SearchService {
     const mask = '*'.repeat(Math.max(2, regNum.length - 5));
     return `${start}${mask}${end}`; // e.g., "MH12****34"
   }
-}
+}

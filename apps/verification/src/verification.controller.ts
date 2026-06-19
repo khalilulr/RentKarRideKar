@@ -9,6 +9,7 @@ import type {
   VerificationServiceController,
   UploadDocRequest,
   GetVerificationStatusRequest,
+  GetVehicleVerificationStatusRequest,
   SubmitKycDocRequest,
   Empty,
   ReviewDocumentRequest,
@@ -41,6 +42,14 @@ export class VerificationController implements VerificationServiceController {
   async getVerificationStatus(request: GetVerificationStatusRequest) {
     return this.verificationService.getVerificationStatus(
       request.userId,
+      request.role as Role,
+    );
+  }
+
+  @GrpcMethod('VerificationService', 'GetVehicleVerificationStatus')
+  async getVehicleVerificationStatus(request: GetVehicleVerificationStatusRequest) {
+    return this.verificationService.getVehicleVerificationStatus(
+      request.vehicleId,
       request.role as Role,
     );
   }

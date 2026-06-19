@@ -93,4 +93,10 @@ export class DiscountController implements OnModuleInit {
   getOfferHistory(@CurrentUser() user: any): Observable<any> {
     return this.discountService.getOfferHistory({ userId: user.userId });
   }
+
+  @Get('offers')
+  @UseGuards(JwtAuthGuard)
+  getOffers(): Observable<any> {
+    return this.discountService.listOffers({ filter: 'active' });
+  }
 }

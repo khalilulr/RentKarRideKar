@@ -16,8 +16,12 @@ import { ReputationCache } from './entities/ReputationCache.entity';
 import { ReviewLike } from './entities/ReviewLike.entity';
 import { ReviewLikeRepository } from './repositories/ReviewLike.repository';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { BOOKING_SERVICE_PROTO_PATH } from '../../../libs/proto/booking.grpc-options';
+import * as path from 'path';
 
+const BOOKING_SERVICE_PROTO_PATH = path.join(
+  process.cwd(),
+  'libs/proto/booking.proto',
+);
 const envFilePath =
   process.env.NODE_ENV?.trim() === 'production'
     ? '.env'

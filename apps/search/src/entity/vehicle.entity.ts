@@ -70,6 +70,12 @@ export class VehicleEntity {
   @Column('simple-array', { nullable: true, name: 'vehicle_photos' })
   vehiclePhotos: string[];
 
+  @Column({ nullable: true, name: 'fuel_type' })
+  fuelType: string;
+
+  @Column({ nullable: true })
+  transmission: string;
+
   // ─── Status & Availability ─────────────────────────────────
 
   @Column({
@@ -79,8 +85,45 @@ export class VehicleEntity {
   })
   status: VehicleStatus;              // controlled by admin
 
-  @Column({ default: true, name: 'is_available' })
+  @Column({ default: false, name: 'is_available' })
   isAvailable: boolean;               // ← controlled by owner (online/offline toggle)
+
+  // ─── Plate & Permit Details (NEW) ─────────────────────────
+
+  @Column({ default: 'WHITE', name: 'plate_type' })
+  plateType: string;                  // 'WHITE' | 'YELLOW'
+
+  @Column({ nullable: true, name: 'commercial_permit_number' })
+  commercialPermitNumber: string;
+
+  @Column({ nullable: true, name: 'permit_type' })
+  permitType: string;                 // e.g. CONTRACT_CARRIAGE
+
+  @Column({ type: 'date', nullable: true, name: 'permit_expiry_date' })
+  permitExpiryDate: Date;
+
+  // ─── Pricing Details (NEW) ─────────────────────────────────
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true, name: 'per_km_outstation' })
+  perKmOutstation: number;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true, name: 'per_hour_local' })
+  perHourLocal: number;
+
+  @Column({ type: 'int', nullable: true, name: 'minimum_booking_hours', default: 4 })
+  minimumBookingHours: number;
+
+  @Column({ type: 'int', nullable: true, name: 'night_charge_percentage', default: 20 })
+  nightChargePercentage: number;
+
+  @Column({ type: 'simple-json', nullable: true, name: 'event_package' })
+  eventPackage: { halfDay?: number; fullDay?: number; weddingPackage?: number };
+
+  @Column({ type: 'int', default: 25, name: 'advance_percentage' })
+  advancePercentage: number;
+
+  @Column({ type: 'simple-json', nullable: true, name: 'rto_raw_data' })
+  rtoRawData: any;
 
   // ─── Relations ─────────────────────────────────────────────
 

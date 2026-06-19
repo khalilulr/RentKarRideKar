@@ -283,4 +283,122 @@ export class BookingController {
         this.handleError('ConfirmPayment', e);
       }
     }
+
+    @GrpcMethod('BookingService', 'AssignDriver')
+    async assignDriver(request: any) {
+      try {
+        return await this.orderService.assignDriver(request.orderId, request.vehicleId, request);
+      } catch (e) {
+        this.handleError('AssignDriver', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'GetOwnerEarnings')
+    async getOwnerEarnings(request: any) {
+      try {
+        return await this.orderService.getOwnerEarnings(
+          request.ownerId,
+          request.period,
+          request.year,
+          request.month,
+        );
+      } catch (e) {
+        this.handleError('GetOwnerEarnings', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'GetPayoutHistory')
+    async getPayoutHistory(request: any) {
+      try {
+        return await this.orderService.getPayoutHistory(request.ownerId, request.page, request.limit);
+      } catch (e) {
+        this.handleError('GetPayoutHistory', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'DownloadEarningsStatement')
+    async downloadEarningsStatement(request: any) {
+      try {
+        return await this.orderService.downloadEarningsStatement(request.ownerId, request.year);
+      } catch (e) {
+        this.handleError('DownloadEarningsStatement', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'GetDriverEarnings')
+    async getDriverEarnings(request: any) {
+      try {
+        return await this.orderService.getDriverEarnings(request.driverId, request.page, request.limit);
+      } catch (e) {
+        this.handleError('GetDriverEarnings', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'RaiseDispute')
+    async raiseDispute(request: any) {
+      try {
+        return await this.orderService.raiseDispute(request);
+      } catch (e) {
+        this.handleError('RaiseDispute', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'GetDispute')
+    async getDispute(request: any) {
+      try {
+        return await this.orderService.getDispute(request.orderId, request.userId);
+      } catch (e) {
+        this.handleError('GetDispute', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'AdminGetDisputes')
+    async adminGetDisputes(request: any) {
+      try {
+        return await this.orderService.adminGetDisputes(request.status, request.page, request.limit);
+      } catch (e) {
+        this.handleError('AdminGetDisputes', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'AdminResolveDispute')
+    async adminResolveDispute(request: any) {
+      try {
+        return await this.orderService.adminResolveDispute(request);
+      } catch (e) {
+        this.handleError('AdminResolveDispute', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'GetOrderOtp')
+    async getOrderOtp(request: any) {
+      try {
+        return await this.orderService.getOrderOtp(request.orderId, request.vehicleId, request.userId);
+      } catch (e) {
+        this.handleError('GetOrderOtp', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'PayBalance')
+    async payBalance(request: any) {
+      try {
+        return await this.orderService.payBalance(
+          request.orderId,
+          request.vehicleId,
+          request.passengerId,
+          request,
+        );
+      } catch (e) {
+        this.handleError('PayBalance', e);
+      }
+    }
+
+    @GrpcMethod('BookingService', 'AdminGetAnalytics')
+    async adminGetAnalytics(request: any) {
+      try {
+        return await this.orderService.adminGetAnalytics(request.from, request.to);
+      } catch (e) {
+        this.handleError('AdminGetAnalytics', e);
+      }
+    }
   }

@@ -22,6 +22,7 @@ export class DiscountController {
           minBookingAmount: Number(offer.minBookingAmount),
         },
         description: offer.description || '',
+        usageCount: 0,
       },
     };
   }
@@ -42,6 +43,7 @@ export class DiscountController {
           minBookingAmount: Number(offer.minBookingAmount),
         },
         description: offer.description || '',
+        usageCount: offer.usageCount || 0,
       },
     };
   }
@@ -61,6 +63,7 @@ export class DiscountController {
         minBookingAmount: Number(offer.minBookingAmount),
       },
       description: offer.description || '',
+      usageCount: offer.usageCount || 0,
     }));
     return { offers: mapped };
   }
@@ -92,6 +95,7 @@ export class DiscountController {
         minBookingAmount: Number(offer.minBookingAmount),
       },
       description: offer.description || '',
+      usageCount: 0,
     }));
     return { eligibleOffers: mapped };
   }

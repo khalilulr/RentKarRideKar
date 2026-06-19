@@ -106,6 +106,20 @@ export class OrderGrpcService implements OnModuleInit {
     return null;
   }
 
+  async checkTrustedDriver(ownerId: string, driverId: string): Promise<boolean> {
+    try {
+      if (this.authService && typeof this.authService.checkTrustedDriver === 'function') {
+        const response = await lastValueFrom(
+          this.authService.checkTrustedDriver({ ownerId, driverId })
+        );
+        return response ? response.isTrusted : false;
+      }
+    } catch (e) {
+      console.error('[AuthService] Failed to check trusted driver status:', e);
+    }
+    return false;
+  }
+
   async triggerOpenChatRooms(
     bookingId: string,
     passengerId: string,
@@ -167,6 +181,50 @@ export class OrderGrpcService implements OnModuleInit {
       }
     } catch (e: any) {
       console.error('[CommunicationService] Failed to close chat rooms:', e?.message);
+    }
+  }
+
+  async sendNotification(
+    userId: string,
+    title: string,
+    content: string,
+    channel: string,
+    delayMinutes = 0,
+    externalId?: string,
+  ) {
+    try {
+      if (
+        this.communicationService &&
+        typeof this.communicationService.sendNotification === 'function'
+      ) {
+        await lastValueFrom(
+          this.communicationService.sendNotification({
+            userId,
+            title,
+            content,
+            channel,
+            delayMinutes,
+            externalId: externalId || '',
+          }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[CommunicationService] Failed to send notification via gRPC:', e?.message);
+    }
+  }
+
+  async cancelNotification(externalId: string) {
+    try {
+      if (
+        this.communicationService &&
+        typeof this.communicationService.cancelNotification === 'function'
+      ) {
+        await lastValueFrom(
+          this.communicationService.cancelNotification({ externalId }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[CommunicationService] Failed to cancel notification via gRPC:', e?.message);
     }
   }
 

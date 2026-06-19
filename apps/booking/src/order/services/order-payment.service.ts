@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
+import { OrderVehicle } from '../entities/order-vehicle.entity';
 import { OrderTimeline } from '../entities/order-timeline.entity';
 import { OrderGrpcService } from './order-grpc.service';
 import { OrderVehicleStatus } from '../enum/order-vehicle-status.enum';
@@ -14,6 +15,8 @@ export class OrderPaymentService {
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    @InjectRepository(OrderVehicle)
+    private readonly orderVehicleRepository: Repository<OrderVehicle>,
     @InjectRepository(OrderTimeline)
     private readonly orderTimelineRepository: Repository<OrderTimeline>,
     private readonly orderGrpcService: OrderGrpcService,
@@ -192,6 +195,56 @@ export class OrderPaymentService {
       status: order.status,
       message: `Advance payment manually confirmed. ${chatRoomResults.length} chat rooms opened successfully!`,
       chatRoomsJson: JSON.stringify(chatRoomResults),
+    };
+  }
+
+  async payBalance(orderId: string, vehicleId: string, passengerId: string, body: any) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId, passengerId },
+      relations: ['vehicles'],
+    });
+
+    if (!order) {
+      throw new NotFoundException({ error: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+    }
+
+    const ov = order.vehicles.find(v => v.vehicleId === vehicleId);
+    if (!ov) {
+      throw new NotFoundException({ error: 'VEHICLE_NOT_FOUND', message: 'Vehicle not found in this order.' });
+    }
+
+    const price = Number(ov.price) || 0;
+    const advancePaid = Number(order.advanceAmount) / order.vehicles.length; // distributed advance
+    const remainingBalance = price - advancePaid;
+
+    const useWallet = body.useWalletCredit || false;
+    const walletAmount = useWallet ? (body.walletCreditAmount || remainingBalance) : 0;
+    const amountPaid = remainingBalance - walletAmount;
+
+    order.paymentStatus = PaymentStatus.COMPLETED;
+    await this.orderRepository.save(order);
+
+    ov.status = OrderVehicleStatus.COMPLETED;
+    ov.completedAt = new Date();
+    await this.orderVehicleRepository.save(ov);
+
+    const ot = this.orderTimelineRepository.create({
+      orderId: order.id,
+      status: 'BALANCE_PAID',
+      description: `Final balance payment of INR ${remainingBalance} received.`,
+      timestamp: new Date(),
+    });
+    await this.orderTimelineRepository.save(ot);
+
+    return {
+      orderId,
+      vehicleId,
+      amountPaid,
+      walletCreditUsed: walletAmount,
+      totalAmount: price,
+      paymentStatus: 'PAID',
+      tripStatus: 'COMPLETED',
+      paidAt: new Date().toISOString(),
     };
   }
 }

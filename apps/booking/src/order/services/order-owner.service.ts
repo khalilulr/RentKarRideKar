@@ -45,6 +45,41 @@ export class OrderOwnerService {
       });
     }
 
+    // Plate and driver validation
+    const vehicle = await this.orderGrpcService.getVehicleById(vehicleId);
+    const plateType = (vehicle?.vehicle?.plateType || 'WHITE').toUpperCase();
+
+    if (plateType === 'WHITE') {
+      throw new BadRequestException({
+        error: 'DRIVER_ASSIGNMENT_DENIED',
+        message: 'Driver assignment is not allowed for white plate (private) vehicles.',
+      });
+    }
+
+    if (plateType === 'YELLOW') {
+      if (assignmentPreference === 'PLATFORM_POOL') {
+        throw new BadRequestException({
+          error: 'PLATFORM_POOL_DENIED',
+          message: 'Yellow plate vehicles only accept drivers from your trusted driver list.',
+        });
+      }
+      if (assignmentPreference === 'TRUSTED_DRIVER') {
+        if (!driverId) {
+          throw new BadRequestException({
+            error: 'DRIVER_NOT_REGISTERED',
+            message: 'Driver ID is required for trusted driver arrangement.',
+          });
+        }
+        const isTrusted = await this.orderGrpcService.checkTrustedDriver(ov.ownerId, driverId);
+        if (!isTrusted) {
+          throw new BadRequestException({
+            error: 'DRIVER_NOT_TRUSTED',
+            message: 'The selected driver is not in your trusted drivers list or has not accepted the invitation.',
+          });
+        }
+      }
+    }
+
     let ownerName: string | undefined;
     const ownerRes = await this.orderGrpcService.getMe(ov.ownerId);
     ownerName = ownerRes?.user?.name;
@@ -56,6 +91,27 @@ export class OrderOwnerService {
       timestamp: new Date(),
     });
     await this.orderTimelineRepository.save(ot1);
+
+    // Cancel the owner pending request WhatsApp reminder
+    await this.orderGrpcService.cancelNotification(`order_request:${orderId}`);
+
+    // Notify passenger
+    if (ov.order) {
+      await this.orderGrpcService.sendNotification(
+        ov.order.passengerId,
+        'Booking Accepted',
+        `Your booking (Order ID: ${orderId}) has been accepted by the owner!`,
+        'in-app',
+      );
+
+      await this.orderGrpcService.sendNotification(
+        ov.order.passengerId,
+        'Booking Confirmed',
+        `Your booking (Order ID: ${orderId}) is accepted. Please complete your advance payment.`,
+        'whatsapp',
+        5,
+      );
+    }
 
     if (assignmentPreference === 'OWNER_AS_DRIVER') {
       ov.status = OrderVehicleStatus.DRIVER_ACCEPTED;
@@ -92,6 +148,14 @@ export class OrderOwnerService {
         });
       }
 
+      const isTrusted = await this.orderGrpcService.checkTrustedDriver(ov.ownerId, driverId);
+      if (!isTrusted) {
+        throw new BadRequestException({
+          error: 'DRIVER_NOT_TRUSTED',
+          message: 'The selected driver is not in your trusted drivers list or has not accepted the invitation.',
+        });
+      }
+
       let driverName: string | undefined;
       const driverRes = await this.orderGrpcService.getMe(driverId);
       driverName = driverRes?.user?.name;
@@ -104,6 +168,12 @@ export class OrderOwnerService {
       ov.assignedDriverId = driverId;
       ov.driverResponseDeadline = driverResponseDeadline;
       await this.orderVehicleRepository.save(ov);
+
+      if (ov.order) {
+        ov.order.status = OrderStatus.DRIVER_ASSIGNED;
+        ov.order.visibleStatus = VisibleStatus.AWAITING_PAYMENT;
+        await this.orderRepository.save(ov.order);
+      }
 
       return {
         orderVehicleId: ov.id,
@@ -120,6 +190,12 @@ export class OrderOwnerService {
       ov.status = OrderVehicleStatus.DRIVER_PENDING;
       ov.driverAssignmentType = 'PLATFORM_POOL';
       await this.orderVehicleRepository.save(ov);
+
+      if (ov.order) {
+        ov.order.status = OrderStatus.DRIVER_ASSIGNED;
+        ov.order.visibleStatus = VisibleStatus.AWAITING_PAYMENT;
+        await this.orderRepository.save(ov.order);
+      }
 
       return {
         orderVehicleId: ov.id,
@@ -156,6 +232,9 @@ export class OrderOwnerService {
     });
     await this.orderTimelineRepository.save(ot);
 
+    // Cancel the owner pending request WhatsApp reminder
+    await this.orderGrpcService.cancelNotification(`order_request:${orderId}`);
+
     return {
       orderVehicleId: ov.id,
       status: 'OWNER_REJECTED',
@@ -177,6 +256,36 @@ export class OrderOwnerService {
       });
     }
 
+    // Plate and driver validation
+    const vehicle = await this.orderGrpcService.getVehicleById(vehicleId);
+    const plateType = (vehicle?.vehicle?.plateType || 'WHITE').toUpperCase();
+
+    if (plateType === 'WHITE') {
+      throw new BadRequestException({
+        error: 'DRIVER_ASSIGNMENT_DENIED',
+        message: 'Driver assignment is not allowed for white plate (private) vehicles.',
+      });
+    }
+
+    if (plateType === 'YELLOW') {
+      if (assignmentType === 'PLATFORM_POOL') {
+        throw new BadRequestException({
+          error: 'PLATFORM_POOL_DENIED',
+          message: 'Yellow plate vehicles only accept drivers from your trusted driver list.',
+        });
+      }
+      if (assignmentType === 'TRUSTED_DRIVER') {
+        const targetDriverId = driverId || 'usr_driver_mukesh';
+        const isTrusted = await this.orderGrpcService.checkTrustedDriver(ov.ownerId, targetDriverId);
+        if (!isTrusted) {
+          throw new BadRequestException({
+            error: 'DRIVER_NOT_TRUSTED',
+            message: 'The selected driver is not in your trusted drivers list or has not accepted the invitation.',
+          });
+        }
+      }
+    }
+
     if (assignmentType === 'OWNER_AS_DRIVER') {
       ov.status = OrderVehicleStatus.DRIVER_ACCEPTED;
       ov.driverAssignmentType = 'OWNER_AS_DRIVER';
@@ -196,6 +305,15 @@ export class OrderOwnerService {
       };
     } else if (assignmentType === 'TRUSTED_DRIVER') {
       const targetDriverId = driverId || 'usr_driver_mukesh';
+
+      const isTrusted = await this.orderGrpcService.checkTrustedDriver(ov.ownerId, targetDriverId);
+      if (!isTrusted) {
+        throw new BadRequestException({
+          error: 'DRIVER_NOT_TRUSTED',
+          message: 'The selected driver is not in your trusted drivers list or has not accepted the invitation.',
+        });
+      }
+
       let driverName = 'Mukesh Yadav';
       const driverRes = await this.orderGrpcService.getMe(targetDriverId);
       driverName = driverRes?.user?.name || driverName;

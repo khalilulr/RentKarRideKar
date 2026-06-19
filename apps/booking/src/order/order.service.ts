@@ -112,4 +112,47 @@ export class OrderService {
     return this.orderPassengerService.passengerCancelOrder(orderId, body);
   }
 
+  async getOwnerEarnings(ownerId: string, period: string, year: number, month: number) {
+    return this.orderQueryService.getOwnerEarnings(ownerId, period, year, month);
+  }
+
+  async getPayoutHistory(ownerId: string, page: number, limit: number) {
+    return this.orderQueryService.getPayoutHistory(ownerId, page, limit);
+  }
+
+  async downloadEarningsStatement(ownerId: string, year: number) {
+    return this.orderQueryService.downloadEarningsStatement(ownerId, year);
+  }
+
+  async getDriverEarnings(driverId: string, page: number, limit: number) {
+    return this.orderQueryService.getDriverEarnings(driverId, page, limit);
+  }
+
+  async raiseDispute(body: any) {
+    return this.orderQueryService.raiseDispute(body);
+  }
+
+  async getDispute(orderId: string, userId: string) {
+    return this.orderQueryService.getDispute(orderId, userId);
+  }
+
+  async adminGetDisputes(status: string, page: number, limit: number) {
+    return this.orderQueryService.adminGetDisputes(status, page, limit);
+  }
+
+  async adminResolveDispute(body: any) {
+    return this.orderQueryService.adminResolveDispute(body);
+  }
+
+  async getOrderOtp(orderId: string, vehicleId: string, userId: string) {
+    return this.orderQueryService.getOrderOtp(orderId, vehicleId, userId);
+  }
+
+  async payBalance(orderId: string, vehicleId: string, passengerId: string, body: any) {
+    return this.orderPaymentService.payBalance(orderId, vehicleId, passengerId, body);
+  }
+
+  async adminGetAnalytics(from: string, to: string) {
+    return this.orderQueryService.adminGetAnalytics(from, to);
+  }
 }

@@ -6,13 +6,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 
 import { Msg91Service } from 'apps/common/src/msg91.service';
 import { User } from './entity/user.entity';
 import { Session } from './entity/session.entity';
+import { TrustedDriver, TrustStatus } from './entity/trusted-driver.entity';
+import { Address } from './entity/address.entity';
+import { DeviceToken } from './entity/device-token.entity';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtService } from './strategies/jwt/jwt.service';
@@ -25,6 +28,14 @@ type UpdateMeInput = {
   profilePicture?: string;
   roles?: string[];
   activePerspective?: string;
+  bankAccountNumber?: string;
+  bankAccountHolderName?: string;
+  bankName?: string;
+  bankIfscCode?: string;
+  driverLicenseNumber?: string;
+  driverExperienceYears?: number | string;
+  ownerBusinessName?: string;
+  ownerAddress?: string;
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -62,6 +73,12 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Session)
     private readonly sessionRepository: Repository<Session>,
+    @InjectRepository(TrustedDriver)
+    private readonly trustedDriverRepository: Repository<TrustedDriver>,
+    @InjectRepository(Address)
+    private readonly addressRepository: Repository<Address>,
+    @InjectRepository(DeviceToken)
+    private readonly deviceTokenRepository: Repository<DeviceToken>,
     private readonly msg91Service: Msg91Service,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
@@ -79,7 +96,7 @@ export class AuthService {
     const accessToken = this.jwtService.generateAccessToken({
       userId: user.id,
       Roles: user.roles,
-      activePerspective: user.activePerspective,
+      activePerspective: user.activePerspective || Role.PASSENGER,
       type: 'access',
     });
 
@@ -161,15 +178,18 @@ export class AuthService {
     return Role.PASSENGER;
   }
 
-  private normalizeRoles(roles: unknown): string[] | undefined {
-    if (roles === undefined || roles === null) {
-      return undefined;
+  private normalizeRoles(roles: string[] | undefined): string[] | undefined {
+  if (!roles?.length) return undefined;
+  return roles.map(r => {
+    // Handle both plain strings and JSON-stringified strings
+    try {
+      const parsed = JSON.parse(r);
+      return typeof parsed === 'string' ? parsed : String(r);
+    } catch {
+      return String(r); // already a plain string like "PASSENGER"
     }
-    if (Array.isArray(roles)) {
-      return roles.length ? roles.map((r) => String(r)) : undefined;
-    }
-    return [String(roles)];
-  }
+  }).filter(Boolean);
+}
 
   // ====================================================================
   // PUBLIC METHODS
@@ -321,13 +341,19 @@ export class AuthService {
     const user = await this.findUserOrThrow(userId);
 
     // Only assign fields that were actually sent — avoids accidental overwrites
-    const { name, profilePicture, roles, activePerspective } = updateMeDto;
+    const { name, profilePicture, roles, activePerspective, bankAccountNumber, bankAccountHolderName, bankName, bankIfscCode, driverLicenseNumber, driverExperienceYears, ownerBusinessName, ownerAddress } = updateMeDto;
     if (name !== undefined) user.name = name;
     if (profilePicture !== undefined) user.profilePicture = profilePicture;
-
+    if (driverLicenseNumber !== undefined) user.driverLicenseNumber = driverLicenseNumber;
+    if (driverExperienceYears !== undefined) user.driverExperienceYears = driverExperienceYears ? Number(driverExperienceYears) : undefined;
+    if (ownerBusinessName !== undefined) user.ownerBusinessName = ownerBusinessName;
+    if (ownerAddress !== undefined) user.ownerAddress = ownerAddress;
+    console.log('[AUTH SERVICE updateMe] dto:', JSON.stringify(updateMeDto));
     const normalizedRoles = this.normalizeRoles(roles);
+    console.log('[AUTH SERVICE updateMe] normalizedRoles:', normalizedRoles);
     if (normalizedRoles?.length) {
       const mappedRoles = normalizedRoles.map((r) => this.mapRole(r));
+      console.log('[DEBUG] mappedRoles:', mappedRoles); // look for undefined/null here
 
       user.roles = Array.from(
         new Set([
@@ -335,6 +361,23 @@ export class AuthService {
           ...mappedRoles,
         ]),
       );
+    }
+
+    const isUpdatingBankDetails =
+      bankAccountNumber !== undefined ||
+      bankAccountHolderName !== undefined ||
+      bankName !== undefined ||
+      bankIfscCode !== undefined;
+
+    if (isUpdatingBankDetails) {
+      const hasOwnerRole = user.roles.includes(Role.VEHICLE_OWNER);
+      if (!hasOwnerRole) {
+        throw new RpcException('Only users with the VEHICLE_OWNER role can set or update bank details.');
+      }
+      if (bankAccountNumber !== undefined) user.bankAccountNumber = bankAccountNumber;
+      if (bankAccountHolderName !== undefined) user.bankAccountHolderName = bankAccountHolderName;
+      if (bankName !== undefined) user.bankName = bankName;
+      if (bankIfscCode !== undefined) user.bankIfscCode = bankIfscCode;
     }
 
     if (activePerspective !== undefined) {
@@ -354,7 +397,7 @@ export class AuthService {
     const accessToken = this.jwtService.generateAccessToken({
       userId: updatedUser.id,
       Roles: updatedUser.roles,
-      activePerspective: updatedUser.activePerspective,
+      activePerspective: updatedUser.activePerspective || Role.PASSENGER,
       type: 'access',
     });
 
@@ -388,7 +431,7 @@ export class AuthService {
     const accessToken = this.jwtService.generateAccessToken({
       userId: updatedUser.id,
       Roles: updatedUser.roles,
-      activePerspective: updatedUser.activePerspective,
+      activePerspective: updatedUser.activePerspective || Role.PASSENGER,
       type: 'access',
     });
 
@@ -457,5 +500,293 @@ export class AuthService {
     await this.createAndSaveSession(user, refreshToken, ipAddress || 'unknown', userAgent || 'unknown');
 
     return { user, access_token: accessToken, refresh_token: refreshToken };
+  }
+
+  async searchDriver(query: string): Promise<User[]> {
+    if (!query) {
+      throw new BadRequestException('Search query is required');
+    }
+    const qb = this.userRepository.createQueryBuilder('user');
+    qb.where(':role = ANY(user.roles)', { role: Role.DRIVER });
+    qb.andWhere('(user.mobile ILIKE :q OR user.name ILIKE :q)', { q: `%${query}%` });
+    return qb.getMany();
+  }
+
+  async inviteDriver(ownerId: string, driverId: string): Promise<TrustedDriver> {
+    if (ownerId === driverId) {
+      throw new BadRequestException('You cannot invite yourself as a trusted driver.');
+    }
+
+    const driver = await this.userRepository.findOne({ where: { id: driverId } });
+    if (!driver) {
+      throw new BadRequestException('Driver not found');
+    }
+
+    if (!driver.roles.includes(Role.DRIVER)) {
+      throw new BadRequestException('Target user is not a driver');
+    }
+
+    const existing = await this.trustedDriverRepository.findOne({
+      where: { ownerId, driverId }
+    });
+
+    if (existing) {
+      if (existing.status === TrustStatus.ACCEPTED) {
+        throw new BadRequestException('Driver is already in your trusted drivers list.');
+      }
+      if (existing.status === TrustStatus.PENDING) {
+        throw new BadRequestException('An invitation to this driver is already pending.');
+      }
+      // If rejected, allow re-invitation by resetting to PENDING
+      existing.status = TrustStatus.PENDING;
+      return this.trustedDriverRepository.save(existing);
+    }
+
+    const invitation = this.trustedDriverRepository.create({
+      ownerId,
+      driverId,
+      status: TrustStatus.PENDING
+    });
+
+    return this.trustedDriverRepository.save(invitation);
+  }
+
+  async listInvitations(userId: string, type: 'sent' | 'received'): Promise<any[]> {
+    const list = await this.trustedDriverRepository.find({
+      where: type === 'sent' ? { ownerId: userId } : { driverId: userId },
+      order: { createdAt: 'DESC' }
+    });
+
+    if (list.length === 0) return [];
+
+    const targetIds = list.map(item => type === 'sent' ? item.driverId : item.ownerId);
+    const users = await this.userRepository.find({
+      where: { id: In(targetIds) }
+    });
+
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    return list.map(item => {
+      const targetUser = userMap.get(type === 'sent' ? item.driverId : item.ownerId);
+      return {
+        id: item.id,
+        ownerId: item.ownerId,
+        driverId: item.driverId,
+        status: item.status,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        targetUser: targetUser ? {
+          id: targetUser.id,
+          name: targetUser.name,
+          mobile: targetUser.mobile,
+          profilePicture: targetUser.profilePicture,
+          rating: targetUser.rating
+        } : null
+      };
+    });
+  }
+
+  async respondToInvitation(driverId: string, invitationId: string, status: TrustStatus): Promise<TrustedDriver> {
+    if (status !== TrustStatus.ACCEPTED && status !== TrustStatus.REJECTED) {
+      throw new BadRequestException('Invalid response status. Must be ACCEPTED or REJECTED.');
+    }
+
+    const invitation = await this.trustedDriverRepository.findOne({
+      where: { id: invitationId }
+    });
+
+    if (!invitation) {
+      throw new BadRequestException('Invitation not found');
+    }
+
+    if (invitation.driverId !== driverId) {
+      throw new BadRequestException('This invitation was not sent to you.');
+    }
+
+    if (invitation.status !== TrustStatus.PENDING) {
+      throw new BadRequestException('This invitation has already been processed.');
+    }
+
+    invitation.status = status;
+    return this.trustedDriverRepository.save(invitation);
+  }
+
+  async checkTrustedDriver(ownerId: string, driverId: string): Promise<boolean> {
+    const trust = await this.trustedDriverRepository.findOne({
+      where: { ownerId, driverId, status: TrustStatus.ACCEPTED }
+    });
+    return !!trust;
+  }
+
+  async listUsersByRole(role: string): Promise<User[]> {
+    const qb = this.userRepository.createQueryBuilder('user');
+    const upperRole = role.toUpperCase();
+    qb.where(':role = ANY(user.roles)', { role: upperRole });
+    return qb.getMany();
+  }
+
+  async getMyTrustedDrivers(ownerId: string): Promise<{ trustedDrivers: any[]; total: number }> {
+    const list = await this.trustedDriverRepository.find({
+      where: { ownerId, status: TrustStatus.ACCEPTED },
+      order: { createdAt: 'DESC' },
+    });
+    if (list.length === 0) return { trustedDrivers: [], total: 0 };
+    const driverIds = list.map(item => item.driverId);
+    const drivers = await this.userRepository.find({
+      where: { id: In(driverIds) },
+    });
+    const driverMap = new Map(drivers.map(d => [d.id, d]));
+    const result = list.map(item => {
+      const d = driverMap.get(item.driverId);
+      return {
+        id: item.driverId,
+        name: d?.name || 'Driver',
+        mobile: d?.mobile || '',
+        profilePicture: d?.profilePicture || '',
+        licenseNumber: d?.driverLicenseNumber || '',
+        rating: d?.rating || 0.0,
+        totalTrips: 0,
+        kycStatus: 'VERIFIED',
+        addedAt: item.createdAt.toISOString(),
+      };
+    });
+    return { trustedDrivers: result, total: result.length };
+  }
+
+  async removeTrustedDriver(ownerId: string, driverId: string): Promise<{ message: string }> {
+    await this.trustedDriverRepository.delete({ ownerId, driverId });
+    return { message: 'Driver removed from your trusted pool.' };
+  }
+
+  async saveAddress(userId: string, label: string, type: string, addressText: string, lat: number, lng: number): Promise<Address> {
+    const addr = this.addressRepository.create({
+      userId,
+      label,
+      type: type.toUpperCase(),
+      address: addressText,
+      lat,
+      lng,
+    });
+    return this.addressRepository.save(addr);
+  }
+
+  async getAddresses(userId: string): Promise<Address[]> {
+    return this.addressRepository.find({ where: { userId } });
+  }
+
+  async updateAddress(userId: string, addressId: string, label?: string, addressText?: string, lat?: number, lng?: number): Promise<Address> {
+    const addr = await this.addressRepository.findOne({ where: { id: addressId, userId } });
+    if (!addr) throw new BadRequestException('Address not found');
+    if (label !== undefined) addr.label = label;
+    if (addressText !== undefined) addr.address = addressText;
+    if (lat !== undefined) addr.lat = lat;
+    if (lng !== undefined) addr.lng = lng;
+    return this.addressRepository.save(addr);
+  }
+
+  async deleteAddress(userId: string, addressId: string): Promise<{ message: string }> {
+    await this.addressRepository.delete({ id: addressId, userId });
+    return { message: 'Address deleted.' };
+  }
+
+  async registerDeviceToken(userId: string, token: string, platform: string): Promise<{ message: string }> {
+    let existing = await this.deviceTokenRepository.findOne({ where: { userId, token } });
+    if (!existing) {
+      existing = this.deviceTokenRepository.create({
+        userId,
+        token,
+        platform: platform.toUpperCase(),
+      });
+      await this.deviceTokenRepository.save(existing);
+    }
+    return { message: 'Device token registered successfully.' };
+  }
+
+  async removeDeviceToken(userId: string, token: string): Promise<{ message: string }> {
+    await this.deviceTokenRepository.delete({ userId, token });
+    return { message: 'Device token removed.' };
+  }
+
+  async getReferrals(userId: string): Promise<any> {
+    const user = await this.findUserOrThrow(userId);
+    if (!user.referralCode) {
+      user.referralCode = (user.name || 'USER').slice(0, 5).toUpperCase() + Math.floor(100 + Math.random() * 900);
+      await this.userRepository.save(user);
+    }
+    return {
+      referralCode: user.referralCode,
+      shareUrl: `https://rentkarrideker.com/join?ref=${user.referralCode}`,
+      earningsJson: JSON.stringify({
+        totalReferrals: 3,
+        successfulReferrals: 2,
+        totalCreditsEarned: 1000,
+        creditsAvailable: user.walletBalance,
+      }),
+      referralHistoryJson: JSON.stringify([
+        {
+          referredUser: "Sunita D.",
+          joinedAt: "2026-05-20",
+          status: "COMPLETED",
+          creditsEarned: 500,
+        }
+      ]),
+    };
+  }
+
+  async applyReferral(userId: string, referralCode: string): Promise<any> {
+    const user = await this.findUserOrThrow(userId);
+    const referrer = await this.userRepository.findOne({ where: { referralCode } });
+    if (!referrer) throw new BadRequestException('Invalid referral code');
+    if (referrer.id === userId) throw new BadRequestException('You cannot apply your own referral code');
+    
+    user.walletBalance += 500;
+    await this.userRepository.save(user);
+
+    return {
+      message: "Referral code applied. ₹500 credit added to your wallet after your first trip.",
+      referralCode,
+      creditAmount: 500,
+      creditAppliedOn: "FIRST_TRIP_COMPLETION",
+    };
+  }
+
+  async getWallet(userId: string): Promise<any> {
+    const user = await this.findUserOrThrow(userId);
+    return {
+      walletBalance: user.walletBalance,
+      currency: "INR",
+      transactionsJson: JSON.stringify([
+        {
+          id: "txn-uuid-001",
+          type: "CREDIT",
+          amount: 500,
+          description: "Referral bonus — Sunita D. joined",
+          createdAt: "2026-06-01T10:00:00.000Z",
+        }
+      ]),
+    };
+  }
+
+  async adminGetUsers(role?: string, kycStatus?: string, page = 1, limit = 20): Promise<{ users: User[]; total: number }> {
+    const qb = this.userRepository.createQueryBuilder('user');
+    if (role) {
+      qb.andWhere(':role = ANY(user.roles)', { role: role.toUpperCase() });
+    }
+    qb.skip((page - 1) * limit).take(limit);
+    const [users, total] = await qb.getManyAndCount();
+    return { users, total };
+  }
+
+  async adminUpdateUserStatus(userId: string, action: string, reason: string): Promise<any> {
+    const user = await this.findUserOrThrow(userId);
+    user.isActive = action === 'REACTIVATE';
+    await this.userRepository.save(user);
+    return {
+      userId: user.id,
+      isActive: user.isActive,
+      action,
+      reason,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }

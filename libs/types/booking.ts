@@ -26,6 +26,18 @@ export interface BookingServiceClient {
   getOrderVehicles(request: any): Observable<any>;
   updateBookingStatus(request: any): Observable<any>;
   confirmPayment(request: any): Observable<any>;
+  assignDriver(request: any): Observable<any>;
+  getOwnerEarnings(request: any): Observable<any>;
+  getPayoutHistory(request: any): Observable<any>;
+  downloadEarningsStatement(request: any): Observable<any>;
+  getDriverEarnings(request: any): Observable<any>;
+  raiseDispute(request: any): Observable<any>;
+  getDispute(request: any): Observable<any>;
+  adminGetDisputes(request: any): Observable<any>;
+  adminResolveDispute(request: any): Observable<any>;
+  getOrderOtp(request: any): Observable<any>;
+  payBalance(request: any): Observable<any>;
+  adminGetAnalytics(request: any): Observable<any>;
 }
 
 export interface BookingServiceController {
@@ -51,4 +63,16 @@ export interface BookingServiceController {
   getOrderVehicles(request: any): Promise<any> | Observable<any> | any;
   updateBookingStatus(request: any): Promise<any> | Observable<any> | any;
   confirmPayment(request: any): Promise<any> | Observable<any> | any;
+  assignDriver(request: any): Promise<any> | Observable<any> | any;
+  getOwnerEarnings(request: any): Promise<any> | Observable<any> | any;
+  getPayoutHistory(request: any): Promise<any> | Observable<any> | any;
+  downloadEarningsStatement(request: any): Promise<any> | Observable<any> | any;
+  getDriverEarnings(request: any): Promise<any> | Observable<any> | any;
+  raiseDispute(request: any): Promise<any> | Observable<any> | any;
+  getDispute(request: any): Promise<any> | Observable<any> | any;
+  adminGetDisputes(request: any): Promise<any> | Observable<any> | any;
+  adminResolveDispute(request: any): Promise<any> | Observable<any> | any;
+  getOrderOtp(request: any): Promise<any> | Observable<any> | any;
+  payBalance(request: any): Promise<any> | Observable<any> | any;
+  adminGetAnalytics(request: any): Promise<any> | Observable<any> | any;
 }

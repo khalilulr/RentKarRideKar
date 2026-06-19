@@ -10,6 +10,9 @@ export interface CommunicationServiceClient {
   closeChatRooms(request: any): Observable<any>;
   archiveChatRooms(request: any): Observable<any>;
   verifyChatAccess(request: any): Observable<any>;
+  sendNotification(request: any): Observable<any>;
+  cancelNotification(request: any): Observable<any>;
+  getNotifications(request: any): Observable<any>;
 }
 
 export interface CommunicationServiceController {
@@ -19,4 +22,7 @@ export interface CommunicationServiceController {
   closeChatRooms(request: any): Promise<any> | Observable<any> | any;
   archiveChatRooms(request: any): Promise<any> | Observable<any> | any;
   verifyChatAccess(request: any): Promise<any> | Observable<any> | any;
+  sendNotification(request: any): Promise<any> | Observable<any> | any;
+  cancelNotification(request: any): Promise<any> | Observable<any> | any;
+  getNotifications(request: any): Promise<any> | Observable<any> | any;
 }

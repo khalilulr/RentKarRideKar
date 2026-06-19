@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ApiGatewayController } from './api-gateway.controller';
 import { ApiGatewayService } from './api-gateway.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -13,6 +13,7 @@ import { SearchAndCatalogController } from './search-and-catalog/search-and-cata
 import { BookingController } from './booking/booking.controller';
 import { RatingController } from './rating/rating.controller';
 import { CommunicationController } from './communication/communication.controller';
+import { AdminCommunicationController } from './communication/admin-communication.controller';
 import { DiscountController } from './discount/discount.controller';
 import {
   assertAuthServiceProtoExists,
@@ -39,6 +40,8 @@ import {
   DISCOUNT_SERVICE_PROTO_PATH,
 } from '../../../libs/proto/discount.grpc-options';
 
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+
 assertAuthServiceProtoExists();
 assertVerificationServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
@@ -50,10 +53,12 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
 
 @Module({
   imports: [
+    CloudinaryModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: envFilePath,
     }),
+
     JwtModule.register({
       privateKey: fs.readFileSync(path.join(process.cwd(), 'secrets/private.pem')),
       publicKey: fs.readFileSync(path.join(process.cwd(), 'secrets/public.pem')),
@@ -124,6 +129,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     SearchAndCatalogController,
     BookingController,
     RatingController,
+    AdminCommunicationController,
     CommunicationController,
     DiscountController,
   ],
@@ -131,4 +137,18 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
 
   providers: [ApiGatewayService],
 })
-export class ApiGatewayModule {}
+export class ApiGatewayModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+  consumer
+    .apply((req: any, res: any, next: any) => {
+      const contentType = req.headers['content-type'] || '';
+      if (!contentType.includes('multipart/form-data')) {
+        console.log(`[GATEWAY REQUEST] ${req.method} & ${req.originalUrl || req.url}  - Body:`, JSON.stringify(req.body));
+      } else {
+        console.log(`[GATEWAY REQUEST] ${req.method} & ${req.originalUrl || req.url} - multipart (body logged in controller)`);
+      }
+      next();
+    })
+    .forRoutes('*');
+}
+}

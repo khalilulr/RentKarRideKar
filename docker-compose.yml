@@ -156,6 +156,9 @@ services:
       - /app/node_modules
     networks:
       - rkrk_network
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 
   # ─────────────────────────────────────────────────────────────
   # Verification gRPC Microservice

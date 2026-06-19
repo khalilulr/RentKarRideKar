@@ -68,6 +68,21 @@ export class RegisterVehicleDto {
   @IsString({ each: true })
   vehiclePhotos?: string[];
 
+  @IsOptional()
+  @IsString()
+  fuelType?: string;
+
+  @IsOptional()
+  @IsString()
+  transmission?: string;
+
+  @IsOptional()
+  @IsString()
+  plateType?: string;
+
+  @IsOptional()
+  @IsString()
+  rtoRawDataJson?: string;
 
   // Owner controlled
   @IsOptional()

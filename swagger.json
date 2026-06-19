@@ -1,0 +1,3574 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "RentKarRideKar API Gateway",
+    "description": "Complete interactive API documentation for RentKarRideKar services including Auth, Vehicle, KYC, Order, Earnings, Referral, Wallet, Disputes, Ratings, Communication, and Admin services.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/user/locations": {
+      "get": {
+        "summary": "Get Saved Locations",
+        "description": "Retrieves all saved locations/addresses for the logged-in user.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "label": { "type": "string" },
+                      "type": { "type": "string" },
+                      "address": { "type": "string" },
+                      "lat": { "type": "number" },
+                      "lng": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["User Locations"]
+      },
+      "post": {
+        "summary": "Add Saved Location",
+        "description": "Saves a new location/address for the logged-in user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string" },
+                  "type": { "type": "string" },
+                  "address": { "type": "string" },
+                  "lat": { "type": "number" },
+                  "lng": { "type": "number" }
+                },
+                "required": ["label", "address", "lat", "lng"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved successfully"
+          }
+        },
+        "tags": ["User Locations"]
+      }
+    },
+    "/user/locations/{id}": {
+      "put": {
+        "summary": "Update Saved Location",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string" },
+                  "address": { "type": "string" },
+                  "lat": { "type": "number" },
+                  "lng": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated successfully"
+          }
+        },
+        "tags": ["User Locations"]
+      },
+      "delete": {
+        "summary": "Delete Saved Location",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted successfully"
+          }
+        },
+        "tags": ["User Locations"]
+      }
+    },
+    "/user/referral": {
+      "get": {
+        "summary": "Get My Referral Code & History",
+        "responses": {
+          "200": {
+            "description": "Referral details"
+          }
+        },
+        "tags": ["Referrals"]
+      }
+    },
+    "/refer-price": {
+      "get": {
+        "summary": "Get Current Referral Price",
+        "responses": {
+          "200": {
+            "description": "Current refer amount config"
+          }
+        },
+        "tags": ["Referrals"]
+      },
+      "post": {
+        "summary": "Update Referral Price (Admin)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": { "type": "number", "example": 500 }
+                },
+                "required": ["amount"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": ["Referrals"]
+      }
+    },
+    "/rides/search": {
+      "post": {
+        "summary": "Search Rides / Vehicles",
+        "description": "Searches for available vehicles matching pickup/drop coordinates and filters.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fromLat": { "type": "number" },
+                  "fromLng": { "type": "number" },
+                  "toLat": { "type": "number" },
+                  "toLng": { "type": "number" },
+                  "date": { "type": "string" },
+                  "time": { "type": "string" },
+                  "vehicleType": { "type": "string" },
+                  "seats": { "type": "integer" },
+                  "color": { "type": "string" },
+                  "ac": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results list"
+          }
+        },
+        "tags": ["Vehicle Search & Catalog"]
+      }
+    },
+    "/offers": {
+      "get": {
+        "summary": "Get All Active Offers",
+        "responses": {
+          "200": {
+            "description": "Active promotional offers list"
+          }
+        },
+        "tags": ["Offers & Discounts"]
+      }
+    },
+    "/auth/send-otp": {
+      "post": {
+        "summary": "Send OTP to Mobile",
+        "description": "Sends a one-time password verification to a user's mobile number.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mobile": {
+                    "type": "string",
+                    "example": "+919876543210"
+                  }
+                },
+                "required": [
+                  "mobile"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "OTP sent successfully"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "summary": "Verify OTP & Log In",
+        "description": "Verifies the OTP and logs in the user, setting an HTTP-Only refreshToken cookie.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mobile": {
+                    "type": "string",
+                    "example": "+919876543210"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                },
+                "required": [
+                  "mobile",
+                  "otp"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mobile": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "activePerspective": {
+                          "type": "string"
+                        },
+                        "kycStatus": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/admin/login": {
+      "post": {
+        "summary": "Admin Login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "admin@rkrk.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "SecurePassword123"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/admin/demo": {
+      "post": {
+        "summary": "Register/Login Demo Admin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "demo_admin@rkrk.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "SecurePassword123"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/refresh-token": {
+      "post": {
+        "summary": "Refresh Access Token",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Log Out User",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/logout-all-devices": {
+      "post": {
+        "summary": "Logout from all devices",
+        "responses": {
+          "200": {
+            "description": "Logged out from all devices"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get My Profile",
+        "responses": {
+          "200": {
+            "description": "Profile info"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      },
+      "put": {
+        "summary": "Update Profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "profileImage": {
+                    "type": "string"
+                  },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "activePerspective": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/switch-perspective": {
+      "put": {
+        "summary": "Switch Role Perspective",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "perspective": {
+                    "type": "string",
+                    "example": "VEHICLE_OWNER"
+                  }
+                },
+                "required": [
+                  "perspective"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Switched perspective"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/auth/drivers/search": {
+      "get": {
+        "summary": "Search Drivers (Owner only)",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Trusted Driver Service"
+        ]
+      }
+    },
+    "/auth/drivers/trusted/invite": {
+      "post": {
+        "summary": "Invite Trusted Driver",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "driverId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "driverId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Trusted Driver Service"
+        ]
+      }
+    },
+    "/auth/drivers/trusted/invitations": {
+      "get": {
+        "summary": "List Trusted Driver Invitations",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sent",
+                "received"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Trusted Driver Service"
+        ]
+      }
+    },
+    "/auth/drivers/trusted/invitations/{id}": {
+      "patch": {
+        "summary": "Respond to Driver Invitation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACCEPTED",
+                      "REJECTED"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Trusted Driver Service"
+        ]
+      }
+    },
+    "/drivers/trusted/my": {
+      "get": {
+        "summary": "Get My Trusted Drivers (Owner)",
+        "description": "Lists all trusted drivers in the owner's pool.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "trustedDrivers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "mobile": {
+                            "type": "string"
+                          },
+                          "profilePicture": {
+                            "type": "string"
+                          },
+                          "licenseNumber": {
+                            "type": "string"
+                          },
+                          "rating": {
+                            "type": "number"
+                          },
+                          "totalTrips": {
+                            "type": "integer"
+                          },
+                          "kycStatus": {
+                            "type": "string"
+                          },
+                          "addedAt": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trusted Driver Service"
+        ]
+      }
+    },
+    "/drivers/trusted/{trusted_driver_user_id}": {
+      "delete": {
+        "summary": "Remove Trusted Driver from Pool",
+        "parameters": [
+          {
+            "name": "trusted_driver_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "removedDriverId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trusted Driver Service"
+        ]
+      }
+    },
+    "/kyc/upload": {
+      "post": {
+        "summary": "Upload KYC Document",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRIVER",
+                "VEHICLE_OWNER"
+              ]
+            }
+          },
+          {
+            "name": "documentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "AADHAAR_FRONT",
+                "AADHAAR_BACK",
+                "PAN_CARD",
+                "DRIVING_LICENSE",
+                "SELFIE",
+                "RC_BOOK",
+                "INSURANCE",
+                "PUC_CERTIFICATE",
+                "FITNESS_CERT",
+                "PERMIT",
+                "COMMERCIAL_PERMIT"
+              ]
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded successfully"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/status": {
+      "get": {
+        "summary": "Get Personal KYC Status",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/status/{vehicleId}": {
+      "get": {
+        "summary": "Get Vehicle KYC Status",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/vehicle/{vehicleId}": {
+      "get": {
+        "summary": "Get Vehicle Docs",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/submit": {
+      "patch": {
+        "summary": "Submit User KYC",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "DRIVER",
+                      "VEHICLE_OWNER"
+                    ]
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submitted successfully"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/submit-vehicle": {
+      "patch": {
+        "summary": "Submit Vehicle Docs for KYC",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "example": "VEHICLE_OWNER"
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/admin/pending": {
+      "get": {
+        "summary": "List Pending Documents for Admin",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/admin/documents/{id}": {
+      "patch": {
+        "summary": "Approve or Reject document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "REJECTED"
+                    ]
+                  },
+                  "rejectionReason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/admin/verifications/{id}/reject": {
+      "patch": {
+        "summary": "Reject Overall KYC Verification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rejectionReason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "rejectionReason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/admin/verifications/{id}/approve": {
+      "patch": {
+        "summary": "Approve Overall KYC Verification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/kyc/owner/summary": {
+      "get": {
+        "summary": "Get Owner KYC & Vehicle Summary",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/owner/onboarding-status": {
+      "get": {
+        "summary": "Get Owner Onboarding Status",
+        "description": "Check details of user KYC, vehicle registration, vehicle documents, and bank details, and if ready to receive bookings.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kyc": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string" },
+                        "verified": { "type": "boolean" }
+                      }
+                    },
+                    "vehicle": {
+                      "type": "object",
+                      "properties": {
+                        "registered": { "type": "boolean" },
+                        "count": { "type": "integer" }
+                      }
+                    },
+                    "docs": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string" },
+                        "verified": { "type": "boolean" }
+                      }
+                    },
+                    "bank": {
+                      "type": "object",
+                      "properties": {
+                        "added": { "type": "boolean" },
+                        "details": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "bankName": { "type": "string" },
+                            "accountLast4": { "type": "string" }
+                          }
+                        }
+                      }
+                    },
+                    "ready": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "KYC & Verification Service"
+        ]
+      }
+    },
+    "/vehicles/search": {
+      "get": {
+        "summary": "Search Available Vehicles",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "time",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "seats",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "color",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ac",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/owner/my": {
+      "get": {
+        "summary": "List My Vehicles (Owner)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/admin/all": {
+      "get": {
+        "summary": "List All Vehicles (Admin)",
+        "parameters": [
+          {
+            "name": "ownerId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles": {
+      "post": {
+        "summary": "Register New Vehicle",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vehicleCategory": {
+                    "type": "string"
+                  },
+                  "make": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "variant": {
+                    "type": "string"
+                  },
+                  "registrationNumber": {
+                    "type": "string"
+                  },
+                  "seatingCapacity": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "hasAC": {
+                    "type": "boolean"
+                  },
+                  "manufacturingYear": {
+                    "type": "integer"
+                  },
+                  "serviceRadius": {
+                    "type": "integer"
+                  },
+                  "homeLat": {
+                    "type": "number"
+                  },
+                  "homeLng": {
+                    "type": "number"
+                  },
+                  "homeAddress": {
+                    "type": "string"
+                  },
+                  "vehiclePhotos": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/{id}": {
+      "put": {
+        "summary": "Update Vehicle Details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated successfully"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/{id}/block": {
+      "post": {
+        "summary": "Block Vehicle Custom Dates",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startDate": {
+                    "type": "string"
+                  },
+                  "endDate": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/blocks/{blockId}": {
+      "delete": {
+        "summary": "Unblock Vehicle Schedule",
+        "parameters": [
+          {
+            "name": "blockId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/{id}/available": {
+      "get": {
+        "summary": "Check Vehicle Availability",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/{vehicle_id}/plate-type": {
+      "patch": {
+        "summary": "Update Vehicle Plate Type (NEW 1.1)",
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plateType": {
+                    "type": "string",
+                    "enum": [
+                      "WHITE",
+                      "YELLOW"
+                    ]
+                  },
+                  "commercialPermitNumber": {
+                    "type": "string"
+                  },
+                  "permitType": {
+                    "type": "string"
+                  },
+                  "permitExpiryDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "plateType"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/vehicles/{vehicle_id}/pricing": {
+      "get": {
+        "summary": "Get Vehicle Pricing Detail (NEW 1.3)",
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      },
+      "put": {
+        "summary": "Set / Update Vehicle Pricing (NEW 1.4)",
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "perKmOutstation": {
+                    "type": "number"
+                  },
+                  "perHourLocal": {
+                    "type": "number"
+                  },
+                  "minimumBookingHours": {
+                    "type": "integer"
+                  },
+                  "nightChargePercentage": {
+                    "type": "number"
+                  },
+                  "eventPackage": {
+                    "type": "object",
+                    "properties": {
+                      "halfDay": {
+                        "type": "number"
+                      },
+                      "fullDay": {
+                        "type": "number"
+                      },
+                      "weddingPackage": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Vehicle Service"
+        ]
+      }
+    },
+    "/cart/items": {
+      "post": {
+        "summary": "Add Vehicle to Cart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vehicleId": {
+                    "type": "string"
+                  },
+                  "pickupAddress": {
+                    "type": "string"
+                  },
+                  "pickupLat": {
+                    "type": "number"
+                  },
+                  "pickupLng": {
+                    "type": "number"
+                  },
+                  "dropAddress": {
+                    "type": "string"
+                  },
+                  "dropLat": {
+                    "type": "number"
+                  },
+                  "dropLng": {
+                    "type": "number"
+                  },
+                  "pickupDatetime": {
+                    "type": "string"
+                  },
+                  "tripType": {
+                    "type": "string"
+                  },
+                  "returnDatetime": {
+                    "type": "string"
+                  },
+                  "totalDays": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Cart Service"
+        ]
+      }
+    },
+    "/cart": {
+      "get": {
+        "summary": "View Cart",
+        "parameters": [
+          {
+            "name": "promoCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Cart Service"
+        ]
+      },
+      "delete": {
+        "summary": "Clear Cart",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Cart Service"
+        ]
+      }
+    },
+    "/cart/items/{cartItemId}": {
+      "delete": {
+        "summary": "Remove Item from Cart",
+        "parameters": [
+          {
+            "name": "cartItemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Cart Service"
+        ]
+      }
+    },
+    "/orders": {
+      "post": {
+        "summary": "Place Order from Cart",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "passengerNote": {
+                    "type": "string"
+                  },
+                  "promoCode": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      },
+      "get": {
+        "summary": "List My Orders",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PASSENGER",
+                "VEHICLE_OWNER",
+                "DRIVER"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}": {
+      "get": {
+        "summary": "Get Order Details",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/accept": {
+      "post": {
+        "summary": "Owner Accept Order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "driverMode": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/reject": {
+      "post": {
+        "summary": "Owner Reject Order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/remove-driver": {
+      "post": {
+        "summary": "Remove Assigned Driver",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/driver-accept": {
+      "post": {
+        "summary": "Driver Accept Ride",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/driver-reject": {
+      "post": {
+        "summary": "Driver Reject Ride",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/arrive": {
+      "post": {
+        "summary": "Driver Arrived at Pickup",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/verify-otp": {
+      "post": {
+        "summary": "Verify OTP to Start Trip",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "otp": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "otp"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/complete": {
+      "post": {
+        "summary": "Complete Vehicle Trip",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/complete": {
+      "post": {
+        "summary": "Internal System Complete Order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/cancel": {
+      "post": {
+        "summary": "Passenger Cancel Order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/owner-cancel": {
+      "post": {
+        "summary": "Owner Cancel Vehicle Booking",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/confirm-payment": {
+      "post": {
+        "summary": "Confirm Advance Payment",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/location": {
+      "post": {
+        "summary": "Update Live Location Tracking",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "latitude",
+                  "longitude"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/tracking": {
+      "get": {
+        "summary": "Get Trip Tracking Locations",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicle_id}/assign-driver": {
+      "post": {
+        "summary": "Assign Trusted Driver to Booking (NEW 2.1)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "driverId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "driverId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicle_id}/otp": {
+      "get": {
+        "summary": "Get Booking Vehicle OTP (NEW 9.1)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicle_id}/pay-balance": {
+      "post": {
+        "summary": "Pay Trip Final Balance (NEW 9.2)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentMethod": {
+                    "type": "string"
+                  },
+                  "useWalletCredit": {
+                    "type": "boolean"
+                  },
+                  "walletCreditAmount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "paymentMethod"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/me/addresses": {
+      "post": {
+        "summary": "Save Address (NEW 3.1)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "example": "Home"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "HOME",
+                      "WORK",
+                      "OTHER"
+                    ]
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "label",
+                  "type",
+                  "address",
+                  "lat",
+                  "lng"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      },
+      "get": {
+        "summary": "Get Saved Addresses (NEW 3.2)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/me/addresses/{addressId}": {
+      "put": {
+        "summary": "Update Saved Address (NEW 3.3)",
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated successfully"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      },
+      "delete": {
+        "summary": "Delete Saved Address (NEW 3.4)",
+        "parameters": [
+          {
+            "name": "addressId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/me/device-token": {
+      "post": {
+        "summary": "Register/Update Push Token (NEW 3.5)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "ANDROID",
+                      "IOS"
+                    ]
+                  }
+                },
+                "required": [
+                  "token",
+                  "platform"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      },
+      "delete": {
+        "summary": "Deregister Device Token on Logout (NEW 3.6)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
+    "/orders/owner/earnings": {
+      "get": {
+        "summary": "Get Owner Earnings Summary (NEW 4.1)",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DAILY",
+                "WEEKLY",
+                "MONTHLY",
+                "LIFETIME"
+              ]
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/owner/payouts": {
+      "get": {
+        "summary": "Get Owner Payout History (NEW 4.2)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/owner/earnings/statement": {
+      "get": {
+        "summary": "Download Annual Earnings Statement (NEW 4.3)",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/driver/earnings": {
+      "get": {
+        "summary": "Get Driver Earnings Trip-wise (NEW 4.4)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/referrals/me": {
+      "get": {
+        "summary": "Get My Referral Code & Stats (NEW 5.1)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Wallet & Referral Service"
+        ]
+      }
+    },
+    "/referrals/apply": {
+      "post": {
+        "summary": "Apply Referral Code (NEW 5.2)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "referralCode": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "referralCode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Wallet & Referral Service"
+        ]
+      }
+    },
+    "/me/wallet": {
+      "get": {
+        "summary": "Get Wallet Balance & Transactions (NEW 6.1)",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Wallet & Referral Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/dispute": {
+      "post": {
+        "summary": "Raise a Dispute (NEW 7.1)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "WRONG_BILLING",
+                      "MISBEHAVIOUR",
+                      "VEHICLE_CONDITION",
+                      "ROUTE_DEVIATION",
+                      "DRIVER_NO_SHOW",
+                      "OTHER"
+                    ]
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "photos": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Dispute Service"
+        ]
+      },
+      "get": {
+        "summary": "Get Dispute Status (NEW 7.2)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Dispute Service"
+        ]
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "Get All Users with Filters (NEW 8.1)",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kycStatus",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      }
+    },
+    "/admin/users/{userId}/status": {
+      "patch": {
+        "summary": "Suspend or Reactivate User (NEW 8.2)",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "SUSPEND",
+                      "REACTIVATE"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      }
+    },
+    "/orders/admin/disputes": {
+      "get": {
+        "summary": "Get All Disputes for Admin (NEW 8.3)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Dispute Service"
+        ]
+      }
+    },
+    "/orders/admin/disputes/{disputeId}/resolve": {
+      "patch": {
+        "summary": "Resolve Dispute by Admin (NEW 8.4)",
+        "parameters": [
+          {
+            "name": "disputeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resolution": {
+                    "type": "string"
+                  },
+                  "refundAmount": {
+                    "type": "number"
+                  },
+                  "refundTo": {
+                    "type": "string",
+                    "enum": [
+                      "PASSENGER",
+                      "VEHICLE_OWNER",
+                      "DRIVER"
+                    ]
+                  },
+                  "penaliseOwner": {
+                    "type": "boolean"
+                  },
+                  "penaltyAmount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "resolution"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Dispute Service"
+        ]
+      }
+    },
+    "/orders/admin/analytics": {
+      "get": {
+        "summary": "Get Platform Analytics Summary (NEW 8.5)",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/admin/offers": {
+      "post": {
+        "summary": "Create Promo Offer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "conditions": {
+                    "type": "object"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      },
+      "get": {
+        "summary": "List All Promo Offers",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      }
+    },
+    "/admin/offers/{id}/toggle": {
+      "patch": {
+        "summary": "Toggle Promo Offer status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      }
+    },
+    "/offers/validate-code": {
+      "post": {
+        "summary": "Validate Promo Code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "originalPrice": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/offers/check-eligibility": {
+      "post": {
+        "summary": "Check Eligible Offers",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "originalPrice": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/offers/history": {
+      "get": {
+        "summary": "Get Passenger Offer History",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/api/reviews": {
+      "post": {
+        "summary": "Submit Review for Booking",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bookingId": {
+                    "type": "string"
+                  },
+                  "revieweeId": {
+                    "type": "string"
+                  },
+                  "reviewerRole": {
+                    "type": "string"
+                  },
+                  "targetType": {
+                    "type": "string"
+                  },
+                  "overallRating": {
+                    "type": "integer"
+                  },
+                  "reviewText": {
+                    "type": "string"
+                  },
+                  "isLiked": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/api/reviews/{reviewId}/like": {
+      "post": {
+        "summary": "Like a Review",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/api/reviews/{reviewId}/respond": {
+      "post": {
+        "summary": "Respond to Review",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "responseText": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/api/users/{userId}/reputation": {
+      "get": {
+        "summary": "Get User Reputation & Ratings",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/communication/chat/rooms": {
+      "get": {
+        "summary": "Get Active Chat Rooms",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Communication Service"
+        ]
+      }
+    },
+    "/communication/chat/rooms/{roomId}/messages": {
+      "post": {
+        "summary": "Send Message in Chat Room",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  },
+                  "contentType": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Communication Service"
+        ]
+      },
+      "get": {
+        "summary": "Get Room Messages",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Communication Service"
+        ]
+      }
+    },
+    "/communication/call/initiate": {
+      "post": {
+        "summary": "Initiate Masked Call Session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bookingId": {
+                    "type": "string"
+                  },
+                  "callTo": {
+                    "type": "string",
+                    "enum": [
+                      "driver",
+                      "owner"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Communication Service"
+        ]
+      }
+    },
+    "/communication/sos": {
+      "post": {
+        "summary": "Trigger SOS Emergency Alert",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bookingId": {
+                    "type": "string"
+                  },
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Communication Service"
+        ]
+      }
+    }
+  }
+}

@@ -32,6 +32,45 @@ export interface Vehicle {
   createdAt: string;
   updatedAt: string;
   blocks: Block[];
+  fuelType: string;
+  transmission: string;
+  plateType?: string;
+  commercialPermitNumber?: string;
+  permitType?: string;
+  permitExpiryDate?: string;
+  perKmOutstation?: number;
+  perHourLocal?: number;
+  minimumBookingHours?: number;
+  nightChargePercentage?: number;
+  eventPackage?: any;
+  advancePercentage?: number;
+  rtoRawDataJson?: string;
+}
+
+export interface UpdatePlateTypeRequest {
+  vehicleId: string;
+  plateType: string;
+  commercialPermitNumber?: string;
+  permitType?: string;
+  permitExpiryDate?: string;
+}
+
+export interface SetPricingRequest {
+  vehicleId: string;
+  perKmOutstation?: number;
+  perHourLocal?: number;
+  minimumBookingHours?: number;
+  nightChargePercentage?: number;
+  eventPackage?: any;
+}
+
+export interface GetPricingRequest {
+  vehicleId: string;
+}
+
+export interface GetPricingResponse {
+  vehicleId: string;
+  pricing: any;
 }
 
 export interface Block {
@@ -59,6 +98,10 @@ export interface RegisterVehicleRequest {
   homeLng: number;
   homeAddress: string;
   vehiclePhotos: string[];
+  fuelType: string;
+  transmission: string;
+  plateType?: string;
+  rtoRawDataJson?: string;
 }
 
 export interface GetVehicleRequest {
@@ -87,6 +130,10 @@ export interface UpdateVehicleRequest {
   homeLng: number;
   homeAddress: string;
   vehiclePhotos: string[];
+  fuelType: string;
+  transmission: string;
+  plateType?: string;
+  rtoRawDataJson?: string;
 }
 
 export interface DeleteVehicleRequest {
@@ -168,7 +215,7 @@ export interface SearchVehiclesRequest {
   vehicleType: string;
   seats: number;
   color: string;
-  ac?: boolean;
+  ac?: boolean | undefined;
 }
 
 export interface GetMyVehiclesRequest {
@@ -181,6 +228,9 @@ export interface GetVehicleByIdRequest {
 
 export interface SearchVehiclesByCityRequest {
   city: string;
+}
+
+export interface GetAllVehiclesRequest {
 }
 
 export interface VehicleResponse {
@@ -241,6 +291,14 @@ export interface SearchAndCatalogServiceClient {
   getVehicleById(request: GetVehicleByIdRequest): Observable<VehicleResponse>;
 
   searchVehiclesByCity(request: SearchVehiclesByCityRequest): Observable<ListVehiclesResponse>;
+
+  getAllVehicles(request: GetAllVehiclesRequest): Observable<ListVehiclesResponse>;
+
+  updatePlateType(request: UpdatePlateTypeRequest): Observable<VehicleResponse>;
+
+  setPricing(request: SetPricingRequest): Observable<VehicleResponse>;
+
+  getPricing(request: GetPricingRequest): Observable<GetPricingResponse>;
 }
 
 export interface SearchAndCatalogServiceController {
@@ -323,6 +381,22 @@ export interface SearchAndCatalogServiceController {
   searchVehiclesByCity(
     request: SearchVehiclesByCityRequest,
   ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+
+  getAllVehicles(
+    request: GetAllVehiclesRequest,
+  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+
+  updatePlateType(
+    request: UpdatePlateTypeRequest,
+  ): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
+
+  setPricing(
+    request: SetPricingRequest,
+  ): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
+
+  getPricing(
+    request: GetPricingRequest,
+  ): Promise<GetPricingResponse> | Observable<GetPricingResponse> | GetPricingResponse;
 }
 
 export function SearchAndCatalogServiceControllerMethods() {
@@ -346,6 +420,10 @@ export function SearchAndCatalogServiceControllerMethods() {
       "getMyVehicles",
       "getVehicleById",
       "searchVehiclesByCity",
+      "getAllVehicles",
+      "updatePlateType",
+      "setPricing",
+      "getPricing",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

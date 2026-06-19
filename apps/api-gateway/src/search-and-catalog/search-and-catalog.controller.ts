@@ -11,13 +11,21 @@ import {
   UseGuards,
   Inject,
   OnModuleInit,
+  UseInterceptors,
+  UploadedFiles,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import axios from 'axios';
 import type { ClientGrpc } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import { Observable, from } from 'rxjs';
+import { mergeMap, catchError, map } from 'rxjs/operators';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import type { Express } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VehicleOwnerGuard } from '../auth/guards/vehicle_owner.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import {
   SearchAndCatalogServiceClient,
   SEARCH_AND_CATALOG_SERVICE_NAME,
@@ -29,6 +37,7 @@ export class SearchAndCatalogController implements OnModuleInit {
 
   constructor(
     @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly client: ClientGrpc,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   onModuleInit() {
@@ -84,6 +93,70 @@ export class SearchAndCatalogController implements OnModuleInit {
     });
   }
 
+  @Get('admin/draft')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  getDraftVehicles(): Observable<any> {
+    return this.searchAndCatalogService.listVehicles({
+      ownerId: '',
+      status: 'DRAFT',
+    });
+  }
+
+  @Get('all')
+  getAllVehicles(): Observable<any> {
+    return this.searchAndCatalogService.getAllVehicles({});
+  }
+
+  @Get('rto-lookup/:plate')
+  @UseGuards(JwtAuthGuard)
+  async rtoLookup(@Param('plate') plate: string): Promise<any> {
+    try {
+      const cleanReg = plate.replace(/[\s-]/g, '').toUpperCase();
+      console.log(`[RTO Gateway Lookup] Querying RegCheck API for registration: ${cleanReg}`);
+      
+      const xmlPayload = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+    <CheckIndia xmlns="http://regcheck.org.uk">
+        <RegistrationNumber>${cleanReg}</RegistrationNumber>
+        <username>md_khalilul_rahman</username>
+    </CheckIndia>
+</soap:Body>
+</soap:Envelope>`;
+
+      const response = await axios.post('https://www.regcheck.org.uk/api/reg.asmx', xmlPayload, {
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: 'http://regcheck.org.uk/CheckIndia',
+        },
+        timeout: 8000,
+      });
+
+      const xml = response.data;
+      const match = xml.match(/<vehicleJson>([\s\S]*?)<\/vehicleJson>/);
+      if (match && match[1]) {
+        const vehicleJsonString = match[1]
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'");
+        const vehicleData = JSON.parse(vehicleJsonString);
+        console.log(`[RTO Gateway Lookup] Verified successfully:`, vehicleData);
+        return { success: true, data: vehicleData };
+      } else {
+        const errorMatch = xml.match(/<Message>([\s\S]*?)<\/Message>/) || xml.match(/<Vehicle>([\s\S]*?)<\/Vehicle>/);
+        const errMsg = errorMatch ? errorMatch[1] : 'No vehicle JSON found in response';
+        console.warn(`[RTO Gateway Lookup] Failed response parsed: ${errMsg}`);
+        return { success: false, error: errMsg };
+      }
+    } catch (error: any) {
+      console.error(`[RTO Gateway Lookup] Exception calling RegCheck API:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+
   // 2. POST ROUTES
 
   @Post('owner/block')
@@ -102,27 +175,55 @@ export class SearchAndCatalogController implements OnModuleInit {
 
   @Post()
   @UseGuards(JwtAuthGuard, VehicleOwnerGuard)
+  @UseInterceptors(FilesInterceptor('photos', 10))
   registerVehicle(
     @CurrentUser() user: any,
     @Body() body: any,
+    @UploadedFiles() files?: Express.Multer.File[],
   ): Observable<any> {
-    return this.searchAndCatalogService.registerVehicle({
-      ownerId: user.userId,
-      vehicleCategory: body.vehicleCategory ?? '',
-      make: body.make ?? '',
-      model: body.model ?? '',
-      variant: body.variant ?? '',
-      registrationNumber: body.registrationNumber ?? '',
-      seatingCapacity: body.seatingCapacity ?? '',
-      color: body.color ?? '',
-      hasAC: body.hasAC ?? false,
-      manufacturingYear: body.manufacturingYear ?? 0,
-      serviceRadius: body.serviceRadius ?? 0,
-      homeLat: body.homeLat ?? 0,
-      homeLng: body.homeLng ?? 0,
-      homeAddress: body.homeAddress ?? '',
-      vehiclePhotos: body.vehiclePhotos ?? [],
-    });
+    const performRegister = (photos: string[]) => {
+      return (this.searchAndCatalogService.registerVehicle({
+        ownerId: user.userId,
+        vehicleCategory: body.vehicleCategory ?? '',
+        make: body.make ?? '',
+        model: body.model ?? '',
+        variant: body.variant ?? '',
+        registrationNumber: body.registrationNumber ?? '',
+        seatingCapacity: body.seatingCapacity ?? '',
+        color: body.color ?? '',
+        hasAC: body.hasAC ?? false,
+        manufacturingYear: body.manufacturingYear ? Number(body.manufacturingYear) : 0,
+        serviceRadius: body.serviceRadius ? Number(body.serviceRadius) : 0,
+        homeLat: body.homeLat ? Number(body.homeLat) : 0,
+        homeLng: body.homeLng ? Number(body.homeLng) : 0,
+        homeAddress: body.homeAddress ?? '',
+        vehiclePhotos: photos,
+        fuelType: body.fuelType ?? '',
+        transmission: body.transmission ?? '',
+        plateType: body.plateType ?? 'WHITE',
+        rtoRawDataJson: body.rtoRawDataJson ?? '{}',
+      }) as Observable<any>).pipe(
+        catchError((err) => {
+          console.error('[SearchAndCatalogController] Error calling registerVehicle microservice:', err);
+          throw new InternalServerErrorException(err.message || 'Error registering vehicle');
+        }),
+      );
+    };
+
+    if (files && files.length > 0) {
+      return from(this.cloudinaryService.uploadFiles(files)).pipe(
+        mergeMap((urls) => performRegister(urls)),
+        catchError((err) => {
+          console.error('[SearchAndCatalogController] Error uploading files/pipeline:', err);
+          throw new InternalServerErrorException(err.message || 'Error uploading files to Cloudinary');
+        }),
+      );
+    }
+
+    const defaultPhotos = body.vehiclePhotos
+      ? (Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos : [body.vehiclePhotos])
+      : [];
+    return performRegister(defaultPhotos);
   }
 
   // 3. PATCH ROUTES
@@ -196,29 +297,52 @@ export class SearchAndCatalogController implements OnModuleInit {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, VehicleOwnerGuard)
+  @UseInterceptors(FilesInterceptor('photos', 10))
   updateVehicle(
     @Param('id') id: string,
     @CurrentUser() user: any,
     @Body() body: any,
+    @UploadedFiles() files?: Express.Multer.File[],
   ): Observable<any> {
-    return this.searchAndCatalogService.updateVehicle({
-      id,
-      ownerId: user.userId,
-      vehicleCategory: body.vehicleCategory || undefined,
-      make: body.make || undefined,
-      model: body.model || undefined,
-      variant: body.variant || undefined,
-      registrationNumber: body.registrationNumber || undefined,
-      seatingCapacity: body.seatingCapacity || undefined,
-      color: body.color || undefined,
-      hasAC: body.hasAC !== undefined ? body.hasAC : undefined,
-      manufacturingYear: body.manufacturingYear || undefined,
-      serviceRadius: body.serviceRadius || undefined,
-      homeLat: body.homeLat || undefined,
-      homeLng: body.homeLng || undefined,
-      homeAddress: body.homeAddress || undefined,
-      vehiclePhotos: body.vehiclePhotos || undefined,
-    });
+    const performUpdate = (photos?: string[]) => {
+      return (this.searchAndCatalogService.updateVehicle({
+        id,
+        ownerId: user.userId,
+        vehicleCategory: body.vehicleCategory || undefined,
+        make: body.make || undefined,
+        model: body.model || undefined,
+        variant: body.variant || undefined,
+        registrationNumber: body.registrationNumber || undefined,
+        seatingCapacity: body.seatingCapacity || undefined,
+        color: body.color || undefined,
+        hasAC: body.hasAC !== undefined ? body.hasAC : undefined,
+        manufacturingYear: body.manufacturingYear ? Number(body.manufacturingYear) : (undefined as any),
+        serviceRadius: body.serviceRadius ? Number(body.serviceRadius) : (undefined as any),
+        homeLat: body.homeLat ? Number(body.homeLat) : (undefined as any),
+        homeLng: body.homeLng ? Number(body.homeLng) : (undefined as any),
+        homeAddress: body.homeAddress || undefined,
+        vehiclePhotos: photos !== undefined ? photos : (body.vehiclePhotos ? (Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos : [body.vehiclePhotos]) : undefined),
+        fuelType: body.fuelType || undefined,
+        transmission: body.transmission || undefined,
+      }) as Observable<any>).pipe(
+        catchError((err) => {
+          console.error('[SearchAndCatalogController] Error calling updateVehicle microservice:', err);
+          throw new InternalServerErrorException(err.message || 'Error updating vehicle');
+        }),
+      );
+    };
+
+    if (files && files.length > 0) {
+      return from(this.cloudinaryService.uploadFiles(files)).pipe(
+        mergeMap((urls) => performUpdate(urls)),
+        catchError((err) => {
+          console.error('[SearchAndCatalogController] Error uploading files/pipeline:', err);
+          throw new InternalServerErrorException(err.message || 'Error uploading files to Cloudinary');
+        }),
+      );
+    }
+
+    return performUpdate();
   }
 
   @Post(':id/block')
@@ -274,5 +398,43 @@ export class SearchAndCatalogController implements OnModuleInit {
       id,
       ownerId: user.userId,
     });
+  }
+
+  @Patch(':id/plate-type')
+  @UseGuards(JwtAuthGuard, VehicleOwnerGuard)
+  updatePlateType(
+    @Param('id') id: string,
+    @Body() body: any,
+  ): Observable<any> {
+    return this.searchAndCatalogService.updatePlateType({
+      vehicleId: id,
+      plateType: body.plateType,
+      commercialPermitNumber: body.commercialPermitNumber,
+      permitType: body.permitType,
+      permitExpiryDate: body.permitExpiryDate,
+    });
+  }
+
+  @Put(':id/pricing')
+  @UseGuards(JwtAuthGuard, VehicleOwnerGuard)
+  setPricing(
+    @Param('id') id: string,
+    @Body() body: any,
+  ): Observable<any> {
+    return this.searchAndCatalogService.setPricing({
+      vehicleId: id,
+      perKmOutstation: body.perKmOutstation,
+      perHourLocal: body.perHourLocal,
+      minimumBookingHours: body.minimumBookingHours,
+      nightChargePercentage: body.nightChargePercentage,
+      eventPackage: body.eventPackage,
+    });
+  }
+
+  @Get(':id/pricing')
+  getPricing(
+    @Param('id') id: string,
+  ): Observable<any> {
+    return this.searchAndCatalogService.getPricing({ vehicleId: id });
   }
 }

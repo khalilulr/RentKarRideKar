@@ -30,17 +30,30 @@ export class OfferService {
     });
   }
 
-  async toggleOffer(id: string, isActive: boolean): Promise<Offer> {
+  async toggleOffer(id: string, isActive: boolean): Promise<Offer & { usageCount: number }> {
     const offer = await this.offerRepo.findById(id);
     if (!offer) {
       throw new Error('Offer not found');
     }
     offer.isActive = isActive;
-    return this.offerRepo.save(offer);
+    const saved = await this.offerRepo.save(offer);
+    const usageCount = await this.offerHistoryRepo.countByOfferCode(saved.code);
+    return {
+      ...saved,
+      usageCount,
+    };
   }
 
-  async listOffers(filter: 'active' | 'inactive' | 'all'): Promise<Offer[]> {
-    return this.offerRepo.findAll(filter);
+  async listOffers(filter: 'active' | 'inactive' | 'all'): Promise<(Offer & { usageCount: number })[]> {
+    const offers = await this.offerRepo.findAll(filter);
+    const usageCounts = await this.offerHistoryRepo.getUsageCounts();
+    return offers.map(offer => {
+      const codeKey = offer.code.toLowerCase();
+      return {
+        ...offer,
+        usageCount: usageCounts[codeKey] || 0,
+      } as Offer & { usageCount: number };
+    });
   }
 
   async validateCode(

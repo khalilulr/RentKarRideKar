@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './enum/role.enum';
@@ -7,9 +7,13 @@ import { DocumentEntity } from './entity/document.entity';
 import { KycStatus } from './enum/kycStatus.enum';
 import { DocumentType } from './enum/document_type.enum';
 import { DocumentStatus } from './enum/document_status.enum';
+import type { ClientGrpc } from '@nestjs/microservices';
+import { RpcException } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
-export class VerificationService {
+export class VerificationService implements OnModuleInit {
+  private communicationService: any;
 
   /**
    * Required docs for USER KYC — keyed by role.
@@ -26,7 +30,7 @@ export class VerificationService {
     [Role.VEHICLE_OWNER]: [
       DocumentType.AADHAAR_FRONT,
       DocumentType.AADHAAR_BACK,
-      DocumentType.PAN_CARD,
+      DocumentType.SELFIE,
     ],
   };
 
@@ -47,7 +51,31 @@ export class VerificationService {
     private readonly kycRepository: Repository<KycVerificationEntity>,
     @InjectRepository(DocumentEntity)
     private readonly docRepository: Repository<DocumentEntity>,
+    @Inject('COMMUNICATION_SERVICE')
+    private readonly communicationClient: ClientGrpc,
   ) {}
+
+  onModuleInit() {
+    this.communicationService = this.communicationClient.getService<any>('CommunicationService');
+  }
+
+  async sendNotification(userId: string, title: string, content: string, channel = 'both') {
+    try {
+      if (this.communicationService && typeof this.communicationService.sendNotification === 'function') {
+        await lastValueFrom(
+          this.communicationService.sendNotification({
+            userId,
+            title,
+            content,
+            channel,
+            delayMinutes: 0,
+          }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[VerificationService] Failed to send notification via gRPC:', e.message);
+    }
+  }
 
   /**
    * Upload a document.
@@ -224,15 +252,19 @@ export class VerificationService {
     });
 
     if (!kycDetail) {
-      throw new NotFoundException('KYC details not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'KYC details not found',
+      });
     }
 
     const requiredDocuments = this.requiredUserDocs[role];
 
     if (!requiredDocuments || requiredDocuments.length === 0) {
-      throw new BadRequestException(
-        `No KYC requirements configured for role ${role}`,
-      );
+      throw new RpcException({
+        code: 3, // INVALID_ARGUMENT
+        message: `No KYC requirements configured for role ${role}`,
+      });
     }
 
     const uploadedDocumentTypes = kycDetail.documents.map(
@@ -244,15 +276,22 @@ export class VerificationService {
     );
 
     if (missingDocuments.length > 0) {
-      throw new BadRequestException({
-        message: 'Some required documents are missing',
-        missingDocuments,
+      throw new RpcException({
+        code: 3, // INVALID_ARGUMENT
+        message: `Some required documents are missing: ${missingDocuments.join(', ')}`,
       });
     }
 
     kycDetail.status = KycStatus.PENDING;
     kycDetail.submittedAt = new Date();
     await this.kycRepository.save(kycDetail);
+
+    await this.sendNotification(
+      userId,
+      'KYC Verification Pending',
+      'Your KYC document submission is complete and pending admin review.',
+      'both',
+    );
 
     return {
       message: 'KYC submitted successfully',
@@ -272,7 +311,10 @@ export class VerificationService {
     });
 
     if (!verification) {
-      throw new NotFoundException('Vehicle verification record not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Vehicle verification record not found',
+      });
     }
 
     const uploadedDocumentTypes = verification.documents.map(
@@ -284,15 +326,22 @@ export class VerificationService {
     );
 
     if (missingDocuments.length > 0) {
-      throw new BadRequestException({
-        message: 'Some required vehicle documents are missing',
-        missingDocuments,
+      throw new RpcException({
+        code: 3, // INVALID_ARGUMENT
+        message: `Some required vehicle documents are missing: ${missingDocuments.join(', ')}`,
       });
     }
 
     verification.status = KycStatus.PENDING;
     verification.submittedAt = new Date();
     await this.kycRepository.save(verification);
+
+    await this.sendNotification(
+      verification.userId,
+      'Vehicle Verification Pending',
+      `Your vehicle documents submission (Vehicle ID: ${vehicleId}) is complete and pending admin review.`,
+      'both',
+    );
 
     return {
       message: 'Vehicle documents submitted successfully',
@@ -344,7 +393,10 @@ export class VerificationService {
     });
 
     if (!doc) {
-      throw new NotFoundException('Document not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Document not found',
+      });
     }
 
     doc.status = status;
@@ -371,6 +423,13 @@ export class VerificationService {
         doc.verification.reviewedBy = adminUserId;
         doc.verification.reviewedAt = new Date();
         await this.kycRepository.save(doc.verification);
+
+        await this.sendNotification(
+          doc.verification.userId,
+          'Document Verification Rejected',
+          `Your document ${doc.documentType} was rejected. Reason: ${doc.verification.rejectionReason}. Please complete your KYC verification.`,
+          'both',
+        );
       } else if (status === DocumentStatus.APPROVED) {
         const allDocs = await this.docRepository.find({
           where: { verification: { id: doc.verification.id } },
@@ -388,6 +447,22 @@ export class VerificationService {
           doc.verification.reviewedBy = adminUserId;
           doc.verification.reviewedAt = new Date();
           await this.kycRepository.save(doc.verification);
+
+          if (doc.verification.vehicleId) {
+            await this.sendNotification(
+              doc.verification.userId,
+              'Vehicle Verification Approved',
+              `Your vehicle verification (Vehicle ID: ${doc.verification.vehicleId}) has been approved by the admin.`,
+              'both',
+            );
+          } else {
+            await this.sendNotification(
+              doc.verification.userId,
+              'KYC Approved',
+              'Your KYC verification has been approved by the admin.',
+              'both',
+            );
+          }
         }
       }
     }
@@ -415,7 +490,10 @@ export class VerificationService {
     });
 
     if (!verification) {
-      throw new NotFoundException('Verification not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Verification not found',
+      });
     }
 
     verification.status = KycStatus.REJECTED;
@@ -423,6 +501,22 @@ export class VerificationService {
     verification.reviewedBy = adminUserId;
     verification.reviewedAt = new Date();
     await this.kycRepository.save(verification);
+
+    if (verification.vehicleId) {
+      await this.sendNotification(
+        verification.userId,
+        'Vehicle Documents Rejected',
+        `Your vehicle documents verification (Vehicle ID: ${verification.vehicleId}) has been rejected by the admin. Reason: ${verification.rejectionReason}`,
+        'both',
+      );
+    } else {
+      await this.sendNotification(
+        verification.userId,
+        'KYC Verification Rejected',
+        `Your KYC verification has been rejected by the admin. Reason: ${verification.rejectionReason}`,
+        'both',
+      );
+    }
 
     for (const doc of verification.documents ?? []) {
       if (doc.status === DocumentStatus.PENDING) {
@@ -448,7 +542,10 @@ export class VerificationService {
     });
 
     if (!verification) {
-      throw new NotFoundException('Verification not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Verification not found',
+      });
     }
 
     verification.status = KycStatus.VERIFIED;
@@ -456,6 +553,22 @@ export class VerificationService {
     verification.reviewedBy = adminUserId;
     verification.reviewedAt = new Date();
     await this.kycRepository.save(verification);
+
+    if (verification.vehicleId) {
+      await this.sendNotification(
+        verification.userId,
+        'Vehicle Verification Approved',
+        `Your vehicle verification (Vehicle ID: ${verification.vehicleId}) has been approved by the admin.`,
+        'both',
+      );
+    } else {
+      await this.sendNotification(
+        verification.userId,
+        'KYC Approved',
+        'Your KYC verification has been approved by the admin.',
+        'both',
+      );
+    }
 
     for (const doc of verification.documents ?? []) {
       if (doc.status === DocumentStatus.PENDING) {

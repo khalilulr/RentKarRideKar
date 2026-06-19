@@ -5,6 +5,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { Session } from './entity/session.entity';
+import { TrustedDriver } from './entity/trusted-driver.entity';
+import { Address } from './entity/address.entity';
+import { DeviceToken } from './entity/device-token.entity';
 import { CommonModule } from 'apps/common/src/common.module';
 import { JwtService } from './strategies/jwt/jwt.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -27,7 +30,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
         algorithm: 'RS256',
       },
     }),
-    TypeOrmModule.forFeature([User, Session]),
+    TypeOrmModule.forFeature([User, Session, TrustedDriver, Address, DeviceToken]),
     ConfigModule.forRoot({ isGlobal: true, envFilePath }),
     RedisModule.registerAsync(),
     TypeOrmModule.forRootAsync({

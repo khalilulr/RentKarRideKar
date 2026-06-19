@@ -24,6 +24,8 @@ function mapVehicle(v: any): types.Vehicle {
     vehiclePhotos: v.vehiclePhotos || [],
     status: v.status,
     isAvailable: v.isAvailable,
+    fuelType: v.fuelType || '',
+    transmission: v.transmission || '',
     createdAt: (v.createdAt instanceof Date) ? v.createdAt.toISOString() : (v.createdAt || ''),
     updatedAt: (v.updatedAt instanceof Date) ? v.updatedAt.toISOString() : (v.updatedAt || ''),
     blocks: (v.blocks || []).map((b: any) => ({
@@ -34,6 +36,17 @@ function mapVehicle(v: any): types.Vehicle {
       bookingId: b.bookingId || '',
       createdAt: (b.createdAt instanceof Date) ? b.createdAt.toISOString() : (b.createdAt || ''),
     })),
+    plateType: v.plateType || 'WHITE',
+    commercialPermitNumber: v.commercialPermitNumber || '',
+    permitType: v.permitType || '',
+    permitExpiryDate: v.permitExpiryDate ? (v.permitExpiryDate instanceof Date ? v.permitExpiryDate.toISOString() : v.permitExpiryDate) : '',
+    perKmOutstation: v.perKmOutstation ? parseFloat(v.perKmOutstation.toString()) : 0,
+    perHourLocal: v.perHourLocal ? parseFloat(v.perHourLocal.toString()) : 0,
+    minimumBookingHours: v.minimumBookingHours || 0,
+    nightChargePercentage: v.nightChargePercentage || 0,
+    eventPackage: typeof v.eventPackage === 'string' ? JSON.parse(v.eventPackage) : (v.eventPackage || null),
+    advancePercentage: v.advancePercentage || 0,
+    rtoRawDataJson: v.rtoRawData ? JSON.stringify(v.rtoRawData) : '{}',
   };
 }
 
@@ -87,4 +100,11 @@ export class SearchController implements Partial<types.SearchAndCatalogServiceCo
       return { vehicles: [] };
     }
   }
+
+  @GrpcMethod('SearchAndCatalogService', 'GetAllVehicles')
+  async getAllVehicles(request: types.GetAllVehiclesRequest): Promise<types.ListVehiclesResponse> {
+    const vehicles = await this.searchService.getAllVehicles();
+    return { vehicles: vehicles.map(mapVehicle) };
+  }
 }
+

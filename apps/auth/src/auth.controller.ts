@@ -3,7 +3,7 @@ import {
   Inject,
   UseInterceptors,
 } from '@nestjs/common';
-import {  GrpcMethod } from '@nestjs/microservices';
+import { GrpcMethod } from '@nestjs/microservices';
 import type { ClientGrpc } from '@nestjs/microservices';
 
 import { AuthService } from './auth.service';
@@ -26,6 +26,15 @@ import type {
   UpdateMeResponse,
   LoginAdminRequest,
   CreateDemoAdminRequest,
+  CheckTrustedDriverRequest,
+  CheckTrustedDriverResponse,
+  SearchDriverRequest,
+  SearchDriverResponse,
+  InviteDriverRequest,
+  TrustedDriverResponse,
+  ListInvitationsRequest,
+  ListInvitationsResponse,
+  RespondToInvitationRequest,
 } from '../../../libs/types/auth-service';
 
 // ─── Controller ──────────────────────────────────────────────────────────────
@@ -35,7 +44,7 @@ import type {
 // @UseInterceptors(TransformInterceptor)
 export class AuthController implements AuthServiceController {
   constructor(
-    private  authService: AuthService) { }
+    private authService: AuthService) { }
 
   // ── Public methods ─────────────────────────────────────────────────────────
 
@@ -90,15 +99,20 @@ export class AuthController implements AuthServiceController {
 
   @GrpcMethod('AuthService', 'UpdateMe')
   async updateMe(request: UpdateMeRequest): Promise<UpdateMeResponse> {
-    const { userId, name, profileImage, roles, activePerspective } = request;
+    console.log('[MICROSERVICE updateMe] raw request:', JSON.stringify(request));
+    const { userId, name, profileImage, roles, activePerspective, bankAccountNumber, bankAccountHolderName, bankName, bankIfscCode } = request;
+    console.log('[MICROSERVICE updateMe] roles:', roles, 'type:', typeof roles);
+
     const result = await this.authService.updateMe(userId, {
       name,
       profilePicture: profileImage,
       roles,
       activePerspective,
+      bankAccountNumber,
+      bankAccountHolderName,
+      bankName,
+      bankIfscCode,
     });
-
-
     return {
       message: 'User updated successfully',
       user: toGrpcUser(result.user),
@@ -140,5 +154,203 @@ export class AuthController implements AuthServiceController {
       accessToken: result.access_token,
       refreshToken: result.refresh_token,
     };
+  }
+
+  @GrpcMethod('AuthService', 'CheckTrustedDriver')
+  async checkTrustedDriver(request: CheckTrustedDriverRequest): Promise<CheckTrustedDriverResponse> {
+    const { ownerId, driverId } = request;
+    const isTrusted = await this.authService.checkTrustedDriver(ownerId, driverId);
+    return { isTrusted };
+  }
+
+  @GrpcMethod('AuthService', 'SearchDriver')
+  async searchDriver(request: SearchDriverRequest): Promise<SearchDriverResponse> {
+    const drivers = await this.authService.searchDriver(request.query);
+    return { drivers: drivers.map(toGrpcUser) };
+  }
+
+  @GrpcMethod('AuthService', 'InviteDriver')
+  async inviteDriver(request: InviteDriverRequest): Promise<TrustedDriverResponse> {
+    const { ownerId, driverId } = request;
+    const res = await this.authService.inviteDriver(ownerId, driverId);
+    return {
+      id: res.id,
+      ownerId: res.ownerId,
+      driverId: res.driverId,
+      status: res.status,
+      createdAt: res.createdAt.toISOString(),
+      updatedAt: res.updatedAt.toISOString(),
+      targetUser: undefined
+    };
+  }
+
+  @GrpcMethod('AuthService', 'ListInvitations')
+  async listInvitations(request: ListInvitationsRequest): Promise<ListInvitationsResponse> {
+    const { userId, type } = request;
+    const invitations = await this.authService.listInvitations(userId, type as any);
+    return {
+      invitations: invitations.map(item => ({
+        id: item.id,
+        ownerId: item.ownerId,
+        driverId: item.driverId,
+        status: item.status,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+        targetUser: item.targetUser ? {
+          ...toGrpcUser(item.targetUser),
+          email: item.targetUser.email || undefined
+        } : undefined
+      }))
+    };
+  }
+
+  @GrpcMethod('AuthService', 'RespondToInvitation')
+  async respondToInvitation(request: RespondToInvitationRequest): Promise<TrustedDriverResponse> {
+    const { driverId, invitationId, status } = request;
+    const res = await this.authService.respondToInvitation(driverId, invitationId, status as any);
+    return {
+      id: res.id,
+      ownerId: res.ownerId,
+      driverId: res.driverId,
+      status: res.status,
+      createdAt: res.createdAt.toISOString(),
+      updatedAt: res.updatedAt.toISOString(),
+      targetUser: undefined
+    };
+  }
+
+  @GrpcMethod('AuthService', 'ListUsersByRole')
+  async listUsersByRole(request: { role: string }): Promise<any> {
+    const users = await this.authService.listUsersByRole(request.role);
+    return { users: users.map(toGrpcUser) };
+  }
+
+  @GrpcMethod('AuthService', 'GetMyTrustedDrivers')
+  async getMyTrustedDrivers(request: any): Promise<any> {
+    const res = await this.authService.getMyTrustedDrivers(request.ownerId);
+    return {
+      trustedDrivers: res.trustedDrivers.map(d => ({
+        id: d.id,
+        name: d.name,
+        mobile: d.mobile,
+        profilePicture: d.profilePicture,
+        licenseNumber: d.licenseNumber,
+        rating: d.rating,
+        totalTrips: d.totalTrips,
+        kycStatus: d.kycStatus,
+        addedAt: d.addedAt,
+      })),
+      total: res.total,
+    };
+  }
+
+  @GrpcMethod('AuthService', 'RemoveTrustedDriver')
+  async removeTrustedDriver(request: any): Promise<any> {
+    return this.authService.removeTrustedDriver(request.ownerId, request.driverId);
+  }
+
+  @GrpcMethod('AuthService', 'SaveAddress')
+  async saveAddress(request: any): Promise<any> {
+    const res = await this.authService.saveAddress(
+      request.userId,
+      request.label,
+      request.type,
+      request.address,
+      request.lat,
+      request.lng,
+    );
+    return {
+      addressId: res.id,
+      label: res.label,
+      type: res.type,
+      address: res.address,
+      lat: parseFloat(res.lat.toString()),
+      lng: parseFloat(res.lng.toString()),
+      createdAt: res.createdAt.toISOString(),
+      updatedAt: res.updatedAt.toISOString(),
+    };
+  }
+
+  @GrpcMethod('AuthService', 'GetAddresses')
+  async getAddresses(request: any): Promise<any> {
+    const list = await this.authService.getAddresses(request.userId);
+    return {
+      addresses: list.map(res => ({
+        addressId: res.id,
+        label: res.label,
+        type: res.type,
+        address: res.address,
+        lat: parseFloat(res.lat.toString()),
+        lng: parseFloat(res.lng.toString()),
+        createdAt: res.createdAt.toISOString(),
+        updatedAt: res.updatedAt.toISOString(),
+      })),
+    };
+  }
+
+  @GrpcMethod('AuthService', 'UpdateAddress')
+  async updateAddress(request: any): Promise<any> {
+    const res = await this.authService.updateAddress(
+      request.userId,
+      request.addressId,
+      request.label,
+      request.address,
+      request.lat,
+      request.lng,
+    );
+    return {
+      addressId: res.id,
+      label: res.label,
+      type: res.type,
+      address: res.address,
+      lat: parseFloat(res.lat.toString()),
+      lng: parseFloat(res.lng.toString()),
+      createdAt: res.createdAt.toISOString(),
+      updatedAt: res.updatedAt.toISOString(),
+    };
+  }
+
+  @GrpcMethod('AuthService', 'DeleteAddress')
+  async deleteAddress(request: any): Promise<any> {
+    return this.authService.deleteAddress(request.userId, request.addressId);
+  }
+
+  @GrpcMethod('AuthService', 'RegisterDeviceToken')
+  async registerDeviceToken(request: any): Promise<any> {
+    return this.authService.registerDeviceToken(request.userId, request.token, request.platform);
+  }
+
+  @GrpcMethod('AuthService', 'RemoveDeviceToken')
+  async removeDeviceToken(request: any): Promise<any> {
+    return this.authService.removeDeviceToken(request.userId, request.token);
+  }
+
+  @GrpcMethod('AuthService', 'GetReferrals')
+  async getReferrals(request: any): Promise<any> {
+    return this.authService.getReferrals(request.userId);
+  }
+
+  @GrpcMethod('AuthService', 'ApplyReferral')
+  async applyReferral(request: any): Promise<any> {
+    return this.authService.applyReferral(request.userId, request.referralCode);
+  }
+
+  @GrpcMethod('AuthService', 'GetWallet')
+  async getWallet(request: any): Promise<any> {
+    return this.authService.getWallet(request.userId);
+  }
+
+  @GrpcMethod('AuthService', 'AdminGetUsers')
+  async adminGetUsers(request: any): Promise<any> {
+    const res = await this.authService.adminGetUsers(request.role, request.kycStatus, request.page, request.limit);
+    return {
+      users: res.users.map(toGrpcUser),
+      total: res.total,
+    };
+  }
+
+  @GrpcMethod('AuthService', 'AdminUpdateUserStatus')
+  async adminUpdateUserStatus(request: any): Promise<any> {
+    return this.authService.adminUpdateUserStatus(request.userId, request.action, request.reason);
   }
 }

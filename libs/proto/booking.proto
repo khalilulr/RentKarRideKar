@@ -38,6 +38,18 @@ service BookingService {
   rpc GetOrderVehicles(GetOrderVehiclesRequest) returns (GetOrderVehiclesResponse);
   rpc UpdateBookingStatus(UpdateBookingStatusRequest) returns (UpdateBookingStatusResponse);
   rpc ConfirmPayment(ConfirmPaymentRequest) returns (ConfirmPaymentResponse);
+  rpc AssignDriver(AssignDriverRequest) returns (AssignDriverResponse);
+  rpc GetOwnerEarnings(GetOwnerEarningsRequest) returns (GetOwnerEarningsResponse);
+  rpc GetPayoutHistory(GetPayoutHistoryRequest) returns (GetPayoutHistoryResponse);
+  rpc DownloadEarningsStatement(DownloadEarningsStatementRequest) returns (EarningsStatementResponse);
+  rpc GetDriverEarnings(GetDriverEarningsRequest) returns (GetDriverEarningsResponse);
+  rpc RaiseDispute(RaiseDisputeRequest) returns (DisputeResponse);
+  rpc GetDispute(GetDisputeRequest) returns (DisputeResponse);
+  rpc AdminGetDisputes(AdminGetDisputesRequest) returns (AdminGetDisputesResponse);
+  rpc AdminResolveDispute(AdminResolveDisputeRequest) returns (DisputeResponse);
+  rpc GetOrderOtp(GetOrderOtpRequest) returns (OrderOtpResponse);
+  rpc PayBalance(PayBalanceRequest) returns (PayBalanceResponse);
+  rpc AdminGetAnalytics(AdminGetAnalyticsRequest) returns (AdminGetAnalyticsResponse);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -53,6 +65,10 @@ message CartItem {
   string tripType = 6;
   double price = 7;
   string expiresAt = 8;
+  string pickupAddress = 9;
+  string dropAddress = 10;
+  string returnDatetime = 11;
+  int32 totalDays = 12;
 }
 
 message VehicleSummary {
@@ -558,3 +574,169 @@ message ConfirmPaymentResponse {
   string message = 4;
   string chatRoomsJson = 5;
 }
+
+message AssignDriverRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string driverId = 3;
+  string ownerId = 4;
+}
+
+message AssignDriverResponse {
+  string orderId = 1;
+  string vehicleId = 2;
+  DriverSummary assignedDriver = 3;
+  bool driverNotified = 4;
+  string message = 5;
+}
+
+message GetOwnerEarningsRequest {
+  string ownerId = 1;
+  string period = 2;
+  int32 year = 3;
+  int32 month = 4;
+}
+
+message GetOwnerEarningsResponse {
+  string period = 1;
+  string month = 2;
+  string summaryJson = 3;
+  string byVehicleJson = 4;
+  string chartDataJson = 5;
+}
+
+message GetPayoutHistoryRequest {
+  string ownerId = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message GetPayoutHistoryResponse {
+  string payoutsJson = 1;
+  string paginationJson = 2;
+}
+
+message DownloadEarningsStatementRequest {
+  string ownerId = 1;
+  int32 year = 2;
+}
+
+message EarningsStatementResponse {
+  int32 year = 1;
+  string ownerName = 2;
+  string panNumber = 3;
+  double totalGrossEarnings = 4;
+  double totalPlatformFee = 5;
+  double totalNetEarnings = 6;
+  int32 totalTrips = 7;
+  string statementUrl = 8;
+  string generatedAt = 9;
+}
+
+message GetDriverEarningsRequest {
+  string driverId = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message GetDriverEarningsResponse {
+  string earningsJson = 1;
+  string summaryJson = 2;
+  string paginationJson = 3;
+}
+
+message RaiseDisputeRequest {
+  string orderId = 1;
+  string userId = 2;
+  string type = 3;
+  string description = 4;
+  repeated string photos = 5;
+  string raisedBy = 6;
+}
+
+message DisputeResponse {
+  string disputeId = 1;
+  string orderId = 2;
+  string type = 3;
+  string status = 4;
+  string raisedBy = 5;
+  string message = 6;
+  string createdAt = 7;
+  string resolution = 8;
+  double refundAmount = 9;
+  string resolvedAt = 10;
+}
+
+message GetDisputeRequest {
+  string orderId = 1;
+  string userId = 2;
+}
+
+message AdminGetDisputesRequest {
+  string status = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message AdminGetDisputesResponse {
+  string disputesJson = 1;
+  string paginationJson = 2;
+}
+
+message GetOrderOtpRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string userId = 3;
+}
+
+message OrderOtpResponse {
+  string orderId = 1;
+  string vehicleId = 2;
+  string otp = 3;
+  string otpExpiresAt = 4;
+  string otpStatus = 5;
+  string instruction = 6;
+}
+
+message PayBalanceRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string passengerId = 3;
+  string paymentMethod = 4;
+  bool useWalletCredit = 5;
+  double walletCreditAmount = 6;
+}
+
+message PayBalanceResponse {
+  string orderId = 1;
+  string vehicleId = 2;
+  double amountPaid = 3;
+  double walletCreditUsed = 4;
+  double totalAmount = 5;
+  string paymentStatus = 6;
+  string tripStatus = 7;
+  string paidAt = 8;
+}
+
+message AdminGetAnalyticsRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message AdminGetAnalyticsResponse {
+  string periodJson = 1;
+  string totalsJson = 2;
+  string bookingsByDayJson = 3;
+  string topCitiesJson = 4;
+  string cancellationRate = 5;
+  double averageRating = 6;
+}
+
+message AdminResolveDisputeRequest {
+  string disputeId = 1;
+  string resolution = 2;
+  double refundAmount = 3;
+  string refundTo = 4;
+  bool penaliseOwner = 5;
+  double penaltyAmount = 6;
+}

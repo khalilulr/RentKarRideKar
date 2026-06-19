@@ -5,6 +5,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { KycVerificationEntity } from './entity/kyc-verification.entity';
 import { DocumentEntity } from './entity/document.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { COMMUNICATION_SERVICE_PROTO_PATH } from '../../../libs/proto/communication.grpc-options';
 
 const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
 
@@ -25,7 +27,19 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
           autoLoadEntities: true, // Automatically finds your @Entity() files
           synchronize: true, // Auto-creates tables (DEVELOPMENT ONLY!)
         }),
-      }),],
+      }),
+      ClientsModule.register([
+        {
+          name: 'COMMUNICATION_SERVICE',
+          transport: Transport.GRPC,
+          options: {
+            package: 'communication',
+            protoPath: COMMUNICATION_SERVICE_PROTO_PATH,
+            url: 'communication-service:50054',
+          },
+        },
+      ]),
+  ],
   controllers: [VerificationController],
   providers: [VerificationService],
 })

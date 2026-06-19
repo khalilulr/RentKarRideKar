@@ -19,6 +19,11 @@ service CommunicationService {
 
   // Internal: verify chat room access (called by API gateway before proxying chat)
   rpc VerifyChatAccess (VerifyChatAccessRequest) returns (VerifyChatAccessResponse);
+
+  // Notifications
+  rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
+  rpc CancelNotification (CancelNotificationRequest) returns (CancelNotificationResponse);
+  rpc GetNotifications (GetNotificationsRequest) returns (GetNotificationsResponse);
 }
 
 message OpenChatRoomsRequest {
@@ -79,4 +84,47 @@ message VerifyChatAccessRequest {
 message VerifyChatAccessResponse {
   bool allowed = 1;
   string room_status = 2;
+}
+
+message SendNotificationRequest {
+  string user_id = 1;
+  string title = 2;
+  string content = 3;
+  string channel = 4; // 'in-app' | 'whatsapp' | 'both'
+  int32 delay_minutes = 5;
+  string external_id = 6;
+}
+
+message SendNotificationResponse {
+  string notification_id = 1;
+  bool success = 2;
+}
+
+message CancelNotificationRequest {
+  string external_id = 1;
+}
+
+message CancelNotificationResponse {
+  bool success = 1;
+}
+
+message GetNotificationsRequest {
+  string user_id = 1;
+}
+
+message NotificationMessage {
+  string id = 1;
+  string user_id = 2;
+  string title = 3;
+  string content = 4;
+  string channel = 5;
+  string status = 6;
+  string scheduled_at = 7;
+  string sent_at = 8;
+  string created_at = 9;
+  string external_id = 10;
+}
+
+message GetNotificationsResponse {
+  repeated NotificationMessage notifications = 1;
 }

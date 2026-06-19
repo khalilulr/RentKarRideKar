@@ -24,6 +24,31 @@ service AuthService {
   rpc LoginAdmin (LoginAdminRequest) returns (AuthResponse);
 
   rpc CreateDemoAdmin (CreateDemoAdminRequest) returns (AuthResponse);
+
+  rpc CheckTrustedDriver (CheckTrustedDriverRequest) returns (CheckTrustedDriverResponse);
+
+  rpc SearchDriver (SearchDriverRequest) returns (SearchDriverResponse);
+
+  rpc InviteDriver (InviteDriverRequest) returns (TrustedDriverResponse);
+
+  rpc ListInvitations (ListInvitationsRequest) returns (ListInvitationsResponse);
+
+  rpc RespondToInvitation (RespondToInvitationRequest) returns (TrustedDriverResponse);
+
+  rpc ListUsersByRole (ListUsersByRoleRequest) returns (ListUsersResponse);
+  rpc GetMyTrustedDrivers(GetMyTrustedDriversRequest) returns (GetMyTrustedDriversResponse);
+  rpc RemoveTrustedDriver(RemoveTrustedDriverRequest) returns (MessageResponse);
+  rpc SaveAddress(SaveAddressRequest) returns (AddressResponse);
+  rpc GetAddresses(GetAddressesRequest) returns (GetAddressesResponse);
+  rpc UpdateAddress(UpdateAddressRequest) returns (AddressResponse);
+  rpc DeleteAddress(DeleteAddressRequest) returns (MessageResponse);
+  rpc RegisterDeviceToken(RegisterDeviceTokenRequest) returns (MessageResponse);
+  rpc RemoveDeviceToken(RemoveDeviceTokenRequest) returns (MessageResponse);
+  rpc GetReferrals(GetReferralsRequest) returns (ReferralsResponse);
+  rpc ApplyReferral(ApplyReferralRequest) returns (ApplyReferralResponse);
+  rpc GetWallet(GetWalletRequest) returns (WalletResponse);
+  rpc AdminGetUsers(AdminGetUsersRequest) returns (AdminGetUsersResponse);
+  rpc AdminUpdateUserStatus(AdminUpdateUserStatusRequest) returns (UserResponse);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -58,6 +83,10 @@ message User {
   optional string email = 8;
   string createdAt = 9;
   string updatedAt = 10;
+  optional string bankAccountNumber = 11;
+  optional string bankAccountHolderName = 12;
+  optional string bankName = 13;
+  optional string bankIfscCode = 14;
 }
 
 message AuthResponse {
@@ -141,6 +170,10 @@ message UpdateMeRequest {
   optional string profileImage = 3;
   repeated string roles = 4;
   optional string activePerspective = 5;
+  optional string bankAccountNumber = 6;
+  optional string bankAccountHolderName = 7;
+  optional string bankName = 8;
+  optional string bankIfscCode = 9;
 }
 
 
@@ -179,3 +212,187 @@ message CreateDemoAdminRequest {
   string ipAddress = 3;
   string userAgent = 4;
 }
+
+message CheckTrustedDriverRequest {
+  string ownerId = 1;
+  string driverId = 2;
+}
+
+message CheckTrustedDriverResponse {
+  bool isTrusted = 1;
+}
+
+message SearchDriverRequest {
+  string query = 1;
+}
+
+message SearchDriverResponse {
+  repeated User drivers = 1;
+}
+
+message InviteDriverRequest {
+  string ownerId = 1;
+  string driverId = 2;
+}
+
+message TrustedDriverResponse {
+  string id = 1;
+  string ownerId = 2;
+  string driverId = 3;
+  string status = 4;
+  string createdAt = 5;
+  string updatedAt = 6;
+  optional User targetUser = 7;
+}
+
+message ListInvitationsRequest {
+  string userId = 1;
+  string type = 2; // "sent" or "received"
+}
+
+message ListInvitationsResponse {
+  repeated TrustedDriverResponse invitations = 1;
+}
+
+message RespondToInvitationRequest {
+  string driverId = 1;
+  string invitationId = 2;
+  string status = 3; // "ACCEPTED" or "REJECTED"
+}
+
+message ListUsersByRoleRequest {
+  string role = 1;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+}
+
+message GetMyTrustedDriversRequest {
+  string ownerId = 1;
+}
+
+message GetMyTrustedDriversResponse {
+  repeated User trustedDrivers = 1;
+  int32 total = 2;
+}
+
+message RemoveTrustedDriverRequest {
+  string ownerId = 1;
+  string driverId = 2;
+}
+
+message SaveAddressRequest {
+  string userId = 1;
+  string label = 2;
+  string type = 3;
+  string address = 4;
+  double lat = 5;
+  double lng = 6;
+}
+
+message AddressResponse {
+  string addressId = 1;
+  string label = 2;
+  string type = 3;
+  string address = 4;
+  double lat = 5;
+  double lng = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
+}
+
+message GetAddressesRequest {
+  string userId = 1;
+}
+
+message GetAddressesResponse {
+  repeated AddressResponse addresses = 1;
+}
+
+message UpdateAddressRequest {
+  string userId = 1;
+  string addressId = 2;
+  optional string label = 3;
+  optional string address = 4;
+  optional double lat = 5;
+  optional double lng = 6;
+}
+
+message DeleteAddressRequest {
+  string userId = 1;
+  string addressId = 2;
+}
+
+message RegisterDeviceTokenRequest {
+  string userId = 1;
+  string token = 2;
+  string platform = 3;
+}
+
+message RemoveDeviceTokenRequest {
+  string userId = 1;
+  string token = 2;
+}
+
+message GetReferralsRequest {
+  string userId = 1;
+}
+
+message ReferralsResponse {
+  string referralCode = 1;
+  string shareUrl = 2;
+  string earningsJson = 3;
+  string referralHistoryJson = 4;
+}
+
+message ApplyReferralRequest {
+  string userId = 1;
+  string referralCode = 2;
+}
+
+message ApplyReferralResponse {
+  string message = 1;
+  string referralCode = 2;
+  int32 creditAmount = 3;
+  string creditAppliedOn = 4;
+}
+
+message GetWalletRequest {
+  string userId = 1;
+}
+
+message WalletResponse {
+  int32 walletBalance = 1;
+  string currency = 2;
+  string transactionsJson = 3;
+}
+
+message AdminGetUsersRequest {
+  string role = 1;
+  string kycStatus = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message AdminGetUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+}
+
+message AdminUpdateUserStatusRequest {
+  string userId = 1;
+  string action = 2;
+  string reason = 3;
+}
+
+message UserResponse {
+  string userId = 1;
+  bool isActive = 2;
+  string action = 3;
+  string reason = 4;
+  string updatedAt = 5;
+}
+
+
+

@@ -25,6 +25,7 @@ export class CartService implements OnModuleInit {
   private searchAndCatalogService: SearchAndCatalogServiceClient;
   private authService: AuthServiceClient;
   private discountService: DiscountServiceClient;
+  private communicationService: any;
 
   constructor(
     @InjectRepository(Cart)
@@ -35,6 +36,7 @@ export class CartService implements OnModuleInit {
     @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly searchClient: ClientGrpc,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
     @Inject('DISCOUNT_SERVICE') private readonly discountClient: ClientGrpc,
+    @Inject('COMMUNICATION_SERVICE') private readonly communicationClient: ClientGrpc,
   ) {}
 
   onModuleInit() {
@@ -53,6 +55,49 @@ export class CartService implements OnModuleInit {
         this.discountClient,
         DISCOUNT_SERVICE_NAME,
       );
+    this.communicationService =
+      this.clientGetService<any>(
+        this.communicationClient,
+        'CommunicationService',
+      );
+  }
+
+  async sendNotification(
+    userId: string,
+    title: string,
+    content: string,
+    channel: string,
+    delayMinutes = 0,
+    externalId?: string,
+  ) {
+    try {
+      if (this.communicationService && typeof this.communicationService.sendNotification === 'function') {
+        await lastValueFrom(
+          this.communicationService.sendNotification({
+            userId,
+            title,
+            content,
+            channel,
+            delayMinutes,
+            externalId: externalId || '',
+          }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[CartService] Failed to send notification via gRPC:', e.message);
+    }
+  }
+
+  async cancelNotification(externalId: string) {
+    try {
+      if (this.communicationService && typeof this.communicationService.cancelNotification === 'function') {
+        await lastValueFrom(
+          this.communicationService.cancelNotification({ externalId }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[CartService] Failed to cancel notification via gRPC:', e.message);
+    }
   }
 
   private clientGetService<T extends object>(client: ClientGrpc, name: string): T {
@@ -183,9 +228,6 @@ export class CartService implements OnModuleInit {
 
     // 5. Calculate and lock pricing
     const pricing = this.pricingService.calculatePricing(totalDays || 1);
-    const cartExpiryDurationMs = this.pricingService.getCartExpiryDurationMs();
-
-    const expiresAt = new Date(Date.now() + cartExpiryDurationMs);
 
     const cartItem = this.cartItemRepository.create({
       cart,
@@ -200,7 +242,7 @@ export class CartService implements OnModuleInit {
       tripType,
       returnDatetime: returnDatetime ? new Date(returnDatetime) : undefined,
       totalDays: totalDays || 1,
-      expiresAt,
+      expiresAt: new Date(Date.now() + 60 * 60000), // 1 hour price lock expiration
       // Lock exact prices
       lockedBaseFare: pricing.breakdown.baseFare,
       lockedDriverFees: pricing.breakdown.driverFees,
@@ -209,6 +251,16 @@ export class CartService implements OnModuleInit {
     });
 
     await this.cartItemRepository.save(cartItem);
+
+    // Schedule cart item expiration reminder in 45 minutes
+    await this.sendNotification(
+      passengerId,
+      'Cart Expiring Soon',
+      'You have items in your cart. Complete your booking within 15 minutes before your price lock expires!',
+      'both',
+      45,
+      `cart_item:${cartItem.id}`,
+    );
 
     let ownerName = 'Rajesh Kumar';
     let ownerRating = 4.6;
@@ -248,7 +300,7 @@ export class CartService implements OnModuleInit {
       },
       pickupDatetime: cartItem.pickupDatetime.toISOString(),
       tripType: cartItem.tripType,
-      expiresAt: cartItem.expiresAt.toISOString(),
+      expiresAt: '',
     };
   }
 
@@ -302,10 +354,14 @@ export class CartService implements OnModuleInit {
           rating: ownerRating,
         },
         pickupDatetime: item.pickupDatetime.toISOString(),
+        returnDatetime: item.returnDatetime ? item.returnDatetime.toISOString() : undefined,
         route: `${pickupArea} → ${dropArea}`,
         tripType: item.tripType,
         price,
-        expiresAt: item.expiresAt.toISOString(),
+        expiresAt: item.expiresAt ? item.expiresAt.toISOString() : '',
+        pickupAddress: item.pickupAddress,
+        dropAddress: item.dropAddress,
+        totalDays: item.totalDays,
       });
     }
 
@@ -334,10 +390,6 @@ export class CartService implements OnModuleInit {
 
     const totalAdvance = Math.round(totalAmount * 0.25);
 
-    const minExpiresAt = cart.items.length > 0
-      ? new Date(Math.min(...cart.items.map((i) => i.expiresAt.getTime())))
-      : new Date();
-
     return {
       cartId: cart.id,
       items,
@@ -349,7 +401,7 @@ export class CartService implements OnModuleInit {
         discountAmount,
         promoCode: promoCode || '',
       },
-      expiresAt: minExpiresAt.toISOString(),
+      expiresAt: '',
     };
   }
 
@@ -367,6 +419,9 @@ export class CartService implements OnModuleInit {
 
     await this.cartItemRepository.remove(item);
 
+    // Cancel the scheduled reminder
+    await this.cancelNotification(`cart_item:${cartItemId}`);
+
     const updated = await this.viewCart(passengerId);
     return {
       message: 'Vehicle removed from cart',
@@ -379,6 +434,9 @@ export class CartService implements OnModuleInit {
     const cart = await this.getOrCreateCart(passengerId);
     const count = cart.items.length;
     if (count > 0) {
+      for (const item of cart.items) {
+        await this.cancelNotification(`cart_item:${item.id}`);
+      }
       await this.cartItemRepository.remove(cart.items);
     }
     return {

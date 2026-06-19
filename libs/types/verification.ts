@@ -18,6 +18,11 @@ export interface GetVerificationStatusRequest {
   role: string;
 }
 
+export interface GetVehicleVerificationStatusRequest {
+  vehicleId: string;
+  role: string;
+}
+
 export interface VerificationStatusResponse {
   verificationId: string;
   status: string;
@@ -123,6 +128,7 @@ export const VERIFICATION_PACKAGE_NAME = "verification";
 export interface VerificationServiceClient {
   uploadDoc(request: UploadDocRequest): Observable<VerificationStatusResponse>;
   getVerificationStatus(request: GetVerificationStatusRequest): Observable<VerificationStatusResponse>;
+  getVehicleVerificationStatus(request: GetVehicleVerificationStatusRequest): Observable<VerificationStatusResponse>;
   submitKycDoc(request: SubmitKycDocRequest): Observable<SubmitKycDocResponse>;
   pendingStatusDocs(request: Empty): Observable<PendingStatusDocsResponse>;
   reviewDocument(request: ReviewDocumentRequest): Observable<ReviewDocumentResponse>;
@@ -134,6 +140,7 @@ export interface VerificationServiceClient {
 export interface VerificationServiceController {
   uploadDoc(request: UploadDocRequest): Promise<VerificationStatusResponse> | Observable<VerificationStatusResponse> | VerificationStatusResponse;
   getVerificationStatus(request: GetVerificationStatusRequest): Promise<VerificationStatusResponse> | Observable<VerificationStatusResponse> | VerificationStatusResponse;
+  getVehicleVerificationStatus(request: GetVehicleVerificationStatusRequest): Promise<VerificationStatusResponse> | Observable<VerificationStatusResponse> | VerificationStatusResponse;
   submitKycDoc(request: SubmitKycDocRequest): Promise<SubmitKycDocResponse> | Observable<SubmitKycDocResponse> | SubmitKycDocResponse;
   pendingStatusDocs(request: Empty): Promise<PendingStatusDocsResponse> | Observable<PendingStatusDocsResponse> | PendingStatusDocsResponse;
   reviewDocument(request: ReviewDocumentRequest): Promise<ReviewDocumentResponse> | Observable<ReviewDocumentResponse> | ReviewDocumentResponse;
@@ -147,6 +154,7 @@ export function VerificationServiceControllerMethods() {
     const grpcMethods: string[] = [
       "uploadDoc",
       "getVerificationStatus",
+      "getVehicleVerificationStatus",
       "submitKycDoc",
       "pendingStatusDocs",
       "reviewDocument",

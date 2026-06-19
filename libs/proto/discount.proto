@@ -28,6 +28,7 @@ message Offer {
   bool isActive = 5;
   OfferCondition conditions = 6;
   string description = 7;
+  int32 usageCount = 8;
 }
 
 message CreateOfferRequest {

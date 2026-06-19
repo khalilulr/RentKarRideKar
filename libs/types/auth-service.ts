@@ -33,6 +33,10 @@ export interface User {
   email?: string | undefined;
   createdAt: string;
   updatedAt: string;
+  bankAccountNumber?: string | undefined;
+  bankAccountHolderName?: string | undefined;
+  bankName?: string | undefined;
+  bankIfscCode?: string | undefined;
 }
 
 export interface AuthResponse {
@@ -83,6 +87,10 @@ export interface UpdateMeRequest {
   profileImage?: string | undefined;
   roles?: string[] | undefined;
   activePerspective?: string | undefined;
+  bankAccountNumber?: string | undefined;
+  bankAccountHolderName?: string | undefined;
+  bankName?: string | undefined;
+  bankIfscCode?: string | undefined;
 }
 
 export interface UpdateMeResponse {
@@ -110,6 +118,187 @@ export interface CreateDemoAdminRequest {
   userAgent: string;
 }
 
+export interface CheckTrustedDriverRequest {
+  ownerId: string;
+  driverId: string;
+}
+
+export interface CheckTrustedDriverResponse {
+  isTrusted: boolean;
+}
+
+export interface SearchDriverRequest {
+  query: string;
+}
+
+export interface SearchDriverResponse {
+  drivers: User[];
+}
+
+export interface InviteDriverRequest {
+  ownerId: string;
+  driverId: string;
+}
+
+export interface TrustedDriverResponse {
+  id: string;
+  ownerId: string;
+  driverId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  targetUser?: User | undefined;
+}
+
+export interface ListInvitationsRequest {
+  userId: string;
+  type: string;
+}
+
+export interface ListInvitationsResponse {
+  invitations: TrustedDriverResponse[];
+}
+
+export interface RespondToInvitationRequest {
+  driverId: string;
+  invitationId: string;
+  status: string;
+}
+
+export interface ListUsersByRoleRequest {
+  role: string;
+}
+
+export interface ListUsersResponse {
+  users: User[];
+}
+
+export interface GetMyTrustedDriversRequest {
+  ownerId: string;
+}
+
+export interface GetMyTrustedDriversResponse {
+  trustedDrivers: any[];
+  total: number;
+}
+
+export interface RemoveTrustedDriverRequest {
+  ownerId: string;
+  driverId: string;
+}
+
+export interface SaveAddressRequest {
+  userId: string;
+  label: string;
+  type: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+export interface AddressResponse {
+  addressId: string;
+  label: string;
+  type: string;
+  address: string;
+  lat: number;
+  lng: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface GetAddressesRequest {
+  userId: string;
+}
+
+export interface GetAddressesResponse {
+  addresses: AddressResponse[];
+}
+
+export interface UpdateAddressRequest {
+  userId: string;
+  addressId: string;
+  label?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+}
+
+export interface DeleteAddressRequest {
+  userId: string;
+  addressId: string;
+}
+
+export interface RegisterDeviceTokenRequest {
+  userId: string;
+  token: string;
+  platform: string;
+}
+
+export interface RemoveDeviceTokenRequest {
+  userId: string;
+  token: string;
+}
+
+export interface GetReferralsRequest {
+  userId: string;
+}
+
+export interface ReferralsResponse {
+  referralCode: string;
+  shareUrl: string;
+  earnings: any;
+  referralHistory: any[];
+}
+
+export interface ApplyReferralRequest {
+  userId: string;
+  referralCode: string;
+}
+
+export interface ApplyReferralResponse {
+  message: string;
+  referralCode: string;
+  creditAmount: number;
+  creditAppliedOn: string;
+}
+
+export interface GetWalletRequest {
+  userId: string;
+}
+
+export interface WalletResponse {
+  walletBalance: number;
+  currency: string;
+  transactions: any[];
+}
+
+export interface AdminGetUsersRequest {
+  role?: string;
+  kycStatus?: string;
+  page: number;
+  limit: number;
+}
+
+export interface AdminGetUsersResponse {
+  users: User[];
+  total: number;
+}
+
+export interface AdminUpdateUserStatusRequest {
+  userId: string;
+  action: string;
+  reason: string;
+}
+
+export interface UserResponse {
+  userId: string;
+  isActive: boolean;
+  action: string;
+  reason: string;
+  updatedAt: string;
+}
+
 export const AUTH_PACKAGE_NAME = "auth";
 
 export interface AuthServiceClient {
@@ -132,6 +321,44 @@ export interface AuthServiceClient {
   loginAdmin(request: LoginAdminRequest): Observable<AuthResponse>;
 
   createDemoAdmin(request: CreateDemoAdminRequest): Observable<AuthResponse>;
+
+  checkTrustedDriver(request: CheckTrustedDriverRequest): Observable<CheckTrustedDriverResponse>;
+
+  searchDriver(request: SearchDriverRequest): Observable<SearchDriverResponse>;
+
+  inviteDriver(request: InviteDriverRequest): Observable<TrustedDriverResponse>;
+
+  listInvitations(request: ListInvitationsRequest): Observable<ListInvitationsResponse>;
+
+  respondToInvitation(request: RespondToInvitationRequest): Observable<TrustedDriverResponse>;
+
+  listUsersByRole(request: ListUsersByRoleRequest): Observable<ListUsersResponse>;
+
+  getMyTrustedDrivers(request: GetMyTrustedDriversRequest): Observable<GetMyTrustedDriversResponse>;
+
+  removeTrustedDriver(request: RemoveTrustedDriverRequest): Observable<MessageResponse>;
+
+  saveAddress(request: SaveAddressRequest): Observable<AddressResponse>;
+
+  getAddresses(request: GetAddressesRequest): Observable<GetAddressesResponse>;
+
+  updateAddress(request: UpdateAddressRequest): Observable<AddressResponse>;
+
+  deleteAddress(request: DeleteAddressRequest): Observable<MessageResponse>;
+
+  registerDeviceToken(request: RegisterDeviceTokenRequest): Observable<MessageResponse>;
+
+  removeDeviceToken(request: RemoveDeviceTokenRequest): Observable<MessageResponse>;
+
+  getReferrals(request: GetReferralsRequest): Observable<ReferralsResponse>;
+
+  applyReferral(request: ApplyReferralRequest): Observable<ApplyReferralResponse>;
+
+  getWallet(request: GetWalletRequest): Observable<WalletResponse>;
+
+  adminGetUsers(request: AdminGetUsersRequest): Observable<AdminGetUsersResponse>;
+
+  adminUpdateUserStatus(request: AdminUpdateUserStatusRequest): Observable<UserResponse>;
 }
 
 export interface AuthServiceController {
@@ -160,6 +387,82 @@ export interface AuthServiceController {
   createDemoAdmin(
     request: CreateDemoAdminRequest,
   ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+
+  checkTrustedDriver(
+    request: CheckTrustedDriverRequest,
+  ): Promise<CheckTrustedDriverResponse> | Observable<CheckTrustedDriverResponse> | CheckTrustedDriverResponse;
+
+  searchDriver(
+    request: SearchDriverRequest,
+  ): Promise<SearchDriverResponse> | Observable<SearchDriverResponse> | SearchDriverResponse;
+
+  inviteDriver(
+    request: InviteDriverRequest,
+  ): Promise<TrustedDriverResponse> | Observable<TrustedDriverResponse> | TrustedDriverResponse;
+
+  listInvitations(
+    request: ListInvitationsRequest,
+  ): Promise<ListInvitationsResponse> | Observable<ListInvitationsResponse> | ListInvitationsResponse;
+
+  respondToInvitation(
+    request: RespondToInvitationRequest,
+  ): Promise<TrustedDriverResponse> | Observable<TrustedDriverResponse> | TrustedDriverResponse;
+
+  listUsersByRole(
+    request: ListUsersByRoleRequest,
+  ): Promise<ListUsersResponse> | Observable<ListUsersResponse> | ListUsersResponse;
+
+  getMyTrustedDrivers(
+    request: GetMyTrustedDriversRequest,
+  ): Promise<GetMyTrustedDriversResponse> | Observable<GetMyTrustedDriversResponse> | GetMyTrustedDriversResponse;
+
+  removeTrustedDriver(
+    request: RemoveTrustedDriverRequest,
+  ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
+
+  saveAddress(
+    request: SaveAddressRequest,
+  ): Promise<AddressResponse> | Observable<AddressResponse> | AddressResponse;
+
+  getAddresses(
+    request: GetAddressesRequest,
+  ): Promise<GetAddressesResponse> | Observable<GetAddressesResponse> | GetAddressesResponse;
+
+  updateAddress(
+    request: UpdateAddressRequest,
+  ): Promise<AddressResponse> | Observable<AddressResponse> | AddressResponse;
+
+  deleteAddress(
+    request: DeleteAddressRequest,
+  ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
+
+  registerDeviceToken(
+    request: RegisterDeviceTokenRequest,
+  ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
+
+  removeDeviceToken(
+    request: RemoveDeviceTokenRequest,
+  ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
+
+  getReferrals(
+    request: GetReferralsRequest,
+  ): Promise<ReferralsResponse> | Observable<ReferralsResponse> | ReferralsResponse;
+
+  applyReferral(
+    request: ApplyReferralRequest,
+  ): Promise<ApplyReferralResponse> | Observable<ApplyReferralResponse> | ApplyReferralResponse;
+
+  getWallet(
+    request: GetWalletRequest,
+  ): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
+
+  adminGetUsers(
+    request: AdminGetUsersRequest,
+  ): Promise<AdminGetUsersResponse> | Observable<AdminGetUsersResponse> | AdminGetUsersResponse;
+
+  adminUpdateUserStatus(
+    request: AdminUpdateUserStatusRequest,
+  ): Promise<UserResponse> | Observable<UserResponse> | UserResponse;
 }
 
 export function AuthServiceControllerMethods() {
@@ -175,6 +478,25 @@ export function AuthServiceControllerMethods() {
       "switchPerspective",
       "loginAdmin",
       "createDemoAdmin",
+      "checkTrustedDriver",
+      "searchDriver",
+      "inviteDriver",
+      "listInvitations",
+      "respondToInvitation",
+      "listUsersByRole",
+      "getMyTrustedDrivers",
+      "removeTrustedDriver",
+      "saveAddress",
+      "getAddresses",
+      "updateAddress",
+      "deleteAddress",
+      "registerDeviceToken",
+      "removeDeviceToken",
+      "getReferrals",
+      "applyReferral",
+      "getWallet",
+      "adminGetUsers",
+      "adminUpdateUserStatus",
     ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);

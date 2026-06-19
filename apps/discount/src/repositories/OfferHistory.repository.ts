@@ -34,4 +34,27 @@ export class OfferHistoryRepository {
       .getCount();
     return count > 0;
   }
+
+  async getUsageCounts(): Promise<Record<string, number>> {
+    const raw = await this.repo.createQueryBuilder('history')
+      .select('history.offer_code', 'offerCode')
+      .addSelect('COUNT(history.id)', 'count')
+      .groupBy('history.offer_code')
+      .getRawMany();
+    
+    const counts: Record<string, number> = {};
+    for (const row of raw) {
+      if (row.offerCode) {
+        counts[row.offerCode.toLowerCase()] = parseInt(row.count, 10);
+      }
+    }
+    return counts;
+  }
+
+  async countByOfferCode(offerCode: string): Promise<number> {
+    const count = await this.repo.createQueryBuilder('history')
+      .where('LOWER(history.offer_code) = LOWER(:offerCode)', { offerCode })
+      .getCount();
+    return count;
+  }
 }

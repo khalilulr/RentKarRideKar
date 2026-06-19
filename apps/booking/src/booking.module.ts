@@ -14,6 +14,7 @@ import { CartItem } from './cart/entities/cart-item.entity';
 import { Order } from './order/entities/order.entity';
 import { OrderVehicle } from './order/entities/order-vehicle.entity';
 import { OrderTimeline } from './order/entities/order-timeline.entity';
+import { Dispute } from './order/entities/dispute.entity';
 import { CartService } from './cart/cart.service';
 import { OrderService } from './order/order.service';
 import { PricingService } from './pricing/pricing.service';
@@ -78,7 +79,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
         synchronize: true,
       }),
     }),
-    TypeOrmModule.forFeature([Cart, CartItem, Order, OrderVehicle, OrderTimeline]),
+    TypeOrmModule.forFeature([Cart, CartItem, Order, OrderVehicle, OrderTimeline, Dispute]),
     ClientsModule.register([
       {
         name: 'AUTH_SERVICE',

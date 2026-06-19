@@ -25,6 +25,19 @@ function mapVehicle(v: any): types.Vehicle {
     vehiclePhotos: v.vehiclePhotos || [],
     status: v.status,
     isAvailable: v.isAvailable,
+    fuelType: v.fuelType || '',
+    transmission: v.transmission || '',
+    plateType: v.plateType || 'WHITE',
+    commercialPermitNumber: v.commercialPermitNumber || '',
+    permitType: v.permitType || '',
+    permitExpiryDate: (v.permitExpiryDate instanceof Date) ? v.permitExpiryDate.toISOString() : (v.permitExpiryDate ? new Date(v.permitExpiryDate).toISOString() : ''),
+    perKmOutstation: v.perKmOutstation ? parseFloat(v.perKmOutstation.toString()) : 0,
+    perHourLocal: v.perHourLocal ? parseFloat(v.perHourLocal.toString()) : 0,
+    minimumBookingHours: v.minimumBookingHours || 4,
+    nightChargePercentage: v.nightChargePercentage || 20,
+    eventPackage: typeof v.eventPackage === 'string' ? JSON.parse(v.eventPackage) : (v.eventPackage || null),
+    advancePercentage: v.advancePercentage || 25,
+    rtoRawDataJson: v.rtoRawData ? JSON.stringify(v.rtoRawData) : '{}',
     createdAt: (v.createdAt instanceof Date) ? v.createdAt.toISOString() : (v.createdAt || ''),
     updatedAt: (v.updatedAt instanceof Date) ? v.updatedAt.toISOString() : (v.updatedAt || ''),
     blocks: (v.blocks || []).map((b: any) => ({
@@ -59,6 +72,8 @@ export class CatalogController implements Partial<types.SearchAndCatalogServiceC
       homeLng: request.homeLng,
       homeAddress: request.homeAddress,
       vehiclePhotos: request.vehiclePhotos,
+      fuelType: request.fuelType,
+      transmission: request.transmission,
     };
     const vehicle = await this.catalogService.registerVehicle(request.ownerId, dto);
     return { vehicle: mapVehicle(vehicle) };
@@ -172,5 +187,43 @@ export class CatalogController implements Partial<types.SearchAndCatalogServiceC
       end,
     );
     return { isAvailable };
+  }
+
+  @GrpcMethod('SearchAndCatalogService', 'UpdatePlateType')
+  async updatePlateType(request: types.UpdatePlateTypeRequest): Promise<types.VehicleResponse> {
+    const vehicle = await this.catalogService.updatePlateType(
+      request.vehicleId,
+      request.plateType,
+      request.commercialPermitNumber,
+      request.permitType,
+      request.permitExpiryDate ? new Date(request.permitExpiryDate) : undefined,
+    );
+    return { vehicle: mapVehicle(vehicle) };
+  }
+
+  @GrpcMethod('SearchAndCatalogService', 'SetPricing')
+  async setPricing(request: types.SetPricingRequest): Promise<types.VehicleResponse> {
+    const eventPkg = typeof request.eventPackage === 'string'
+      ? JSON.parse(request.eventPackage)
+      : request.eventPackage;
+
+    const vehicle = await this.catalogService.setPricing(
+      request.vehicleId,
+      request.perKmOutstation,
+      request.perHourLocal,
+      request.minimumBookingHours,
+      request.nightChargePercentage,
+      eventPkg,
+    );
+    return { vehicle: mapVehicle(vehicle) };
+  }
+
+  @GrpcMethod('SearchAndCatalogService', 'GetPricing')
+  async getPricing(request: types.GetPricingRequest): Promise<types.GetPricingResponse> {
+    const pricing = await this.catalogService.getPricing(request.vehicleId);
+    return {
+      vehicleId: request.vehicleId,
+      pricing: pricing,
+    };
   }
 }

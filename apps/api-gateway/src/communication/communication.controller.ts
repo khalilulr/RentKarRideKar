@@ -6,7 +6,7 @@ import axios from 'axios';
 
 @Controller('communication')
 export class CommunicationController {
-  private readonly internalUrl = 'http://localhost:3003/communication';
+  private readonly internalUrl = process.env.COMMUNICATION_SERVICE_URL || 'http://communication-service:3003/communication';
 
   @All('call/webhook/twilio')
   async handleTwilioWebhook(@Req() req: Request, @Res() res: Response) {
@@ -28,14 +28,14 @@ export class CommunicationController {
     }
   }
 
-  @All('*')
+  @All('*path')
   @UseGuards(JwtAuthGuard)
   async proxyRequest(
     @Req() req: Request,
     @Res() res: Response,
     @CurrentUser() user: any,
   ) {
-    const targetPath = req.params[0] || '';
+    const targetPath = req.params['path'] || req.params[0] || '';
     const targetUrl = `${this.internalUrl}/${targetPath}`;
 
     try {

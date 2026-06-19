@@ -5,6 +5,7 @@ package verification;
 service VerificationService {
   rpc UploadDoc (UploadDocRequest) returns (VerificationStatusResponse);
   rpc GetVerificationStatus (GetVerificationStatusRequest) returns (VerificationStatusResponse);
+  rpc GetVehicleVerificationStatus (GetVehicleVerificationStatusRequest) returns (VerificationStatusResponse);
   rpc SubmitKycDoc (SubmitKycDocRequest) returns (SubmitKycDocResponse);
   rpc PendingStatusDocs (Empty) returns (PendingStatusDocsResponse);
   rpc ReviewDocument (ReviewDocumentRequest) returns (ReviewDocumentResponse);
@@ -25,6 +26,11 @@ message UploadDocRequest {
 
 message GetVerificationStatusRequest {
   string userId = 1;
+  string role = 2;
+}
+
+message GetVehicleVerificationStatusRequest {
+  string vehicleId = 1;
   string role = 2;
 }
 

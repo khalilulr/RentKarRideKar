@@ -53,8 +53,8 @@ export class CartItem {
   @Column({ type: 'int', name: 'total_days' })
   totalDays: number;
 
-  @Column({ type: 'timestamp', name: 'expires_at' })
-  expiresAt: Date;
+  @Column({ type: 'timestamp', name: 'expires_at', nullable: true })
+  expiresAt: Date | null;
 
   // Price lock columns
   @Column('decimal', { precision: 10, scale: 2, name: 'locked_base_fare' })

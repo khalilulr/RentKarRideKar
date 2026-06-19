@@ -3,7 +3,11 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  OnModuleInit,
+  Logger,
 } from '@nestjs/common';
+import axios from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { VehicleEntity } from '../entity/vehicle.entity';
@@ -12,16 +16,46 @@ import { RegisterVehicleDto } from '../dto/registerVehicle.dto';
 import { UpdateVehicleDto } from '../dto/updateVehicle.dto';
 import { Reason as REASON } from '../enum/reason.enum';
 import { VehicleStatus } from '../enum/vehicleStatus.enum';
+import type { ClientGrpc } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
-export class CatalogService {
+export class CatalogService implements OnModuleInit {
+  private readonly logger = new Logger(CatalogService.name);
+  private communicationService: any;
+
   constructor(
     @InjectRepository(VehicleEntity)
     private readonly vehicleRepository: Repository<VehicleEntity>,
 
     @InjectRepository(VehicleBlockEntity)
     private readonly vehicleBlockRepository: Repository<VehicleBlockEntity>,
+
+    @Inject('COMMUNICATION_SERVICE')
+    private readonly communicationClient: ClientGrpc,
   ) {}
+
+  onModuleInit() {
+    this.communicationService = this.communicationClient.getService<any>('CommunicationService');
+  }
+
+  async sendNotification(userId: string, title: string, content: string, channel = 'both') {
+    try {
+      if (this.communicationService && typeof this.communicationService.sendNotification === 'function') {
+        await lastValueFrom(
+          this.communicationService.sendNotification({
+            userId,
+            title,
+            content,
+            channel,
+            delayMinutes: 0,
+          }),
+        );
+      }
+    } catch (e: any) {
+      console.error('[CatalogService] Failed to send notification via gRPC:', e.message);
+    }
+  }
 
   // ====================================================================
   // PRIVATE HELPERS
@@ -75,8 +109,87 @@ export class CatalogService {
     ownerId: string,
     dto: RegisterVehicleDto,
   ): Promise<VehicleEntity> {
-    const newVehicle = this.vehicleRepository.create({ ...dto, ownerId });
+    let rtoRawData: any = null;
+
+    if (dto['rtoRawDataJson'] && dto['rtoRawDataJson'] !== '{}') {
+      try {
+        rtoRawData = JSON.parse(dto['rtoRawDataJson']);
+        this.logger.log(`[RTO Verification] Saved pre-fetched RTO data for vehicle ${dto.registrationNumber}.`);
+      } catch (err: any) {
+        this.logger.error(`[RTO Verification] Failed to parse rtoRawDataJson: ${err.message}`);
+      }
+    }
+
+    // Fallback: Perform real-time RTO lookup check if not passed or parse failed
+    if (!rtoRawData && dto.registrationNumber) {
+      const rtoData = await this.performRtoLookup(dto.registrationNumber);
+      if (rtoData) {
+        rtoRawData = rtoData;
+        this.logger.log(`[RTO Verification] Vehicle ${dto.registrationNumber} verified successfully via real-time RTO Lookup.`);
+      } else {
+        this.logger.warn(`[RTO Verification] Vehicle ${dto.registrationNumber} could not be verified in real-time. Proceeding with manual admin review.`);
+      }
+    }
+
+    const cleanDto = { ...dto };
+    delete cleanDto['rtoRawDataJson'];
+
+    const newVehicle = this.vehicleRepository.create({
+      ...cleanDto,
+      ownerId,
+      status: VehicleStatus.DRAFT,
+      isAvailable: false,
+      rtoRawData,
+    });
     return this.vehicleRepository.save(newVehicle);
+  }
+
+  private async performRtoLookup(registrationNumber: string): Promise<any> {
+    try {
+      this.logger.log(`[RTO Lookup] Querying RegCheck API for registration: ${registrationNumber}`);
+      
+      const cleanReg = registrationNumber.replace(/[\s-]/g, '').toUpperCase();
+      
+      const xmlPayload = `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+    <CheckIndia xmlns="http://regcheck.org.uk">
+        <RegistrationNumber>${cleanReg}</RegistrationNumber>
+        <username>md_khalilul_rahman</username>
+    </CheckIndia>
+</soap:Body>
+</soap:Envelope>`;
+
+      const response = await axios.post('https://www.regcheck.org.uk/api/reg.asmx', xmlPayload, {
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: 'http://regcheck.org.uk/CheckIndia',
+        },
+        timeout: 8000,
+      });
+
+      const xml = response.data;
+      const match = xml.match(/<vehicleJson>([\s\S]*?)<\/vehicleJson>/);
+      if (match && match[1]) {
+        const vehicleJsonString = match[1]
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'");
+        const vehicleData = JSON.parse(vehicleJsonString);
+        this.logger.log(`[RTO Lookup] Verified details: ${JSON.stringify(vehicleData)}`);
+        return vehicleData;
+      } else {
+        const errorMatch = xml.match(/<Message>([\s\S]*?)<\/Message>/) || xml.match(/<Vehicle>([\s\S]*?)<\/Vehicle>/);
+        const errMsg = errorMatch ? errorMatch[1] : 'No vehicle JSON found in response';
+        this.logger.warn(`[RTO Lookup] Failed to parse vehicle details. Response: ${errMsg}`);
+        return null;
+      }
+    } catch (error: any) {
+      this.logger.error(`[RTO Lookup] Error contacting RegCheck API: ${error.message}`);
+      return null;
+    }
   }
 
   async getVehicle(id: string): Promise<VehicleEntity> {
@@ -113,6 +226,12 @@ export class CatalogService {
     const vehicle = await this.findVehicleOrThrow(id);
     this.assertOwnership(vehicle, ownerId);   // ← ownership check
 
+    if (dto.isAvailable === true && vehicle.status !== VehicleStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Vehicle cannot be active (available) while in DRAFT/non-ACTIVE status.',
+      );
+    }
+
     const updatedVehicle = this.vehicleRepository.merge(vehicle, dto);
     return this.vehicleRepository.save(updatedVehicle);
   }
@@ -135,13 +254,32 @@ export class CatalogService {
   async activateVehicle(id: string): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(id);
     vehicle.status = VehicleStatus.ACTIVE;
-    return this.vehicleRepository.save(vehicle);
+    const saved = await this.vehicleRepository.save(vehicle);
+
+    await this.sendNotification(
+      saved.ownerId,
+      'Vehicle Activated',
+      `Your vehicle ${saved.make} ${saved.model} (${saved.registrationNumber}) has been approved and activated by the admin!`,
+      'both',
+    );
+
+    return saved;
   }
 
   async suspendVehicle(id: string): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(id);
     vehicle.status = VehicleStatus.SUSPENDED;
-    return this.vehicleRepository.save(vehicle);
+    vehicle.isAvailable = false;
+    const saved = await this.vehicleRepository.save(vehicle);
+
+    await this.sendNotification(
+      saved.ownerId,
+      'Vehicle Suspended',
+      `Your vehicle ${saved.make} ${saved.model} (${saved.registrationNumber}) has been suspended by the admin.`,
+      'both',
+    );
+
+    return saved;
   }
 
   // ====================================================================
@@ -159,6 +297,12 @@ export class CatalogService {
   ): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(id);
     this.assertOwnership(vehicle, ownerId);
+
+    if (isAvailable && vehicle.status !== VehicleStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Only active vehicles can be set to online/available.',
+      );
+    }
 
     vehicle.isAvailable = isAvailable;
     return this.vehicleRepository.save(vehicle);
@@ -182,10 +326,17 @@ export class CatalogService {
       );
     }
 
-    await this.vehicleRepository.update(
-      { ownerId },
-      { isAvailable },
-    );
+    if (isAvailable) {
+      await this.vehicleRepository.update(
+        { ownerId, status: VehicleStatus.ACTIVE },
+        { isAvailable: true },
+      );
+    } else {
+      await this.vehicleRepository.update(
+        { ownerId },
+        { isAvailable: false },
+      );
+    }
 
     return this.vehicleRepository.find({ where: { ownerId } });
   }
@@ -208,6 +359,13 @@ export class CatalogService {
   ): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(id);
     this.assertOwnership(vehicle, ownerId);
+
+    if (vehicle.status !== VehicleStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Cannot block a vehicle that is not ACTIVE.',
+      );
+    }
+
     this.assertValidDateRange(start, end);     // ← validate dates
 
     const block = this.vehicleBlockRepository.create({
@@ -242,9 +400,19 @@ export class CatalogService {
       );
     }
 
+    const activeVehicles = vehicles.filter(
+      (vehicle) => vehicle.status === VehicleStatus.ACTIVE,
+    );
+
+    if (activeVehicles.length === 0) {
+      throw new BadRequestException(
+        'No active vehicles found to block.',
+      );
+    }
+
     this.assertValidDateRange(start, end);     // ← validate dates
 
-    const blocks = vehicles.map((vehicle) =>
+    const blocks = activeVehicles.map((vehicle) =>
       this.vehicleBlockRepository.create({
         vehicle,
         startDate: this.toDateString(start),
@@ -347,5 +515,50 @@ export class CatalogService {
     });
 
     return !overlappingBlock;     // true = available, false = blocked
+  }
+
+  async updatePlateType(
+    vehicleId: string,
+    plateType: string,
+    commercialPermitNumber?: string,
+    permitType?: string,
+    permitExpiryDate?: Date,
+  ): Promise<VehicleEntity> {
+    const vehicle = await this.findVehicleOrThrow(vehicleId);
+    vehicle.plateType = plateType;
+    if (commercialPermitNumber !== undefined) vehicle.commercialPermitNumber = commercialPermitNumber;
+    if (permitType !== undefined) vehicle.permitType = permitType;
+    if (permitExpiryDate !== undefined) vehicle.permitExpiryDate = permitExpiryDate;
+    return this.vehicleRepository.save(vehicle);
+  }
+
+  async setPricing(
+    vehicleId: string,
+    perKmOutstation?: number,
+    perHourLocal?: number,
+    minimumBookingHours?: number,
+    nightChargePercentage?: number,
+    eventPackage?: any,
+  ): Promise<VehicleEntity> {
+    const vehicle = await this.findVehicleOrThrow(vehicleId);
+    if (perKmOutstation !== undefined) vehicle.perKmOutstation = perKmOutstation;
+    if (perHourLocal !== undefined) vehicle.perHourLocal = perHourLocal;
+    if (minimumBookingHours !== undefined) vehicle.minimumBookingHours = minimumBookingHours;
+    if (nightChargePercentage !== undefined) vehicle.nightChargePercentage = nightChargePercentage;
+    if (eventPackage !== undefined) vehicle.eventPackage = eventPackage;
+    return this.vehicleRepository.save(vehicle);
+  }
+
+  async getPricing(vehicleId: string): Promise<any> {
+    const vehicle = await this.findVehicleOrThrow(vehicleId);
+    return {
+      perKmOutstation: vehicle.perKmOutstation ? parseFloat(vehicle.perKmOutstation.toString()) : 0,
+      perHourLocal: vehicle.perHourLocal ? parseFloat(vehicle.perHourLocal.toString()) : 0,
+      minimumBookingHours: vehicle.minimumBookingHours || 4,
+      nightChargePercentage: vehicle.nightChargePercentage || 20,
+      eventPackage: vehicle.eventPackage || { halfDay: 0, fullDay: 0, weddingPackage: 0 },
+      advancePercentage: vehicle.advancePercentage || 25,
+      cancellationPolicy: "Free cancellation before 24 hours. 25% advance forfeited after that.",
+    };
   }
 }

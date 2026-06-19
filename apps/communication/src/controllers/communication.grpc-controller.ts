@@ -46,4 +46,47 @@ export class CommunicationGrpcController {
   async verifyChatAccess(data: { roomId: string; userId: string }) {
     return this.commsService.verifyChatAccess(data.roomId, data.userId);
   }
+
+  @GrpcMethod(COMMUNICATION_SERVICE_NAME, 'SendNotification')
+  async sendNotification(data: {
+    userId: string;
+    title: string;
+    content: string;
+    channel: string;
+    delayMinutes: number;
+    externalId?: string;
+  }) {
+    return this.commsService.sendNotification(
+      data.userId,
+      data.title,
+      data.content,
+      data.channel,
+      data.delayMinutes,
+      data.externalId,
+    );
+  }
+
+  @GrpcMethod(COMMUNICATION_SERVICE_NAME, 'CancelNotification')
+  async cancelNotification(data: { externalId: string }) {
+    return this.commsService.cancelNotification(data.externalId);
+  }
+
+  @GrpcMethod(COMMUNICATION_SERVICE_NAME, 'GetNotifications')
+  async getNotifications(data: { userId: string }) {
+    const res = await this.commsService.getNotifications(data.userId);
+    return {
+      notifications: res.notifications.map((n: any) => ({
+        id: n.id,
+        userId: n.userId,
+        title: n.title,
+        content: n.content,
+        channel: n.channel,
+        status: n.status,
+        scheduledAt: n.scheduledAt ? n.scheduledAt.toISOString() : '',
+        sentAt: n.sentAt ? n.sentAt.toISOString() : '',
+        createdAt: n.createdAt ? n.createdAt.toISOString() : '',
+        externalId: n.externalId || '',
+      })),
+    };
+  }
 }

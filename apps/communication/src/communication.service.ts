@@ -1,17 +1,24 @@
-import { Injectable, Logger, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, ForbiddenException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, IsNull } from 'typeorm';
 import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { CallSession } from './entities/call-session.entity';
 import { SosEvent } from './entities/sos-event.entity';
+import { NotificationEntity } from './entities/notification.entity';
 import { RedisService } from 'apps/common/src/redis/redis.service';
 import Redis from 'ioredis';
 import { Inject } from '@nestjs/common';
+import type { ClientGrpc } from '@nestjs/microservices';
+import type { AuthServiceClient } from 'libs/types/auth-service';
+import { ConfigService } from '@nestjs/config';
+import { lastValueFrom } from 'rxjs';
+import axios from 'axios';
 
 @Injectable()
-export class CommunicationService {
+export class CommunicationService implements OnModuleInit {
   private readonly logger = new Logger(CommunicationService.name);
+  private authService: AuthServiceClient;
 
   constructor(
     @InjectRepository(ChatRoom)
@@ -22,9 +29,24 @@ export class CommunicationService {
     private readonly callSessionRepo: Repository<CallSession>,
     @InjectRepository(SosEvent)
     private readonly sosEventRepo: Repository<SosEvent>,
+    @InjectRepository(NotificationEntity)
+    private readonly notificationRepo: Repository<NotificationEntity>,
     private readonly redisService: RedisService,
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
+    private readonly configService: ConfigService,
   ) {}
+
+  onModuleInit() {
+    this.authService = this.authClient.getService<AuthServiceClient>('AuthService');
+
+    // Poll for pending scheduled notifications every 10 seconds
+    setInterval(() => {
+      this.processScheduledNotifications().catch(err => {
+        this.logger.error('Error processing scheduled notifications:', err);
+      });
+    }, 10000);
+  }
 
   // ─────────────────────────────────────────────────────────────
   // 1. Chat Rooms and Messages Logic
@@ -441,5 +463,164 @@ export class CommunicationService {
       sosId: event.id,
       resolvedAt: event.resolvedAt.toISOString(),
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 4. Notifications & 2Factor Messaging Logic
+  // ─────────────────────────────────────────────────────────────
+
+  private async trigger2Factor(mobile: string, content: string, channel: string) {
+    const apiKey = this.configService.get<string>('TWOFACTOR_API_KEY');
+    if (!apiKey) {
+      this.logger.log(`[2Factor Simulation] (No API Key set) Channel: ${channel}, To: ${mobile}, Content: "${content}"`);
+      return;
+    }
+
+    try {
+      this.logger.log(`[2Factor Send] Sending ${channel} to ${mobile} via 2Factor...`);
+      const url = `https://2factor.in/API/V1/${apiKey}/SMS/${mobile}/${encodeURIComponent(content)}`;
+      const response = await axios.get(url);
+      this.logger.log(`[2Factor Response] Status: ${response.status}, Data: ${JSON.stringify(response.data)}`);
+    } catch (e: any) {
+      this.logger.error(`[2Factor Error] Failed to send ${channel} via 2Factor: ${e.message}`);
+    }
+  }
+
+  private async sendActualNotification(notif: NotificationEntity) {
+    let mobile = '';
+    let name = 'User';
+    try {
+      if (this.authService && typeof this.authService.getMe === 'function') {
+        const userRes = await lastValueFrom(this.authService.getMe({ userId: notif.userId }));
+        if (userRes?.user) {
+          mobile = userRes.user.mobile || '';
+          name = userRes.user.name || 'User';
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to fetch user info for notification: ${err.message}`);
+    }
+
+    // Handle in-app channel
+    if (notif.channel === 'in-app' || notif.channel === 'both') {
+      this.logger.log(`[In-App Notification] To: ${name} (${notif.userId}), Title: "${notif.title}", Content: "${notif.content}"`);
+    }
+
+    // Handle WhatsApp channel
+    if (notif.channel === 'whatsapp' || notif.channel === 'both') {
+      if (mobile) {
+        await this.trigger2Factor(mobile, notif.content, 'WhatsApp');
+      } else {
+        this.logger.warn(`Cannot send WhatsApp notification to user ${notif.userId}: No mobile number registered`);
+      }
+    }
+
+    notif.status = 'SENT';
+    notif.sentAt = new Date();
+    await this.notificationRepo.save(notif);
+  }
+
+  async sendNotification(
+    userId: string,
+    title: string,
+    content: string,
+    channel: string,
+    delayMinutes = 0,
+    externalId?: string,
+  ) {
+    const notif = this.notificationRepo.create({
+      userId,
+      title,
+      content,
+      channel,
+      status: delayMinutes > 0 ? 'PENDING' : 'SENT',
+      scheduledAt: delayMinutes > 0 ? new Date(Date.now() + delayMinutes * 60000) : null,
+      externalId: externalId || null,
+      createdAt: new Date(),
+    });
+
+    const saved = await this.notificationRepo.save(notif);
+
+    if (delayMinutes === 0) {
+      await this.sendActualNotification(saved);
+    } else {
+      this.logger.log(`[Scheduled Notification] Scheduled ${channel} notification for user ${userId} in ${delayMinutes} minutes. External ID: ${externalId || 'None'}`);
+    }
+
+    return {
+      notificationId: saved.id,
+      success: true,
+    };
+  }
+
+  async cancelNotification(externalId: string) {
+    const notifs = await this.notificationRepo.find({
+      where: { externalId, status: 'PENDING' },
+    });
+
+    if (notifs.length > 0) {
+      for (const notif of notifs) {
+        notif.status = 'CANCELLED';
+        await this.notificationRepo.save(notif);
+        this.logger.log(`[Cancelled Notification] Cancelled pending scheduled notification ID: ${notif.id}, External ID: ${externalId}`);
+      }
+    }
+
+    return { success: true };
+  }
+
+  async getNotifications(userId: string) {
+    const notifications = await this.notificationRepo.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    return { notifications };
+  }
+
+  async sendAdminNotification(body: {
+    userId?: string;
+    group?: string;
+    title: string;
+    content: string;
+    channel: string;
+  }) {
+    const { userId, group, title, content, channel } = body;
+
+    if (userId) {
+      await this.sendNotification(userId, title, content, channel);
+    } else if (group) {
+      this.logger.log(`[Admin Group Notification] Sending notification to group ${group}: "${title}"`);
+      let users: any[] = [];
+      try {
+        if (this.authService && typeof this.authService.listUsersByRole === 'function') {
+          const res = await lastValueFrom(this.authService.listUsersByRole({ role: group }));
+          users = res?.users || [];
+        }
+      } catch (err: any) {
+        this.logger.error(`Failed to list users for group ${group}: ${err.message}`);
+      }
+
+      for (const user of users) {
+        await this.sendNotification(user.id, title, content, channel);
+      }
+    }
+
+    return { success: true };
+  }
+
+  async processScheduledNotifications() {
+    const now = new Date();
+    const pending = await this.notificationRepo.createQueryBuilder('notification')
+      .where('notification.status = :status', { status: 'PENDING' })
+      .andWhere('notification.scheduled_at <= :now', { now })
+      .getMany();
+
+    for (const notif of pending) {
+      try {
+        await this.sendActualNotification(notif);
+      } catch (err: any) {
+        this.logger.error(`Failed to send scheduled notification ${notif.id}: ${err.message}`);
+      }
+    }
   }
 }

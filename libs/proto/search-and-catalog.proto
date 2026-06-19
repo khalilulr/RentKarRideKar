@@ -32,6 +32,10 @@ service SearchAndCatalogService {
   rpc GetMyVehicles(GetMyVehiclesRequest) returns (ListVehiclesResponse);
   rpc GetVehicleById(GetVehicleByIdRequest) returns (VehicleResponse);
   rpc SearchVehiclesByCity(SearchVehiclesByCityRequest) returns (ListVehiclesResponse);
+  rpc GetAllVehicles(GetAllVehiclesRequest) returns (ListVehiclesResponse);
+  rpc UpdatePlateType(UpdatePlateTypeRequest) returns (VehicleResponse);
+  rpc SetPricing(SetPricingRequest) returns (VehicleResponse);
+  rpc GetPricing(GetPricingRequest) returns (GetPricingResponse);
 }
 
 message Vehicle {
@@ -56,6 +60,19 @@ message Vehicle {
   string createdAt = 19;
   string updatedAt = 20;
   repeated Block blocks = 21;
+  string fuelType = 22;
+  string transmission = 23;
+  string plateType = 24;
+  string commercialPermitNumber = 25;
+  string permitType = 26;
+  string permitExpiryDate = 27;
+  double perKmOutstation = 28;
+  double perHourLocal = 29;
+  int32 minimumBookingHours = 30;
+  int32 nightChargePercentage = 31;
+  string eventPackageJson = 32;
+  int32 advancePercentage = 33;
+  string rtoRawDataJson = 34;
 }
 
 message Block {
@@ -83,6 +100,10 @@ message RegisterVehicleRequest {
   double homeLng = 13;
   string homeAddress = 14;
   repeated string vehiclePhotos = 15;
+  string fuelType = 16;
+  string transmission = 17;
+  string plateType = 18;
+  string rtoRawDataJson = 19;
 }
 
 message GetVehicleRequest {
@@ -111,6 +132,10 @@ message UpdateVehicleRequest {
   double homeLng = 14;
   string homeAddress = 15;
   repeated string vehiclePhotos = 16;
+  string fuelType = 17;
+  string transmission = 18;
+  string plateType = 19;
+  string rtoRawDataJson = 20;
 }
 
 message DeleteVehicleRequest {
@@ -203,6 +228,8 @@ message SearchVehiclesByCityRequest {
   string city = 1;
 }
 
+message GetAllVehiclesRequest {}
+
 message VehicleResponse {
   Vehicle vehicle = 1;
 }
@@ -210,3 +237,31 @@ message VehicleResponse {
 message ListVehiclesResponse {
   repeated Vehicle vehicles = 1;
 }
+
+message UpdatePlateTypeRequest {
+  string vehicleId = 1;
+  string plateType = 2;
+  string commercialPermitNumber = 3;
+  string permitType = 4;
+  string permitExpiryDate = 5;
+}
+
+message SetPricingRequest {
+  string vehicleId = 1;
+  double perKmOutstation = 2;
+  double perHourLocal = 3;
+  int32 minimumBookingHours = 4;
+  int32 nightChargePercentage = 5;
+  string eventPackageJson = 6;
+}
+
+message GetPricingRequest {
+  string vehicleId = 1;
+}
+
+message GetPricingResponse {
+  string vehicleId = 1;
+  string pricingJson = 2;
+}
+
+
