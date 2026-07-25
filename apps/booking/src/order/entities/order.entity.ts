@@ -39,10 +39,20 @@ export class Order {
   @Column('decimal', { precision: 10, scale: 2, name: 'advance_amount' })
   advanceAmount: number;
 
-  @Column('decimal', { precision: 10, scale: 2, name: 'original_amount', nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    name: 'original_amount',
+    nullable: true,
+  })
   originalAmount: number;
 
-  @Column('decimal', { precision: 10, scale: 2, name: 'discount_amount', default: 0 })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    name: 'discount_amount',
+    default: 0,
+  })
   discountAmount: number;
 
   @Column({ name: 'promo_code', type: 'varchar', nullable: true })
@@ -53,6 +63,9 @@ export class Order {
 
   @Column({ name: 'payment_link', nullable: true })
   paymentLink: string;
+
+  @Column({ type: 'jsonb', name: 'price_breakdown', nullable: true })
+  priceBreakdown: any;
 
   @Column({ name: 'whatsapp_status', type: 'varchar', default: 'SENT' })
   whatsappStatus: string; // SENT, NOT_SENT

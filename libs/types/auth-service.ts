@@ -5,10 +5,10 @@
 // source: auth-service.proto
 
 /* eslint-disable */
-import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
-import { Observable } from "rxjs";
+import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
+import { Observable } from 'rxjs';
 
-export const protobufPackage = "auth";
+export const protobufPackage = 'auth';
 
 export enum Role {
   PASSENGER = 0,
@@ -37,6 +37,8 @@ export interface User {
   bankAccountHolderName?: string | undefined;
   bankName?: string | undefined;
   bankIfscCode?: string | undefined;
+  emergencyContactNumber?: string | undefined;
+  emergencyContactRelation?: string | undefined;
 }
 
 export interface AuthResponse {
@@ -91,6 +93,8 @@ export interface UpdateMeRequest {
   bankAccountHolderName?: string | undefined;
   bankName?: string | undefined;
   bankIfscCode?: string | undefined;
+  emergencyContactNumber?: string | undefined;
+  emergencyContactRelation?: string | undefined;
 }
 
 export interface UpdateMeResponse {
@@ -299,7 +303,17 @@ export interface UserResponse {
   updatedAt: string;
 }
 
-export const AUTH_PACKAGE_NAME = "auth";
+export const AUTH_PACKAGE_NAME = 'auth';
+
+export interface ValidateReferralCodeRequest {
+  referralCode: string;
+  userId: string;
+}
+
+export interface ValidateReferralCodeResponse {
+  isValid: boolean;
+  referrerName: string;
+}
 
 export interface AuthServiceClient {
   sendOtp(request: SendOtpRequest): Observable<MessageResponse>;
@@ -310,33 +324,49 @@ export interface AuthServiceClient {
 
   logout(request: LogoutRequest): Observable<MessageResponse>;
 
-  logoutAllDevices(request: LogoutAllDevicesRequest): Observable<MessageResponse>;
+  logoutAllDevices(
+    request: LogoutAllDevicesRequest,
+  ): Observable<MessageResponse>;
 
   getMe(request: GetMeRequest): Observable<GetMeResponse>;
 
   updateMe(request: UpdateMeRequest): Observable<UpdateMeResponse>;
 
-  switchPerspective(request: SwitchPerspectiveRequest): Observable<UpdateMeResponse>;
+  switchPerspective(
+    request: SwitchPerspectiveRequest,
+  ): Observable<UpdateMeResponse>;
 
   loginAdmin(request: LoginAdminRequest): Observable<AuthResponse>;
 
   createDemoAdmin(request: CreateDemoAdminRequest): Observable<AuthResponse>;
 
-  checkTrustedDriver(request: CheckTrustedDriverRequest): Observable<CheckTrustedDriverResponse>;
+  checkTrustedDriver(
+    request: CheckTrustedDriverRequest,
+  ): Observable<CheckTrustedDriverResponse>;
 
   searchDriver(request: SearchDriverRequest): Observable<SearchDriverResponse>;
 
   inviteDriver(request: InviteDriverRequest): Observable<TrustedDriverResponse>;
 
-  listInvitations(request: ListInvitationsRequest): Observable<ListInvitationsResponse>;
+  listInvitations(
+    request: ListInvitationsRequest,
+  ): Observable<ListInvitationsResponse>;
 
-  respondToInvitation(request: RespondToInvitationRequest): Observable<TrustedDriverResponse>;
+  respondToInvitation(
+    request: RespondToInvitationRequest,
+  ): Observable<TrustedDriverResponse>;
 
-  listUsersByRole(request: ListUsersByRoleRequest): Observable<ListUsersResponse>;
+  listUsersByRole(
+    request: ListUsersByRoleRequest,
+  ): Observable<ListUsersResponse>;
 
-  getMyTrustedDrivers(request: GetMyTrustedDriversRequest): Observable<GetMyTrustedDriversResponse>;
+  getMyTrustedDrivers(
+    request: GetMyTrustedDriversRequest,
+  ): Observable<GetMyTrustedDriversResponse>;
 
-  removeTrustedDriver(request: RemoveTrustedDriverRequest): Observable<MessageResponse>;
+  removeTrustedDriver(
+    request: RemoveTrustedDriverRequest,
+  ): Observable<MessageResponse>;
 
   saveAddress(request: SaveAddressRequest): Observable<AddressResponse>;
 
@@ -346,43 +376,77 @@ export interface AuthServiceClient {
 
   deleteAddress(request: DeleteAddressRequest): Observable<MessageResponse>;
 
-  registerDeviceToken(request: RegisterDeviceTokenRequest): Observable<MessageResponse>;
+  registerDeviceToken(
+    request: RegisterDeviceTokenRequest,
+  ): Observable<MessageResponse>;
 
-  removeDeviceToken(request: RemoveDeviceTokenRequest): Observable<MessageResponse>;
+  removeDeviceToken(
+    request: RemoveDeviceTokenRequest,
+  ): Observable<MessageResponse>;
 
   getReferrals(request: GetReferralsRequest): Observable<ReferralsResponse>;
 
-  applyReferral(request: ApplyReferralRequest): Observable<ApplyReferralResponse>;
+  applyReferral(
+    request: ApplyReferralRequest,
+  ): Observable<ApplyReferralResponse>;
 
   getWallet(request: GetWalletRequest): Observable<WalletResponse>;
 
-  adminGetUsers(request: AdminGetUsersRequest): Observable<AdminGetUsersResponse>;
+  validateReferralCode(
+    request: ValidateReferralCodeRequest,
+  ): Observable<ValidateReferralCodeResponse>;
 
-  adminUpdateUserStatus(request: AdminUpdateUserStatusRequest): Observable<UserResponse>;
+  adminGetUsers(
+    request: AdminGetUsersRequest,
+  ): Observable<AdminGetUsersResponse>;
+
+  adminUpdateUserStatus(
+    request: AdminUpdateUserStatusRequest,
+  ): Observable<UserResponse>;
 }
 
 export interface AuthServiceController {
-  sendOtp(request: SendOtpRequest): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
+  sendOtp(
+    request: SendOtpRequest,
+  ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
 
-  verifyOtp(request: VerifyOtpRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+  verifyOtp(
+    request: VerifyOtpRequest,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 
-  refreshToken(request: RefreshTokenRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+  refreshToken(
+    request: RefreshTokenRequest,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 
-  logout(request: LogoutRequest): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
+  logout(
+    request: LogoutRequest,
+  ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
 
   logoutAllDevices(
     request: LogoutAllDevicesRequest,
   ): Promise<MessageResponse> | Observable<MessageResponse> | MessageResponse;
 
-  getMe(request: GetMeRequest): Promise<GetMeResponse> | Observable<GetMeResponse> | GetMeResponse;
+  getMe(
+    request: GetMeRequest,
+  ): Promise<GetMeResponse> | Observable<GetMeResponse> | GetMeResponse;
 
-  updateMe(request: UpdateMeRequest): Promise<UpdateMeResponse> | Observable<UpdateMeResponse> | UpdateMeResponse;
+  updateMe(
+    request: UpdateMeRequest,
+  ):
+    | Promise<UpdateMeResponse>
+    | Observable<UpdateMeResponse>
+    | UpdateMeResponse;
 
   switchPerspective(
     request: SwitchPerspectiveRequest,
-  ): Promise<UpdateMeResponse> | Observable<UpdateMeResponse> | UpdateMeResponse;
+  ):
+    | Promise<UpdateMeResponse>
+    | Observable<UpdateMeResponse>
+    | UpdateMeResponse;
 
-  loginAdmin(request: LoginAdminRequest): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
+  loginAdmin(
+    request: LoginAdminRequest,
+  ): Promise<AuthResponse> | Observable<AuthResponse> | AuthResponse;
 
   createDemoAdmin(
     request: CreateDemoAdminRequest,
@@ -390,31 +454,52 @@ export interface AuthServiceController {
 
   checkTrustedDriver(
     request: CheckTrustedDriverRequest,
-  ): Promise<CheckTrustedDriverResponse> | Observable<CheckTrustedDriverResponse> | CheckTrustedDriverResponse;
+  ):
+    | Promise<CheckTrustedDriverResponse>
+    | Observable<CheckTrustedDriverResponse>
+    | CheckTrustedDriverResponse;
 
   searchDriver(
     request: SearchDriverRequest,
-  ): Promise<SearchDriverResponse> | Observable<SearchDriverResponse> | SearchDriverResponse;
+  ):
+    | Promise<SearchDriverResponse>
+    | Observable<SearchDriverResponse>
+    | SearchDriverResponse;
 
   inviteDriver(
     request: InviteDriverRequest,
-  ): Promise<TrustedDriverResponse> | Observable<TrustedDriverResponse> | TrustedDriverResponse;
+  ):
+    | Promise<TrustedDriverResponse>
+    | Observable<TrustedDriverResponse>
+    | TrustedDriverResponse;
 
   listInvitations(
     request: ListInvitationsRequest,
-  ): Promise<ListInvitationsResponse> | Observable<ListInvitationsResponse> | ListInvitationsResponse;
+  ):
+    | Promise<ListInvitationsResponse>
+    | Observable<ListInvitationsResponse>
+    | ListInvitationsResponse;
 
   respondToInvitation(
     request: RespondToInvitationRequest,
-  ): Promise<TrustedDriverResponse> | Observable<TrustedDriverResponse> | TrustedDriverResponse;
+  ):
+    | Promise<TrustedDriverResponse>
+    | Observable<TrustedDriverResponse>
+    | TrustedDriverResponse;
 
   listUsersByRole(
     request: ListUsersByRoleRequest,
-  ): Promise<ListUsersResponse> | Observable<ListUsersResponse> | ListUsersResponse;
+  ):
+    | Promise<ListUsersResponse>
+    | Observable<ListUsersResponse>
+    | ListUsersResponse;
 
   getMyTrustedDrivers(
     request: GetMyTrustedDriversRequest,
-  ): Promise<GetMyTrustedDriversResponse> | Observable<GetMyTrustedDriversResponse> | GetMyTrustedDriversResponse;
+  ):
+    | Promise<GetMyTrustedDriversResponse>
+    | Observable<GetMyTrustedDriversResponse>
+    | GetMyTrustedDriversResponse;
 
   removeTrustedDriver(
     request: RemoveTrustedDriverRequest,
@@ -426,7 +511,10 @@ export interface AuthServiceController {
 
   getAddresses(
     request: GetAddressesRequest,
-  ): Promise<GetAddressesResponse> | Observable<GetAddressesResponse> | GetAddressesResponse;
+  ):
+    | Promise<GetAddressesResponse>
+    | Observable<GetAddressesResponse>
+    | GetAddressesResponse;
 
   updateAddress(
     request: UpdateAddressRequest,
@@ -446,19 +534,35 @@ export interface AuthServiceController {
 
   getReferrals(
     request: GetReferralsRequest,
-  ): Promise<ReferralsResponse> | Observable<ReferralsResponse> | ReferralsResponse;
+  ):
+    | Promise<ReferralsResponse>
+    | Observable<ReferralsResponse>
+    | ReferralsResponse;
 
   applyReferral(
     request: ApplyReferralRequest,
-  ): Promise<ApplyReferralResponse> | Observable<ApplyReferralResponse> | ApplyReferralResponse;
+  ):
+    | Promise<ApplyReferralResponse>
+    | Observable<ApplyReferralResponse>
+    | ApplyReferralResponse;
 
   getWallet(
     request: GetWalletRequest,
   ): Promise<WalletResponse> | Observable<WalletResponse> | WalletResponse;
 
+  validateReferralCode(
+    request: ValidateReferralCodeRequest,
+  ):
+    | Promise<ValidateReferralCodeResponse>
+    | Observable<ValidateReferralCodeResponse>
+    | ValidateReferralCodeResponse;
+
   adminGetUsers(
     request: AdminGetUsersRequest,
-  ): Promise<AdminGetUsersResponse> | Observable<AdminGetUsersResponse> | AdminGetUsersResponse;
+  ):
+    | Promise<AdminGetUsersResponse>
+    | Observable<AdminGetUsersResponse>
+    | AdminGetUsersResponse;
 
   adminUpdateUserStatus(
     request: AdminUpdateUserStatusRequest,
@@ -468,46 +572,61 @@ export interface AuthServiceController {
 export function AuthServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "sendOtp",
-      "verifyOtp",
-      "refreshToken",
-      "logout",
-      "logoutAllDevices",
-      "getMe",
-      "updateMe",
-      "switchPerspective",
-      "loginAdmin",
-      "createDemoAdmin",
-      "checkTrustedDriver",
-      "searchDriver",
-      "inviteDriver",
-      "listInvitations",
-      "respondToInvitation",
-      "listUsersByRole",
-      "getMyTrustedDrivers",
-      "removeTrustedDriver",
-      "saveAddress",
-      "getAddresses",
-      "updateAddress",
-      "deleteAddress",
-      "registerDeviceToken",
-      "removeDeviceToken",
-      "getReferrals",
-      "applyReferral",
-      "getWallet",
-      "adminGetUsers",
-      "adminUpdateUserStatus",
+      'sendOtp',
+      'verifyOtp',
+      'refreshToken',
+      'logout',
+      'logoutAllDevices',
+      'getMe',
+      'updateMe',
+      'switchPerspective',
+      'loginAdmin',
+      'createDemoAdmin',
+      'checkTrustedDriver',
+      'searchDriver',
+      'inviteDriver',
+      'listInvitations',
+      'respondToInvitation',
+      'listUsersByRole',
+      'getMyTrustedDrivers',
+      'removeTrustedDriver',
+      'saveAddress',
+      'getAddresses',
+      'updateAddress',
+      'deleteAddress',
+      'registerDeviceToken',
+      'removeDeviceToken',
+      'getReferrals',
+      'applyReferral',
+      'getWallet',
+      'validateReferralCode',
+      'adminGetUsers',
+      'adminUpdateUserStatus',
     ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("AuthService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod('AuthService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("AuthService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod('AuthService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
   };
 }
 
-export const AUTH_SERVICE_NAME = "AuthService";
+export const AUTH_SERVICE_NAME = 'AuthService';

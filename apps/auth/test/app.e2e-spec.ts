@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';           // ← default import, not * as
+import request from 'supertest'; // ← default import, not * as
 import { AuthModule } from './../src/auth.module';
 import cookieParser from 'cookie-parser';
 

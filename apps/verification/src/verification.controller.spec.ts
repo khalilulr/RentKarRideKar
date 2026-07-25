@@ -8,12 +8,12 @@ describe('VerificationController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [VerificationController],
-      providers: [
-        { provide: VerificationService, useValue: {} },
-      ],
+      providers: [{ provide: VerificationService, useValue: {} }],
     }).compile();
 
-    verificationController = module.get<VerificationController>(VerificationController);
+    verificationController = module.get<VerificationController>(
+      VerificationController,
+    );
   });
 
   it('should be defined', () => {

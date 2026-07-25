@@ -14,8 +14,10 @@ import { JwtModule } from '@nestjs/jwt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { RedisModule } from 'apps/common/src/redis/redis.module';
-const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
-
+const envFilePath =
+  process.env.NODE_ENV?.trim() === 'production'
+    ? '.env'
+    : `.env.${process.env.NODE_ENV?.trim()}`;
 
 @Module({
   imports: [
@@ -30,7 +32,13 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
         algorithm: 'RS256',
       },
     }),
-    TypeOrmModule.forFeature([User, Session, TrustedDriver, Address, DeviceToken]),
+    TypeOrmModule.forFeature([
+      User,
+      Session,
+      TrustedDriver,
+      Address,
+      DeviceToken,
+    ]),
     ConfigModule.forRoot({ isGlobal: true, envFilePath }),
     RedisModule.registerAsync(),
     TypeOrmModule.forRootAsync({
@@ -43,7 +51,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
         username: configService.get<string>('AUTH_DB_USER'),
         password: configService.get<string>('AUTH_DB_PASSWORD'),
         database: configService.get<string>('AUTH_DB_NAME'),
-        autoLoadEntities: true, // Automatically finds your @Entity() files
+        entities: [User, Session, TrustedDriver, Address, DeviceToken],
         synchronize: true, // Auto-creates tables (DEVELOPMENT ONLY!)
       }),
     }),
@@ -52,4 +60,4 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
   controllers: [AuthController],
   providers: [AuthService, JwtService],
 })
-export class AuthModule { }
+export class AuthModule {}

@@ -15,7 +15,9 @@ export class ReputationRepository {
   }
 
   async save(cacheData: Partial<ReputationCache>): Promise<ReputationCache> {
-    let cache = await this.repo.findOne({ where: { userId: cacheData.userId! } });
+    let cache = await this.repo.findOne({
+      where: { userId: cacheData.userId! },
+    });
     if (!cache) {
       cache = this.repo.create(cacheData);
     } else {

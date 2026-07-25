@@ -19,7 +19,7 @@ export class VehicleBlockEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'vehicle_id' })
-  vehicle: VehicleEntity;           // ← relation back to VehicleEntity
+  vehicle: VehicleEntity; // ← relation back to VehicleEntity
 
   @Column({ type: 'date', name: 'start_date' })
   startDate: string;

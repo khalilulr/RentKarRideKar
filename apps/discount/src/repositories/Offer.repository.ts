@@ -25,7 +25,8 @@ export class OfferRepository {
 
   async findByCode(code: string): Promise<Offer | null> {
     // case insensitive search
-    return this.repo.createQueryBuilder('offer')
+    return this.repo
+      .createQueryBuilder('offer')
       .where('LOWER(offer.code) = LOWER(:code)', { code })
       .getOne();
   }

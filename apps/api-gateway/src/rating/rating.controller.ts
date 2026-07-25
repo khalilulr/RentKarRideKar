@@ -24,14 +24,11 @@ import {
 export class RatingController implements OnModuleInit {
   private ratingService: RatingServiceClient;
 
-  constructor(
-    @Inject('RATING_SERVICE') private readonly client: ClientGrpc,
-  ) {}
+  constructor(@Inject('RATING_SERVICE') private readonly client: ClientGrpc) {}
 
   onModuleInit() {
-    this.ratingService = this.client.getService<RatingServiceClient>(
-      RATING_SERVICE_NAME,
-    );
+    this.ratingService =
+      this.client.getService<RatingServiceClient>(RATING_SERVICE_NAME);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -44,12 +41,19 @@ export class RatingController implements OnModuleInit {
     return this.ratingService.submitReview({
       reviewerId: user.userId,
       ...body,
+      reviewerRole: 'passenger',
+      targetType: 'vehicle',
     });
   }
 
   @Get('users/:userId/rating')
   getUserRating(@Param('userId') userId: string): Observable<any> {
     return this.ratingService.getUserRating({ userId });
+  }
+
+  @Get('vehicles/:vehicleId/rating')
+  getVehicleRating(@Param('vehicleId') vehicleId: string): Observable<any> {
+    return this.ratingService.getUserRating({ userId: vehicleId });
   }
 
   @Get('users/:userId/reviews')
@@ -61,19 +65,31 @@ export class RatingController implements OnModuleInit {
     @Query('limit') limit?: string,
   ): Observable<any> {
     const limitVal = limit ? parseInt(limit, 10) : 20;
-    return this.ratingService.getUserReviews({
-      userId,
-      role: role || '',
-      sortBy: sortBy || 'date',
-      cursor: cursor || '',
-      limit: limitVal,
-    }).pipe(
-      map(res => ({
-        data: res.dataJson ? JSON.parse(res.dataJson) : [],
-        nextCursor: res.nextCursor || null,
-        total: res.total,
-      }))
-    );
+    return this.ratingService
+      .getUserReviews({
+        userId,
+        role: role || '',
+        sortBy: sortBy || 'date',
+        cursor: cursor || '',
+        limit: limitVal,
+      })
+      .pipe(
+        map((res) => ({
+          data: res.dataJson ? JSON.parse(res.dataJson) : [],
+          nextCursor: res.nextCursor || null,
+          total: res.total,
+        })),
+      );
+  }
+
+  @Get('vehicles/:vehicleId/reviews')
+  getVehicleReviews(
+    @Param('vehicleId') vehicleId: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ): Observable<any> {
+    return this.getUserReviews(vehicleId, 'passenger', sortBy, cursor, limit);
   }
 
   @Post('reviews/:reviewId/respond')
@@ -123,23 +139,27 @@ export class RatingController implements OnModuleInit {
   }
 
   @Get('bookings/:bookingId/cancellation-deadline')
-  getCancellationDeadline(@Param('bookingId') bookingId: string): Observable<any> {
+  getCancellationDeadline(
+    @Param('bookingId') bookingId: string,
+  ): Observable<any> {
     return this.ratingService.getCancellationDeadline({ bookingId });
   }
 
   @Get('users/:userId/reputation')
   getUserReputation(@Param('userId') userId: string): Observable<any> {
     return this.ratingService.getUserReputation({ userId }).pipe(
-      map(res => ({
+      map((res) => ({
         overallRating: res.overallRating,
         starVisualization: res.starVisualization,
         categoryBreakdown: res.categoryBreakdown,
         reliabilityScore: res.reliabilityScore,
         badgeLevel: res.badgeLevel,
-        recentReviews: res.recentReviewsJson ? JSON.parse(res.recentReviewsJson) : [],
+        recentReviews: res.recentReviewsJson
+          ? JSON.parse(res.recentReviewsJson)
+          : [],
         tripCompletionCount: res.tripCompletionCount,
         ratingTrend: res.ratingTrend,
-      }))
+      })),
     );
   }
 }

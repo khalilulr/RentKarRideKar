@@ -32,11 +32,13 @@ describe('AuthController (e2e)', () => {
 
     // Essential Middlewares & Pipes (Matching Main.ts)
     app.use(cookieParser());
-    app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true
-    }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
     dataSource = moduleFixture.get<DataSource>(DataSource);
     await app.init();
   });
@@ -52,7 +54,9 @@ describe('AuthController (e2e)', () => {
     const entities = dataSource.entityMetadatas;
     for (const entity of entities) {
       const repository = dataSource.getRepository(entity.name);
-      await repository.query(`TRUNCATE "${entity.tableName}" RESTART IDENTITY CASCADE;`);
+      await repository.query(
+        `TRUNCATE "${entity.tableName}" RESTART IDENTITY CASCADE;`,
+      );
     }
     jest.clearAllMocks();
   });
@@ -81,7 +85,9 @@ describe('AuthController (e2e)', () => {
       expect(verifyOtpRes.header['set-cookie']).toBeDefined();
 
       accessToken = verifyOtpRes.body.data.accessToken;
-      refreshToken = verifyOtpRes.header['set-cookie'][0].split(';')[0].split('=')[1];
+      refreshToken = verifyOtpRes.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
 
       // 3. Refresh Token (Rotation)
       const refreshRes = await request(app.getHttpServer())
@@ -94,7 +100,9 @@ describe('AuthController (e2e)', () => {
       expect(refreshRes.body.data.accessToken).not.toBe(accessToken); // Should be new
 
       accessToken = refreshRes.body.data.accessToken;
-      refreshToken = refreshRes.header['set-cookie'][0].split(';')[0].split('=')[1];
+      refreshToken = refreshRes.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
 
       // 4. Get Profile (Verify Access Token works)
       const meRes = await request(app.getHttpServer())

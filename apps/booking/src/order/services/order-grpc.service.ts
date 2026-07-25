@@ -5,10 +5,7 @@ import {
   SearchAndCatalogServiceClient,
   SEARCH_AND_CATALOG_SERVICE_NAME,
 } from 'libs/types/search-and-catalog';
-import {
-  AuthServiceClient,
-  AUTH_SERVICE_NAME,
-} from 'libs/types/auth-service';
+import { AuthServiceClient, AUTH_SERVICE_NAME } from 'libs/types/auth-service';
 import {
   CommunicationServiceClient,
   COMMUNICATION_SERVICE_NAME,
@@ -26,9 +23,11 @@ export class OrderGrpcService implements OnModuleInit {
   private discountService: DiscountServiceClient;
 
   constructor(
-    @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly searchClient: ClientGrpc,
+    @Inject('SEARCH_AND_CATALOG_SERVICE')
+    private readonly searchClient: ClientGrpc,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
-    @Inject('COMMUNICATION_SERVICE') private readonly communicationClient: ClientGrpc,
+    @Inject('COMMUNICATION_SERVICE')
+    private readonly communicationClient: ClientGrpc,
     @Inject('DISCOUNT_SERVICE') private readonly discountClient: ClientGrpc,
   ) {}
 
@@ -38,24 +37,25 @@ export class OrderGrpcService implements OnModuleInit {
         this.searchClient,
         SEARCH_AND_CATALOG_SERVICE_NAME,
       );
-    this.authService =
-      this.clientGetService<AuthServiceClient>(
-        this.authClient,
-        AUTH_SERVICE_NAME,
-      );
+    this.authService = this.clientGetService<AuthServiceClient>(
+      this.authClient,
+      AUTH_SERVICE_NAME,
+    );
     this.communicationService =
       this.clientGetService<CommunicationServiceClient>(
         this.communicationClient,
         COMMUNICATION_SERVICE_NAME,
       );
-    this.discountService =
-      this.clientGetService<DiscountServiceClient>(
-        this.discountClient,
-        DISCOUNT_SERVICE_NAME,
-      );
+    this.discountService = this.clientGetService<DiscountServiceClient>(
+      this.discountClient,
+      DISCOUNT_SERVICE_NAME,
+    );
   }
 
-  private clientGetService<T extends object>(client: ClientGrpc, name: string): T {
+  private clientGetService<T extends object>(
+    client: ClientGrpc,
+    name: string,
+  ): T {
     try {
       return client.getService<T>(name);
     } catch (e) {
@@ -63,9 +63,16 @@ export class OrderGrpcService implements OnModuleInit {
     }
   }
 
-  async isVehicleAvailable(vehicleId: string, startDate: string, endDate: string) {
+  async isVehicleAvailable(
+    vehicleId: string,
+    startDate: string,
+    endDate: string,
+  ) {
     try {
-      if (this.searchAndCatalogService && typeof this.searchAndCatalogService.isVehicleAvailable === 'function') {
+      if (
+        this.searchAndCatalogService &&
+        typeof this.searchAndCatalogService.isVehicleAvailable === 'function'
+      ) {
         return await lastValueFrom(
           this.searchAndCatalogService.isVehicleAvailable({
             vehicleId,
@@ -75,20 +82,29 @@ export class OrderGrpcService implements OnModuleInit {
         );
       }
     } catch (e) {
-      console.error('[SearchCatalogService] Failed to check vehicle availability:', e);
+      console.error(
+        '[SearchCatalogService] Failed to check vehicle availability:',
+        e,
+      );
     }
     return { isAvailable: true };
   }
 
   async getVehicleById(vehicleId: string) {
     try {
-      if (this.searchAndCatalogService && typeof this.searchAndCatalogService.getVehicleById === 'function') {
+      if (
+        this.searchAndCatalogService &&
+        typeof this.searchAndCatalogService.getVehicleById === 'function'
+      ) {
         return await lastValueFrom(
           this.searchAndCatalogService.getVehicleById({ id: vehicleId }),
         );
       }
     } catch (e) {
-      console.error('[SearchCatalogService] Failed to fetch vehicle details:', e);
+      console.error(
+        '[SearchCatalogService] Failed to fetch vehicle details:',
+        e,
+      );
     }
     return null;
   }
@@ -96,9 +112,7 @@ export class OrderGrpcService implements OnModuleInit {
   async getMe(userId: string) {
     try {
       if (this.authService && typeof this.authService.getMe === 'function') {
-        return await lastValueFrom(
-          this.authService.getMe({ userId }),
-        );
+        return await lastValueFrom(this.authService.getMe({ userId }));
       }
     } catch (e) {
       console.error('[AuthService] Failed to get user profile details:', e);
@@ -106,11 +120,17 @@ export class OrderGrpcService implements OnModuleInit {
     return null;
   }
 
-  async checkTrustedDriver(ownerId: string, driverId: string): Promise<boolean> {
+  async checkTrustedDriver(
+    ownerId: string,
+    driverId: string,
+  ): Promise<boolean> {
     try {
-      if (this.authService && typeof this.authService.checkTrustedDriver === 'function') {
+      if (
+        this.authService &&
+        typeof this.authService.checkTrustedDriver === 'function'
+      ) {
         const response = await lastValueFrom(
-          this.authService.checkTrustedDriver({ ownerId, driverId })
+          this.authService.checkTrustedDriver({ ownerId, driverId }),
         );
         return response ? response.isTrusted : false;
       }
@@ -144,7 +164,10 @@ export class OrderGrpcService implements OnModuleInit {
         }
       }
     } catch (e: any) {
-      console.error('[CommunicationService] Failed to open chat rooms via gRPC:', e?.message);
+      console.error(
+        '[CommunicationService] Failed to open chat rooms via gRPC:',
+        e?.message,
+      );
     }
 
     return {
@@ -165,7 +188,10 @@ export class OrderGrpcService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[CommunicationService] Failed to deactivate proxy via gRPC:', e?.message);
+      console.error(
+        '[CommunicationService] Failed to deactivate proxy via gRPC:',
+        e?.message,
+      );
     }
   }
 
@@ -180,7 +206,10 @@ export class OrderGrpcService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[CommunicationService] Failed to close chat rooms:', e?.message);
+      console.error(
+        '[CommunicationService] Failed to close chat rooms:',
+        e?.message,
+      );
     }
   }
 
@@ -209,7 +238,10 @@ export class OrderGrpcService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[CommunicationService] Failed to send notification via gRPC:', e?.message);
+      console.error(
+        '[CommunicationService] Failed to send notification via gRPC:',
+        e?.message,
+      );
     }
   }
 
@@ -224,32 +256,62 @@ export class OrderGrpcService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[CommunicationService] Failed to cancel notification via gRPC:', e?.message);
+      console.error(
+        '[CommunicationService] Failed to cancel notification via gRPC:',
+        e?.message,
+      );
     }
   }
 
   async validateCode(code: string, userId: string, originalPrice: number) {
     try {
-      if (this.discountService && typeof this.discountService.validateCode === 'function') {
+      if (
+        this.discountService &&
+        typeof this.discountService.validateCode === 'function'
+      ) {
         return await lastValueFrom(
           this.discountService.validateCode({ code, userId, originalPrice }),
         );
       }
     } catch (e: any) {
-      console.error('[DiscountService] Failed to validate offer code:', e?.message);
+      console.error(
+        '[DiscountService] Failed to validate offer code:',
+        e?.message,
+      );
     }
-    return { isValid: false, discountedPrice: originalPrice, discountAmount: 0, message: 'Discount service unavailable.' };
+    return {
+      isValid: false,
+      discountedPrice: originalPrice,
+      discountAmount: 0,
+      message: 'Discount service unavailable.',
+    };
   }
 
-  async recordOfferUsage(userId: string, code: string, bookingId: string, discountAmount: number) {
+  async recordOfferUsage(
+    userId: string,
+    code: string,
+    bookingId: string,
+    discountAmount: number,
+  ) {
     try {
-      if (this.discountService && typeof this.discountService.recordOfferUsage === 'function') {
+      if (
+        this.discountService &&
+        typeof this.discountService.recordOfferUsage === 'function'
+      ) {
         await lastValueFrom(
-          this.discountService.recordOfferUsage({ userId, code, bookingId, discountAmount }),
+          this.discountService.recordOfferUsage({
+            userId,
+            code,
+            bookingId,
+            discountAmount,
+          }),
         );
       }
     } catch (e: any) {
-      console.error('[DiscountService] Failed to record offer usage:', e?.message);
+      console.error(
+        '[DiscountService] Failed to record offer usage:',
+        e?.message,
+      );
     }
   }
 }

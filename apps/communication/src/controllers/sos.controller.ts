@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Patch, Param, Body, Headers, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Param,
+  Body,
+  Headers,
+  BadRequestException,
+} from '@nestjs/common';
 import { CommunicationService } from '../communication.service';
 
 @Controller('communication/sos')

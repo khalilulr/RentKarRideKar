@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -41,6 +45,17 @@ export class OrderDriverService {
       });
     }
 
+    // Only the driver this trip was assigned to may accept it.
+    if (ov.assignedDriverId && ov.assignedDriverId !== driverId) {
+      throw new BadRequestException({
+        error: 'NOT_ASSIGNED_DRIVER',
+        message: 'This trip is assigned to a different driver.',
+      });
+    }
+    if (!ov.assignedDriverId) {
+      ov.assignedDriverId = driverId;
+    }
+
     ov.status = OrderVehicleStatus.DRIVER_ACCEPTED;
     await this.orderVehicleRepository.save(ov);
 
@@ -50,53 +65,50 @@ export class OrderDriverService {
       await this.orderRepository.save(ov.order);
     }
 
-    let vehicleDetails = {
-      make: 'Maruti Suzuki',
-      model: 'Ertiga',
-      color: 'WHITE',
-      registrationNumber: 'JH05AB1234',
-    };
+    // No mock defaults — return only real data from the vehicle/auth services.
+    let vehicleDetails: any = null;
     const vehRes = await this.orderGrpcService.getVehicleById(ov.vehicleId);
     if (vehRes?.vehicle) {
       vehicleDetails = {
-        make: vehRes.vehicle.make || vehicleDetails.make,
-        model: vehRes.vehicle.model || vehicleDetails.model,
-        color: vehRes.vehicle.color || vehicleDetails.color,
-        registrationNumber: vehRes.vehicle.registrationNumber || vehicleDetails.registrationNumber,
+        make: vehRes.vehicle.make || '',
+        model: vehRes.vehicle.model || '',
+        color: vehRes.vehicle.color || '',
+        registrationNumber: vehRes.vehicle.registrationNumber || '',
       };
     }
 
-    let ownerName = 'Rajesh Kumar';
+    let ownerName = '';
     const ownerRes = await this.orderGrpcService.getMe(ov.ownerId);
     ownerName = ownerRes?.user?.name || ownerName;
 
-    const pickupArea = ov.pickupAddress?.split(',')[0].trim() || 'Jadugoda';
-    const dropArea = ov.dropAddress?.split(',')[0].trim() || 'Jamshedpur';
-    const pricing = this.pricingService.calculatePricing(ov.totalDays);
+    const pickupArea = ov.pickupAddress?.split(',')[0].trim() || '';
+    const dropArea = ov.dropAddress?.split(',')[0].trim() || '';
 
+    // NOTE: driver fees are intentionally NOT returned — driver payment is a
+    // private arrangement between the owner and their trusted driver.
     return {
       orderVehicleId: ov.id,
       status: 'DRIVER_ACCEPTED',
       message: 'You have accepted this trip.',
       tripDetails: {
         orderId: ov.orderId,
-        route: `${pickupArea} → ${dropArea}`,
+        route: pickupArea && dropArea ? `${pickupArea} → ${dropArea}` : '',
         pickupDatetime: ov.pickupDatetime.toISOString(),
         pickupAddress: ov.pickupAddress,
         tripType: ov.tripType,
         vehicle: vehicleDetails,
-        owner: { name: ownerName, contact: '+918XXXXX0002' },
-        earnings: {
-          driverFees: pricing.breakdown.driverFees,
-          platformFee: Math.round(pricing.breakdown.driverFees * 0.02),
-          netEarnings: Math.round(pricing.breakdown.driverFees * 0.98),
-        },
+        owner: { name: ownerName },
       },
-      nextStep: 'Chat is active for testing.',
+      nextStep: 'Waiting for passenger advance payment.',
     };
   }
 
-  async driverReject(orderId: string, vehicleId: string, body: any, ownerId: string) {
+  async driverReject(
+    orderId: string,
+    vehicleId: string,
+    body: any,
+    ownerId: string,
+  ) {
     const ov = await this.orderVehicleRepository.findOne({
       where: { orderId, vehicleId, ownerId },
     });
@@ -115,7 +127,8 @@ export class OrderDriverService {
     return {
       orderVehicleId: ov.id,
       status: 'DRIVER_REJECTED',
-      message: 'You have rejected this trip. The owner will be notified to find another driver.',
+      message:
+        'You have rejected this trip. The owner will be notified to find another driver.',
     };
   }
 
@@ -145,14 +158,16 @@ export class OrderDriverService {
 
     console.log(
       `\n======================================================\n` +
-      `[DEV ONLY] OTP Generated:\n` +
-      `Order ID:   ${orderId}\n` +
-      `Vehicle ID: ${vehicleId}\n` +
-      `OTP CODE:   ${generatedOtp}\n` +
-      `======================================================\n`,
+        `[DEV ONLY] OTP Generated:\n` +
+        `Order ID:   ${orderId}\n` +
+        `Vehicle ID: ${vehicleId}\n` +
+        `OTP CODE:   ${generatedOtp}\n` +
+        `======================================================\n`,
     );
 
-    const vehicles = ov.order ? ov.order.vehicles.map((v) => (v.id === ov.id ? ov : v)) : [ov];
+    const vehicles = ov.order
+      ? ov.order.vehicles.map((v) => (v.id === ov.id ? ov : v))
+      : [ov];
     const totalVehicles = vehicles.length;
     const arrivedVehicles = vehicles.filter(
       (v) =>
@@ -212,7 +227,8 @@ export class OrderDriverService {
       if (!allArrived) {
         throw new BadRequestException({
           error: 'NOT_ALL_ARRIVED',
-          message: 'Cannot start trip. Wait for all vehicles or contact support.',
+          message:
+            'Cannot start trip. Wait for all vehicles or contact support.',
         });
       }
     }
@@ -284,8 +300,12 @@ export class OrderDriverService {
     ov.actualDistanceKm = actualDistanceKm;
     await this.orderVehicleRepository.save(ov);
 
-    const vehicles = ov.order ? ov.order.vehicles.map((v) => (v.id === ov.id ? ov : v)) : [ov];
-    const completed = vehicles.filter((v) => v.status === OrderVehicleStatus.COMPLETED).length;
+    const vehicles = ov.order
+      ? ov.order.vehicles.map((v) => (v.id === ov.id ? ov : v))
+      : [ov];
+    const completed = vehicles.filter(
+      (v) => v.status === OrderVehicleStatus.COMPLETED,
+    ).length;
     const remaining = vehicles.length - completed;
 
     if (remaining === 0 && ov.order) {
@@ -297,7 +317,7 @@ export class OrderDriverService {
       await this.orderGrpcService.closeChatRooms(orderId);
     }
 
-    const pricing = this.pricingService.calculatePricing(ov.totalDays);
+    const driverFees = 300 * (ov.totalDays || 1);
 
     return {
       orderVehicleId: ov.id,
@@ -305,9 +325,9 @@ export class OrderDriverService {
       completedAt: ov.completedAt.toISOString(),
       message: 'Trip completed. Your payment is being processed.',
       earnings: {
-        driverFees: pricing.breakdown.driverFees,
-        platformFee: Math.round(pricing.breakdown.driverFees * 0.02),
-        netEarnings: Math.round(pricing.breakdown.driverFees * 0.98),
+        driverFees,
+        platformFee: Math.round(driverFees * 0.02),
+        netEarnings: Math.round(driverFees * 0.98),
         payoutStatus: 'PROCESSING',
       },
       orderStatus: {
@@ -329,7 +349,10 @@ export class OrderDriverService {
     });
 
     if (!order) {
-      throw new NotFoundException({ error: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
     }
 
     order.status = OrderStatus.COMPLETED;
@@ -352,6 +375,49 @@ export class OrderDriverService {
       vehiclesCompleted: order.vehicles.length,
       paymentTriggered: true,
       message: 'All vehicles completed. Final payment auto-deducted.',
+    };
+  }
+
+  async startTrip(orderVehicleId: string, driverId: string) {
+    const ov = await this.orderVehicleRepository.findOne({
+      where: { id: orderVehicleId },
+      relations: ['order'],
+    });
+
+    if (!ov) {
+      throw new NotFoundException({
+        error: 'ORDER_VEHICLE_NOT_FOUND',
+        message: 'Trip/Vehicle not found.',
+      });
+    }
+
+    if (ov.assignedDriverId !== driverId) {
+      throw new BadRequestException({
+        error: 'UNAUTHORIZED_DRIVER',
+        message: 'You are not the driver assigned to this trip.',
+      });
+    }
+
+    ov.status = OrderVehicleStatus.IN_TRANSIT;
+    ov.tripStartedAt = new Date();
+    await this.orderVehicleRepository.save(ov);
+
+    if (ov.order) {
+      ov.order.status = OrderStatus.IN_TRANSIT;
+      ov.order.visibleStatus = VisibleStatus.IN_TRANSIT;
+      await this.orderRepository.save(ov.order);
+    }
+
+    return {
+      success: true,
+      message: 'Trip started successfully.',
+      status: 'IN_TRANSIT',
+      pickupLat: ov.pickupLat ? parseFloat(ov.pickupLat.toString()) : 0,
+      pickupLng: ov.pickupLng ? parseFloat(ov.pickupLng.toString()) : 0,
+      dropLat: ov.dropLat ? parseFloat(ov.dropLat.toString()) : 0,
+      dropLng: ov.dropLng ? parseFloat(ov.dropLng.toString()) : 0,
+      passengerId: ov.order ? ov.order.passengerId : '',
+      orderId: ov.orderId,
     };
   }
 }

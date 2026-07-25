@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Unique, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Unique,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Review } from './Review.entity';
 
 @Entity('review_likes')

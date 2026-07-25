@@ -9,14 +9,17 @@ import {
 async function bootstrap() {
   assertVerificationServiceProtoExists();
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(VerificationModule, {
-    transport: Transport.GRPC,
-    options: {
-      package: 'verification',
-      protoPath: VERIFICATION_SERVICE_PROTO_PATH,
-      url: '0.0.0.0:50052',
-    }
-  });
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    VerificationModule,
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: 'verification',
+        protoPath: VERIFICATION_SERVICE_PROTO_PATH,
+        url: '0.0.0.0:50052',
+      },
+    },
+  );
   await app.listen();
 }
 bootstrap();

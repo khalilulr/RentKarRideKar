@@ -36,6 +36,8 @@ type UpdateMeInput = {
   driverExperienceYears?: number | string;
   ownerBusinessName?: string;
   ownerAddress?: string;
+  emergencyContactNumber?: string;
+  emergencyContactRelation?: string;
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -85,7 +87,8 @@ export class AuthService {
     private readonly redisService: RedisService,
   ) {
     // getOrThrow replaces the manual check + throw pattern
-    this.templateId = this.configService.getOrThrow<string>('MSG91_TEMPLATE_ID');
+    this.templateId =
+      this.configService.getOrThrow<string>('MSG91_TEMPLATE_ID');
   }
 
   // ====================================================================
@@ -96,7 +99,7 @@ export class AuthService {
     const accessToken = this.jwtService.generateAccessToken({
       userId: user.id,
       Roles: user.roles,
-      activePerspective: user.activePerspective || Role.PASSENGER,
+      activePerspective: (user.activePerspective || undefined) as any,
       type: 'access',
     });
 
@@ -114,7 +117,10 @@ export class AuthService {
     ipAddress: string,
     userAgent: string,
   ): Promise<void> {
-    const refreshTokenHash = await bcrypt.hash(refreshToken, BCRYPT_SALT_ROUNDS);
+    const refreshTokenHash = await bcrypt.hash(
+      refreshToken,
+      BCRYPT_SALT_ROUNDS,
+    );
 
     const session = this.sessionRepository.create({
       refreshTokenHash,
@@ -130,13 +136,19 @@ export class AuthService {
    * Scans all active sessions for this user and returns the one whose hash
    * matches the provided raw refresh token. Throws if none match.
    */
-  private async findActiveSession(user: User, refreshToken: string): Promise<Session> {
+  private async findActiveSession(
+    user: User,
+    refreshToken: string,
+  ): Promise<Session> {
     const activeSessions = await this.sessionRepository.find({
       where: { user: { id: user.id }, isRevoked: false },
     });
 
     for (const session of activeSessions) {
-      const isMatch = await bcrypt.compare(refreshToken, session.refreshTokenHash);
+      const isMatch = await bcrypt.compare(
+        refreshToken,
+        session.refreshTokenHash,
+      );
       if (isMatch) return session;
     }
 
@@ -152,19 +164,16 @@ export class AuthService {
     return user;
   }
 
-  /**
-   * Maps roles from REST/gRPC strings or legacy numeric proto enums.
-   */
-  private mapRole(role: unknown): Role {
+  private mapRole(role: unknown): Role | undefined {
     if (role === undefined || role === null) {
-      return Role.PASSENGER;
+      return undefined;
     }
     if (typeof role === 'string') {
       const normalized = role.toUpperCase();
       if (normalized in Role) {
         return normalized as Role;
       }
-      return Role.PASSENGER;
+      return undefined;
     }
     if (typeof role === 'number') {
       const mapping: Record<number, Role> = {
@@ -173,23 +182,25 @@ export class AuthService {
         2: Role.ADMIN,
         3: Role.VEHICLE_OWNER,
       };
-      return mapping[role] ?? Role.PASSENGER;
+      return mapping[role];
     }
-    return Role.PASSENGER;
+    return undefined;
   }
 
   private normalizeRoles(roles: string[] | undefined): string[] | undefined {
-  if (!roles?.length) return undefined;
-  return roles.map(r => {
-    // Handle both plain strings and JSON-stringified strings
-    try {
-      const parsed = JSON.parse(r);
-      return typeof parsed === 'string' ? parsed : String(r);
-    } catch {
-      return String(r); // already a plain string like "PASSENGER"
-    }
-  }).filter(Boolean);
-}
+    if (!roles?.length) return undefined;
+    return roles
+      .map((r) => {
+        // Handle both plain strings and JSON-stringified strings
+        try {
+          const parsed = JSON.parse(r);
+          return typeof parsed === 'string' ? parsed : String(r);
+        } catch {
+          return String(r); // already a plain string like "PASSENGER"
+        }
+      })
+      .filter(Boolean);
+  }
 
   // ====================================================================
   // PUBLIC METHODS
@@ -200,8 +211,13 @@ export class AuthService {
       await this.msg91Service.sendOtp(sendOtpDto.mobile, this.templateId);
       return { message: 'OTP sent successfully' };
     } catch (error: any) {
-      this.logger.error(`Failed to send OTP to ${sendOtpDto.mobile}`, error.stack);
-      throw new InternalServerErrorException('Failed to send OTP. Please try again.');
+      this.logger.error(
+        `Failed to send OTP to ${sendOtpDto.mobile}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Failed to send OTP. Please try again.',
+      );
     }
   }
 
@@ -256,9 +272,15 @@ export class AuthService {
     const currentSession = await this.findActiveSession(user, refreshToken);
 
     // 3. Rotate: revoke old session, issue fresh token pair
-    const { accessToken, refreshToken: newRefreshToken } = this.generateTokens(user);
+    const { accessToken, refreshToken: newRefreshToken } =
+      this.generateTokens(user);
     await this.sessionRepository.update(currentSession.id, { isRevoked: true });
-    await this.createAndSaveSession(user, newRefreshToken, ipAddress, userAgent);
+    await this.createAndSaveSession(
+      user,
+      newRefreshToken,
+      ipAddress,
+      userAgent,
+    );
 
     return { user, access_token: accessToken, refresh_token: newRefreshToken };
   }
@@ -341,26 +363,54 @@ export class AuthService {
     const user = await this.findUserOrThrow(userId);
 
     // Only assign fields that were actually sent — avoids accidental overwrites
-    const { name, profilePicture, roles, activePerspective, bankAccountNumber, bankAccountHolderName, bankName, bankIfscCode, driverLicenseNumber, driverExperienceYears, ownerBusinessName, ownerAddress } = updateMeDto;
+    const {
+      name,
+      profilePicture,
+      roles,
+      activePerspective,
+      bankAccountNumber,
+      bankAccountHolderName,
+      bankName,
+      bankIfscCode,
+      driverLicenseNumber,
+      driverExperienceYears,
+      ownerBusinessName,
+      ownerAddress,
+      emergencyContactNumber,
+      emergencyContactRelation,
+    } = updateMeDto;
     if (name !== undefined) user.name = name;
     if (profilePicture !== undefined) user.profilePicture = profilePicture;
-    if (driverLicenseNumber !== undefined) user.driverLicenseNumber = driverLicenseNumber;
-    if (driverExperienceYears !== undefined) user.driverExperienceYears = driverExperienceYears ? Number(driverExperienceYears) : undefined;
-    if (ownerBusinessName !== undefined) user.ownerBusinessName = ownerBusinessName;
+    if (driverLicenseNumber !== undefined)
+      user.driverLicenseNumber = driverLicenseNumber;
+    if (driverExperienceYears !== undefined)
+      user.driverExperienceYears = driverExperienceYears
+        ? Number(driverExperienceYears)
+        : undefined;
+    if (ownerBusinessName !== undefined)
+      user.ownerBusinessName = ownerBusinessName;
     if (ownerAddress !== undefined) user.ownerAddress = ownerAddress;
+    if (emergencyContactNumber !== undefined)
+      user.emergencyContactNumber = emergencyContactNumber;
+    if (emergencyContactRelation !== undefined)
+      user.emergencyContactRelation = emergencyContactRelation;
     console.log('[AUTH SERVICE updateMe] dto:', JSON.stringify(updateMeDto));
     const normalizedRoles = this.normalizeRoles(roles);
     console.log('[AUTH SERVICE updateMe] normalizedRoles:', normalizedRoles);
     if (normalizedRoles?.length) {
-      const mappedRoles = normalizedRoles.map((r) => this.mapRole(r));
+      const mappedRoles = normalizedRoles
+        .map((r) => this.mapRole(r))
+        .filter((r): r is Role => !!r);
       console.log('[DEBUG] mappedRoles:', mappedRoles); // look for undefined/null here
 
-      user.roles = Array.from(
-        new Set([
-          ...user.roles,
-          ...mappedRoles,
-        ]),
-      );
+      user.roles = mappedRoles;
+
+      if (
+        user.activePerspective &&
+        !user.roles.includes(user.activePerspective)
+      ) {
+        user.activePerspective = user.roles[0];
+      }
     }
 
     const isUpdatingBankDetails =
@@ -372,10 +422,14 @@ export class AuthService {
     if (isUpdatingBankDetails) {
       const hasOwnerRole = user.roles.includes(Role.VEHICLE_OWNER);
       if (!hasOwnerRole) {
-        throw new RpcException('Only users with the VEHICLE_OWNER role can set or update bank details.');
+        throw new RpcException(
+          'Only users with the VEHICLE_OWNER role can set or update bank details.',
+        );
       }
-      if (bankAccountNumber !== undefined) user.bankAccountNumber = bankAccountNumber;
-      if (bankAccountHolderName !== undefined) user.bankAccountHolderName = bankAccountHolderName;
+      if (bankAccountNumber !== undefined)
+        user.bankAccountNumber = bankAccountNumber;
+      if (bankAccountHolderName !== undefined)
+        user.bankAccountHolderName = bankAccountHolderName;
       if (bankName !== undefined) user.bankName = bankName;
       if (bankIfscCode !== undefined) user.bankIfscCode = bankIfscCode;
     }
@@ -383,9 +437,9 @@ export class AuthService {
     if (activePerspective !== undefined) {
       const mappedPerspective = this.mapRole(activePerspective);
 
-      if (!user.roles.includes(mappedPerspective)) {
+      if (!mappedPerspective || !user.roles.includes(mappedPerspective)) {
         throw new RpcException(
-          `You do not have the ${mappedPerspective} role assigned.`
+          `You do not have the ${mappedPerspective || activePerspective} role assigned.`,
         );
       }
 
@@ -397,14 +451,17 @@ export class AuthService {
     const accessToken = this.jwtService.generateAccessToken({
       userId: updatedUser.id,
       Roles: updatedUser.roles,
-      activePerspective: updatedUser.activePerspective || Role.PASSENGER,
+      activePerspective: (updatedUser.activePerspective || undefined) as any,
       type: 'access',
     });
 
     return { user: updatedUser, access_token: accessToken };
   }
 
-  async switchPerspective(request: { userId: string; perspective: string }): Promise<{ user: User; access_token: string }> {
+  async switchPerspective(request: {
+    userId: string;
+    perspective: string;
+  }): Promise<{ user: User; access_token: string }> {
     // 1. Destructure the properties from the incoming request object
     const { userId, perspective } = request;
 
@@ -418,9 +475,9 @@ export class AuthService {
     // 3. Map the perspective (could be numeric from gRPC)
     const normalizedPerspective = this.mapRole(perspective);
 
-    if (!user.roles.includes(normalizedPerspective)) {
+    if (!normalizedPerspective || !user.roles.includes(normalizedPerspective)) {
       throw new RpcException(
-        `You do not have the ${normalizedPerspective} role assigned.`
+        `You do not have the ${normalizedPerspective || perspective} role assigned.`,
       );
     }
 
@@ -431,7 +488,7 @@ export class AuthService {
     const accessToken = this.jwtService.generateAccessToken({
       userId: updatedUser.id,
       Roles: updatedUser.roles,
-      activePerspective: updatedUser.activePerspective || Role.PASSENGER,
+      activePerspective: (updatedUser.activePerspective || undefined) as any,
       type: 'access',
     });
 
@@ -463,7 +520,12 @@ export class AuthService {
     }
 
     const { accessToken, refreshToken } = this.generateTokens(user);
-    await this.createAndSaveSession(user, refreshToken, ipAddress || 'unknown', userAgent || 'unknown');
+    await this.createAndSaveSession(
+      user,
+      refreshToken,
+      ipAddress || 'unknown',
+      userAgent || 'unknown',
+    );
 
     return { user, access_token: accessToken, refresh_token: refreshToken };
   }
@@ -491,13 +553,18 @@ export class AuthService {
       name: 'Demo Admin',
       roles: [Role.ADMIN],
       activePerspective: Role.ADMIN,
-      isActive: true
+      isActive: true,
     });
 
     user = await this.userRepository.save(user);
 
     const { accessToken, refreshToken } = this.generateTokens(user);
-    await this.createAndSaveSession(user, refreshToken, ipAddress || 'unknown', userAgent || 'unknown');
+    await this.createAndSaveSession(
+      user,
+      refreshToken,
+      ipAddress || 'unknown',
+      userAgent || 'unknown',
+    );
 
     return { user, access_token: accessToken, refresh_token: refreshToken };
   }
@@ -508,16 +575,25 @@ export class AuthService {
     }
     const qb = this.userRepository.createQueryBuilder('user');
     qb.where(':role = ANY(user.roles)', { role: Role.DRIVER });
-    qb.andWhere('(user.mobile ILIKE :q OR user.name ILIKE :q)', { q: `%${query}%` });
+    qb.andWhere('(user.mobile ILIKE :q OR user.name ILIKE :q)', {
+      q: `%${query}%`,
+    });
     return qb.getMany();
   }
 
-  async inviteDriver(ownerId: string, driverId: string): Promise<TrustedDriver> {
+  async inviteDriver(
+    ownerId: string,
+    driverId: string,
+  ): Promise<TrustedDriver> {
     if (ownerId === driverId) {
-      throw new BadRequestException('You cannot invite yourself as a trusted driver.');
+      throw new BadRequestException(
+        'You cannot invite yourself as a trusted driver.',
+      );
     }
 
-    const driver = await this.userRepository.findOne({ where: { id: driverId } });
+    const driver = await this.userRepository.findOne({
+      where: { id: driverId },
+    });
     if (!driver) {
       throw new BadRequestException('Driver not found');
     }
@@ -527,15 +603,19 @@ export class AuthService {
     }
 
     const existing = await this.trustedDriverRepository.findOne({
-      where: { ownerId, driverId }
+      where: { ownerId, driverId },
     });
 
     if (existing) {
       if (existing.status === TrustStatus.ACCEPTED) {
-        throw new BadRequestException('Driver is already in your trusted drivers list.');
+        throw new BadRequestException(
+          'Driver is already in your trusted drivers list.',
+        );
       }
       if (existing.status === TrustStatus.PENDING) {
-        throw new BadRequestException('An invitation to this driver is already pending.');
+        throw new BadRequestException(
+          'An invitation to this driver is already pending.',
+        );
       }
       // If rejected, allow re-invitation by resetting to PENDING
       existing.status = TrustStatus.PENDING;
@@ -545,29 +625,36 @@ export class AuthService {
     const invitation = this.trustedDriverRepository.create({
       ownerId,
       driverId,
-      status: TrustStatus.PENDING
+      status: TrustStatus.PENDING,
     });
 
     return this.trustedDriverRepository.save(invitation);
   }
 
-  async listInvitations(userId: string, type: 'sent' | 'received'): Promise<any[]> {
+  async listInvitations(
+    userId: string,
+    type: 'sent' | 'received',
+  ): Promise<any[]> {
     const list = await this.trustedDriverRepository.find({
       where: type === 'sent' ? { ownerId: userId } : { driverId: userId },
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
 
     if (list.length === 0) return [];
 
-    const targetIds = list.map(item => type === 'sent' ? item.driverId : item.ownerId);
+    const targetIds = list.map((item) =>
+      type === 'sent' ? item.driverId : item.ownerId,
+    );
     const users = await this.userRepository.find({
-      where: { id: In(targetIds) }
+      where: { id: In(targetIds) },
     });
 
-    const userMap = new Map(users.map(u => [u.id, u]));
+    const userMap = new Map(users.map((u) => [u.id, u]));
 
-    return list.map(item => {
-      const targetUser = userMap.get(type === 'sent' ? item.driverId : item.ownerId);
+    return list.map((item) => {
+      const targetUser = userMap.get(
+        type === 'sent' ? item.driverId : item.ownerId,
+      );
       return {
         id: item.id,
         ownerId: item.ownerId,
@@ -575,24 +662,32 @@ export class AuthService {
         status: item.status,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
-        targetUser: targetUser ? {
-          id: targetUser.id,
-          name: targetUser.name,
-          mobile: targetUser.mobile,
-          profilePicture: targetUser.profilePicture,
-          rating: targetUser.rating
-        } : null
+        targetUser: targetUser
+          ? {
+              id: targetUser.id,
+              name: targetUser.name,
+              mobile: targetUser.mobile,
+              profilePicture: targetUser.profilePicture,
+              rating: targetUser.rating,
+            }
+          : null,
       };
     });
   }
 
-  async respondToInvitation(driverId: string, invitationId: string, status: TrustStatus): Promise<TrustedDriver> {
+  async respondToInvitation(
+    driverId: string,
+    invitationId: string,
+    status: TrustStatus,
+  ): Promise<TrustedDriver> {
     if (status !== TrustStatus.ACCEPTED && status !== TrustStatus.REJECTED) {
-      throw new BadRequestException('Invalid response status. Must be ACCEPTED or REJECTED.');
+      throw new BadRequestException(
+        'Invalid response status. Must be ACCEPTED or REJECTED.',
+      );
     }
 
     const invitation = await this.trustedDriverRepository.findOne({
-      where: { id: invitationId }
+      where: { id: invitationId },
     });
 
     if (!invitation) {
@@ -604,16 +699,21 @@ export class AuthService {
     }
 
     if (invitation.status !== TrustStatus.PENDING) {
-      throw new BadRequestException('This invitation has already been processed.');
+      throw new BadRequestException(
+        'This invitation has already been processed.',
+      );
     }
 
     invitation.status = status;
     return this.trustedDriverRepository.save(invitation);
   }
 
-  async checkTrustedDriver(ownerId: string, driverId: string): Promise<boolean> {
+  async checkTrustedDriver(
+    ownerId: string,
+    driverId: string,
+  ): Promise<boolean> {
     const trust = await this.trustedDriverRepository.findOne({
-      where: { ownerId, driverId, status: TrustStatus.ACCEPTED }
+      where: { ownerId, driverId, status: TrustStatus.ACCEPTED },
     });
     return !!trust;
   }
@@ -625,18 +725,20 @@ export class AuthService {
     return qb.getMany();
   }
 
-  async getMyTrustedDrivers(ownerId: string): Promise<{ trustedDrivers: any[]; total: number }> {
+  async getMyTrustedDrivers(
+    ownerId: string,
+  ): Promise<{ trustedDrivers: any[]; total: number }> {
     const list = await this.trustedDriverRepository.find({
       where: { ownerId, status: TrustStatus.ACCEPTED },
       order: { createdAt: 'DESC' },
     });
     if (list.length === 0) return { trustedDrivers: [], total: 0 };
-    const driverIds = list.map(item => item.driverId);
+    const driverIds = list.map((item) => item.driverId);
     const drivers = await this.userRepository.find({
       where: { id: In(driverIds) },
     });
-    const driverMap = new Map(drivers.map(d => [d.id, d]));
-    const result = list.map(item => {
+    const driverMap = new Map(drivers.map((d) => [d.id, d]));
+    const result = list.map((item) => {
       const d = driverMap.get(item.driverId);
       return {
         id: item.driverId,
@@ -653,12 +755,22 @@ export class AuthService {
     return { trustedDrivers: result, total: result.length };
   }
 
-  async removeTrustedDriver(ownerId: string, driverId: string): Promise<{ message: string }> {
+  async removeTrustedDriver(
+    ownerId: string,
+    driverId: string,
+  ): Promise<{ message: string }> {
     await this.trustedDriverRepository.delete({ ownerId, driverId });
     return { message: 'Driver removed from your trusted pool.' };
   }
 
-  async saveAddress(userId: string, label: string, type: string, addressText: string, lat: number, lng: number): Promise<Address> {
+  async saveAddress(
+    userId: string,
+    label: string,
+    type: string,
+    addressText: string,
+    lat: number,
+    lng: number,
+  ): Promise<Address> {
     const addr = this.addressRepository.create({
       userId,
       label,
@@ -674,8 +786,17 @@ export class AuthService {
     return this.addressRepository.find({ where: { userId } });
   }
 
-  async updateAddress(userId: string, addressId: string, label?: string, addressText?: string, lat?: number, lng?: number): Promise<Address> {
-    const addr = await this.addressRepository.findOne({ where: { id: addressId, userId } });
+  async updateAddress(
+    userId: string,
+    addressId: string,
+    label?: string,
+    addressText?: string,
+    lat?: number,
+    lng?: number,
+  ): Promise<Address> {
+    const addr = await this.addressRepository.findOne({
+      where: { id: addressId, userId },
+    });
     if (!addr) throw new BadRequestException('Address not found');
     if (label !== undefined) addr.label = label;
     if (addressText !== undefined) addr.address = addressText;
@@ -684,13 +805,22 @@ export class AuthService {
     return this.addressRepository.save(addr);
   }
 
-  async deleteAddress(userId: string, addressId: string): Promise<{ message: string }> {
+  async deleteAddress(
+    userId: string,
+    addressId: string,
+  ): Promise<{ message: string }> {
     await this.addressRepository.delete({ id: addressId, userId });
     return { message: 'Address deleted.' };
   }
 
-  async registerDeviceToken(userId: string, token: string, platform: string): Promise<{ message: string }> {
-    let existing = await this.deviceTokenRepository.findOne({ where: { userId, token } });
+  async registerDeviceToken(
+    userId: string,
+    token: string,
+    platform: string,
+  ): Promise<{ message: string }> {
+    let existing = await this.deviceTokenRepository.findOne({
+      where: { userId, token },
+    });
     if (!existing) {
       existing = this.deviceTokenRepository.create({
         userId,
@@ -702,7 +832,10 @@ export class AuthService {
     return { message: 'Device token registered successfully.' };
   }
 
-  async removeDeviceToken(userId: string, token: string): Promise<{ message: string }> {
+  async removeDeviceToken(
+    userId: string,
+    token: string,
+  ): Promise<{ message: string }> {
     await this.deviceTokenRepository.delete({ userId, token });
     return { message: 'Device token removed.' };
   }
@@ -710,7 +843,9 @@ export class AuthService {
   async getReferrals(userId: string): Promise<any> {
     const user = await this.findUserOrThrow(userId);
     if (!user.referralCode) {
-      user.referralCode = (user.name || 'USER').slice(0, 5).toUpperCase() + Math.floor(100 + Math.random() * 900);
+      user.referralCode =
+        (user.name || 'USER').slice(0, 5).toUpperCase() +
+        Math.floor(100 + Math.random() * 900);
       await this.userRepository.save(user);
     }
     return {
@@ -724,50 +859,76 @@ export class AuthService {
       }),
       referralHistoryJson: JSON.stringify([
         {
-          referredUser: "Sunita D.",
-          joinedAt: "2026-05-20",
-          status: "COMPLETED",
+          referredUser: 'Sunita D.',
+          joinedAt: '2026-05-20',
+          status: 'COMPLETED',
           creditsEarned: 500,
-        }
+        },
       ]),
     };
   }
 
   async applyReferral(userId: string, referralCode: string): Promise<any> {
     const user = await this.findUserOrThrow(userId);
-    const referrer = await this.userRepository.findOne({ where: { referralCode } });
+    const referrer = await this.userRepository.findOne({
+      where: { referralCode },
+    });
     if (!referrer) throw new BadRequestException('Invalid referral code');
-    if (referrer.id === userId) throw new BadRequestException('You cannot apply your own referral code');
-    
+    if (referrer.id === userId)
+      throw new BadRequestException('You cannot apply your own referral code');
+
     user.walletBalance += 500;
     await this.userRepository.save(user);
 
     return {
-      message: "Referral code applied. ₹500 credit added to your wallet after your first trip.",
+      message:
+        'Referral code applied. ₹500 credit added to your wallet after your first trip.',
       referralCode,
       creditAmount: 500,
-      creditAppliedOn: "FIRST_TRIP_COMPLETION",
+      creditAppliedOn: 'FIRST_TRIP_COMPLETION',
     };
+  }
+
+  async validateReferralCode(
+    userId: string,
+    referralCode: string,
+  ): Promise<any> {
+    const user = await this.findUserOrThrow(userId);
+    const referrer = await this.userRepository.findOne({
+      where: { referralCode },
+    });
+    if (!referrer) {
+      return { isValid: false, referrerName: '' };
+    }
+    if (referrer.id === userId) {
+      return { isValid: false, referrerName: '' };
+    }
+    return { isValid: true, referrerName: referrer.name || '' };
   }
 
   async getWallet(userId: string): Promise<any> {
     const user = await this.findUserOrThrow(userId);
     return {
       walletBalance: user.walletBalance,
-      currency: "INR",
+      currency: 'INR',
       transactionsJson: JSON.stringify([
         {
-          id: "txn-uuid-001",
-          type: "CREDIT",
+          id: 'txn-uuid-001',
+          type: 'CREDIT',
           amount: 500,
-          description: "Referral bonus — Sunita D. joined",
-          createdAt: "2026-06-01T10:00:00.000Z",
-        }
+          description: 'Referral bonus — Sunita D. joined',
+          createdAt: '2026-06-01T10:00:00.000Z',
+        },
       ]),
     };
   }
 
-  async adminGetUsers(role?: string, kycStatus?: string, page = 1, limit = 20): Promise<{ users: User[]; total: number }> {
+  async adminGetUsers(
+    role?: string,
+    kycStatus?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ users: User[]; total: number }> {
     const qb = this.userRepository.createQueryBuilder('user');
     if (role) {
       qb.andWhere(':role = ANY(user.roles)', { role: role.toUpperCase() });
@@ -777,7 +938,11 @@ export class AuthService {
     return { users, total };
   }
 
-  async adminUpdateUserStatus(userId: string, action: string, reason: string): Promise<any> {
+  async adminUpdateUserStatus(
+    userId: string,
+    action: string,
+    reason: string,
+  ): Promise<any> {
     const user = await this.findUserOrThrow(userId);
     user.isActive = action === 'REACTIVATE';
     await this.userRepository.save(user);

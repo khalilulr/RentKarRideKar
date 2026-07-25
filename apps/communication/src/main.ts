@@ -5,7 +5,14 @@ import { COMMUNICATION_SERVICE_PROTO_PATH } from '../../../libs/proto/communicat
 
 async function bootstrap() {
   const app = await NestFactory.create(CommunicationModule);
-  
+
+  app.use((req: any, res: any, next: any) => {
+    if (req.url && req.url.includes(',')) {
+      req.url = req.url.replace(/,/g, '/');
+    }
+    next();
+  });
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {

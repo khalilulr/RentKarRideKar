@@ -28,7 +28,8 @@ export class OfferHistoryRepository {
 
   async hasUsedOffer(userId: string, offerCode: string): Promise<boolean> {
     // case insensitive search
-    const count = await this.repo.createQueryBuilder('history')
+    const count = await this.repo
+      .createQueryBuilder('history')
       .where('history.user_id = :userId', { userId })
       .andWhere('LOWER(history.offer_code) = LOWER(:offerCode)', { offerCode })
       .getCount();
@@ -36,12 +37,13 @@ export class OfferHistoryRepository {
   }
 
   async getUsageCounts(): Promise<Record<string, number>> {
-    const raw = await this.repo.createQueryBuilder('history')
+    const raw = await this.repo
+      .createQueryBuilder('history')
       .select('history.offer_code', 'offerCode')
       .addSelect('COUNT(history.id)', 'count')
       .groupBy('history.offer_code')
       .getRawMany();
-    
+
     const counts: Record<string, number> = {};
     for (const row of raw) {
       if (row.offerCode) {
@@ -52,7 +54,8 @@ export class OfferHistoryRepository {
   }
 
   async countByOfferCode(offerCode: string): Promise<number> {
-    const count = await this.repo.createQueryBuilder('history')
+    const count = await this.repo
+      .createQueryBuilder('history')
       .where('LOWER(history.offer_code) = LOWER(:offerCode)', { offerCode })
       .getCount();
     return count;

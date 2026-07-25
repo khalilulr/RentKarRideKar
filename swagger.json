@@ -40,12 +40,24 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "id": { "type": "string" },
-                      "label": { "type": "string" },
-                      "type": { "type": "string" },
-                      "address": { "type": "string" },
-                      "lat": { "type": "number" },
-                      "lng": { "type": "number" }
+                      "id": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "address": {
+                        "type": "string"
+                      },
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lng": {
+                        "type": "number"
+                      }
                     }
                   }
                 }
@@ -53,7 +65,9 @@
             }
           }
         },
-        "tags": ["User Locations"]
+        "tags": [
+          "Other Services"
+        ]
       },
       "post": {
         "summary": "Add Saved Location",
@@ -65,13 +79,28 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "label": { "type": "string" },
-                  "type": { "type": "string" },
-                  "address": { "type": "string" },
-                  "lat": { "type": "number" },
-                  "lng": { "type": "number" }
+                  "label": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
                 },
-                "required": ["label", "address", "lat", "lng"]
+                "required": [
+                  "label",
+                  "address",
+                  "lat",
+                  "lng"
+                ]
               }
             }
           }
@@ -81,7 +110,9 @@
             "description": "Saved successfully"
           }
         },
-        "tags": ["User Locations"]
+        "tags": [
+          "Other Services"
+        ]
       }
     },
     "/user/locations/{id}": {
@@ -92,7 +123,9 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -102,10 +135,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "label": { "type": "string" },
-                  "address": { "type": "string" },
-                  "lat": { "type": "number" },
-                  "lng": { "type": "number" }
+                  "label": {
+                    "type": "string"
+                  },
+                  "address": {
+                    "type": "string"
+                  },
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
                 }
               }
             }
@@ -116,7 +157,9 @@
             "description": "Updated successfully"
           }
         },
-        "tags": ["User Locations"]
+        "tags": [
+          "Other Services"
+        ]
       },
       "delete": {
         "summary": "Delete Saved Location",
@@ -125,7 +168,9 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -133,7 +178,9 @@
             "description": "Deleted successfully"
           }
         },
-        "tags": ["User Locations"]
+        "tags": [
+          "Other Services"
+        ]
       }
     },
     "/user/referral": {
@@ -144,7 +191,9 @@
             "description": "Referral details"
           }
         },
-        "tags": ["Referrals"]
+        "tags": [
+          "Wallet & Referral Service"
+        ]
       }
     },
     "/refer-price": {
@@ -155,7 +204,9 @@
             "description": "Current refer amount config"
           }
         },
-        "tags": ["Referrals"]
+        "tags": [
+          "Other Services"
+        ]
       },
       "post": {
         "summary": "Update Referral Price (Admin)",
@@ -166,9 +217,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "amount": { "type": "number", "example": 500 }
+                  "amount": {
+                    "type": "number",
+                    "example": 500
+                  }
                 },
-                "required": ["amount"]
+                "required": [
+                  "amount"
+                ]
               }
             }
           }
@@ -178,7 +234,9 @@
             "description": "Success"
           }
         },
-        "tags": ["Referrals"]
+        "tags": [
+          "Other Services"
+        ]
       }
     },
     "/rides/search": {
@@ -192,16 +250,36 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "fromLat": { "type": "number" },
-                  "fromLng": { "type": "number" },
-                  "toLat": { "type": "number" },
-                  "toLng": { "type": "number" },
-                  "date": { "type": "string" },
-                  "time": { "type": "string" },
-                  "vehicleType": { "type": "string" },
-                  "seats": { "type": "integer" },
-                  "color": { "type": "string" },
-                  "ac": { "type": "boolean" }
+                  "fromLat": {
+                    "type": "number"
+                  },
+                  "fromLng": {
+                    "type": "number"
+                  },
+                  "toLat": {
+                    "type": "number"
+                  },
+                  "toLng": {
+                    "type": "number"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": "string"
+                  },
+                  "vehicleType": {
+                    "type": "string"
+                  },
+                  "seats": {
+                    "type": "integer"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "ac": {
+                    "type": "boolean"
+                  }
                 }
               }
             }
@@ -212,7 +290,9 @@
             "description": "Search results list"
           }
         },
-        "tags": ["Vehicle Search & Catalog"]
+        "tags": [
+          "Other Services"
+        ]
       }
     },
     "/offers": {
@@ -223,7 +303,9 @@
             "description": "Active promotional offers list"
           }
         },
-        "tags": ["Offers & Discounts"]
+        "tags": [
+          "Other Services"
+        ]
       }
     },
     "/auth/send-otp": {
@@ -515,6 +597,46 @@
         ]
       }
     },
+    "/auth/me/roles": {
+      "put": {
+        "summary": "Update User Roles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "PASSENGER",
+                        "DRIVER",
+                        "VEHICLE_OWNER"
+                      ]
+                    },
+                    "example": ["DRIVER", "VEHICLE_OWNER"]
+                  }
+                },
+                "required": [
+                  "roles"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roles updated successfully"
+          }
+        },
+        "tags": [
+          "Auth & Profile Service"
+        ]
+      }
+    },
     "/auth/switch-perspective": {
       "put": {
         "summary": "Switch Role Perspective",
@@ -768,6 +890,76 @@
         },
         "tags": [
           "Trusted Driver Service"
+        ]
+      }
+    },
+    "/user/kyc/upload": {
+      "post": {
+        "summary": "Upload User KYC Document (One-time)",
+        "parameters": [
+          {
+            "name": "documentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "AADHAAR_FRONT",
+                "AADHAAR_BACK",
+                "PAN_CARD",
+                "SELFIE"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded successfully"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/user/kyc/status": {
+      "get": {
+        "summary": "Get User KYC Status",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
+    "/user/kyc/submit": {
+      "patch": {
+        "summary": "Submit User KYC",
+        "responses": {
+          "200": {
+            "description": "Submitted successfully"
+          }
+        },
+        "tags": [
+          "Other Services"
         ]
       }
     },
@@ -1147,39 +1339,59 @@
                     "kyc": {
                       "type": "object",
                       "properties": {
-                        "status": { "type": "string" },
-                        "verified": { "type": "boolean" }
+                        "status": {
+                          "type": "string"
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        }
                       }
                     },
                     "vehicle": {
                       "type": "object",
                       "properties": {
-                        "registered": { "type": "boolean" },
-                        "count": { "type": "integer" }
+                        "registered": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "type": "integer"
+                        }
                       }
                     },
                     "docs": {
                       "type": "object",
                       "properties": {
-                        "status": { "type": "string" },
-                        "verified": { "type": "boolean" }
+                        "status": {
+                          "type": "string"
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        }
                       }
                     },
                     "bank": {
                       "type": "object",
                       "properties": {
-                        "added": { "type": "boolean" },
+                        "added": {
+                          "type": "boolean"
+                        },
                         "details": {
                           "type": "object",
                           "nullable": true,
                           "properties": {
-                            "bankName": { "type": "string" },
-                            "accountLast4": { "type": "string" }
+                            "bankName": {
+                              "type": "string"
+                            },
+                            "accountLast4": {
+                              "type": "string"
+                            }
                           }
                         }
                       }
                     },
-                    "ready": { "type": "boolean" }
+                    "ready": {
+                      "type": "boolean"
+                    }
                   }
                 }
               }
@@ -1187,7 +1399,7 @@
           }
         },
         "tags": [
-          "KYC & Verification Service"
+          "Other Services"
         ]
       }
     },
@@ -1653,6 +1865,114 @@
         ]
       }
     },
+    "/booking/calculate-price": {
+      "post": {
+        "summary": "Calculate Price/Fare Estimate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vehicleId": {
+                    "type": "string",
+                    "description": "Optional: Specific vehicle ID to calculate price for"
+                  },
+                  "seatingCapacity": {
+                    "type": "string",
+                    "description": "Optional: Override/Direct seating capacity (e.g. 5, 7, 10, 15)"
+                  },
+                  "tripType": {
+                    "type": "string",
+                    "description": "Optional: Trip Type (e.g. OUTSTATION, IN_CITY, ROUND_TRIP)"
+                  },
+                  "totalDays": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "pickupLat": {
+                    "type": "number"
+                  },
+                  "pickupLng": {
+                    "type": "number"
+                  },
+                  "dropLat": {
+                    "type": "number"
+                  },
+                  "dropLng": {
+                    "type": "number"
+                  },
+                  "pickupDatetime": {
+                    "type": "string"
+                  },
+                  "returnDatetime": {
+                    "type": "string"
+                  },
+                  "discount": {
+                    "type": "number",
+                    "default": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "basePrice": {
+                      "type": "number"
+                    },
+                    "gst": {
+                      "type": "number"
+                    },
+                    "platformFee": {
+                      "type": "number"
+                    },
+                    "discount": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "advancePercentage": {
+                      "type": "number"
+                    },
+                    "advanceAmount": {
+                      "type": "number"
+                    },
+                    "balanceAmount": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "seater": {
+                      "type": "integer"
+                    },
+                    "tripType": {
+                      "type": "string"
+                    },
+                    "distanceKm": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Booking Service"
+        ]
+      }
+    },
     "/cart/items": {
       "post": {
         "summary": "Add Vehicle to Cart",
@@ -1843,9 +2163,87 @@
         ]
       }
     },
+    "/my-trips": {
+      "get": {
+        "summary": "Get Unified Trips List",
+        "description": "Retrieves the list of trips for the authenticated user, depending on their role (PASSENGER, DRIVER, or VEHICLE_OWNER). Supports filtering by status and pagination. Protected by JwtAuthGuard.",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "description": "User role to query (PASSENGER, DRIVER, or VEHICLE_OWNER). Defaults to PASSENGER",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PASSENGER",
+                "VEHICLE_OWNER",
+                "DRIVER"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter trips by status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
     "/orders/{orderId}": {
       "get": {
         "summary": "Get Order Details",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/payment-status": {
+      "get": {
+        "summary": "Check Order Payment Status",
         "parameters": [
           {
             "name": "orderId",
@@ -1945,6 +2343,38 @@
     "/orders/{orderId}/vehicles/{vehicleId}/remove-driver": {
       "post": {
         "summary": "Remove Assigned Driver",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/vehicles/{vehicleId}/driver-trip": {
+      "get": {
+        "summary": "Get Driver Trip Details",
+        "description": "Retrieves the single trip details for an assigned driver. Protected by JwtAuthGuard. The handler uses the user token identifier as the driverId.",
         "parameters": [
           {
             "name": "orderId",
@@ -2236,6 +2666,54 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
+    "/orders/{orderId}/complete-payment": {
+      "post": {
+        "summary": "Complete Final Payment (Remaining Balance)",
+        "description": "Processes/completes the final remaining payment balance for the booking after the trip is finished.",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paidAmount": {
+                    "type": "number",
+                    "description": "The final remaining amount to pay"
+                  },
+                  "transactionId": {
+                    "type": "string",
+                    "description": "The transaction ID from the payment gateway"
+                  }
+                },
+                "required": [
+                  "paidAmount",
+                  "transactionId"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success"
@@ -2745,6 +3223,47 @@
         ]
       }
     },
+    "/driver/my-trips": {
+      "get": {
+        "summary": "Get Driver My Trips",
+        "description": "Retrieves the list of trips assigned to the driver. Supports filters like status (PENDING, UPCOMING/FUTURE, COMPLETED). Protected by JwtAuthGuard.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter trips by status: PENDING, UPCOMING/FUTURE, or COMPLETED",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Order Service"
+        ]
+      }
+    },
     "/orders/driver/earnings": {
       "get": {
         "summary": "Get Driver Earnings Trip-wise (NEW 4.4)",
@@ -3126,6 +3645,49 @@
         ]
       }
     },
+    "/admin/platform-fee": {
+      "post": {
+        "summary": "Set Platform Fee Percent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "percent": {
+                    "type": "number",
+                    "example": 0.05
+                  }
+                },
+                "required": [
+                  "percent"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      },
+      "get": {
+        "summary": "Get Platform Fee Percent",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Admin Service"
+        ]
+      }
+    },
     "/admin/offers": {
       "post": {
         "summary": "Create Promo Offer",
@@ -3224,6 +3786,52 @@
         ]
       }
     },
+    "/offer/apply-referral": {
+      "post": {
+        "summary": "Apply Referral Code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "referralCode": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "discountAmount": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Other Services"
+        ]
+      }
+    },
     "/offers/validate-code": {
       "post": {
         "summary": "Validate Promo Code",
@@ -3298,34 +3906,42 @@
     },
     "/api/reviews": {
       "post": {
-        "summary": "Submit Review for Booking",
+        "summary": "Submit a review",
+        "description": "Allows a passenger to review a vehicle after booking completion. Reviews are submitted and revealed immediately.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "bookingId",
+                  "revieweeId",
+                  "overallRating"
+                ],
                 "properties": {
                   "bookingId": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "uuid"
                   },
                   "revieweeId": {
-                    "type": "string"
-                  },
-                  "reviewerRole": {
-                    "type": "string"
-                  },
-                  "targetType": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The vehicle ID to review"
                   },
                   "overallRating": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
                   },
                   "reviewText": {
-                    "type": "string"
-                  },
-                  "isLiked": {
-                    "type": "boolean"
+                    "type": "string",
+                    "maxLength": 1000
                   }
                 }
               }
@@ -3334,47 +3950,110 @@
         },
         "responses": {
           "201": {
-            "description": "Success"
+            "description": "Review submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or review period expired"
+          },
+          "403": {
+            "description": "Requester is not the passenger for this booking"
+          },
+          "404": {
+            "description": "Booking not found"
+          },
+          "409": {
+            "description": "Duplicate review submitted"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "tags": [
-          "Other Services"
+          "Rating & Review Service"
         ]
       }
     },
     "/api/reviews/{reviewId}/like": {
       "post": {
         "summary": "Like a Review",
+        "description": "Allows a user to like a review.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "reviewId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Review liked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Review not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "tags": [
-          "Other Services"
+          "Rating & Review Service"
         ]
       }
     },
     "/api/reviews/{reviewId}/respond": {
       "post": {
         "summary": "Respond to Review",
+        "description": "Respond to a review.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "reviewId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
@@ -3384,9 +4063,14 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "responseText"
+                ],
                 "properties": {
                   "responseText": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
                   }
                 }
               }
@@ -3395,40 +4079,373 @@
         },
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Response submitted successfully"
+          },
+          "400": {
+            "description": "Review is not revealed yet"
+          },
+          "403": {
+            "description": "Requester is not the reviewee"
+          },
+          "404": {
+            "description": "Review not found"
+          },
+          "409": {
+            "description": "Response already exists"
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "tags": [
-          "Other Services"
+          "Rating & Review Service"
         ]
       }
     },
-    "/api/users/{userId}/reputation": {
+    "/api/vehicles/{vehicleId}/rating": {
       "get": {
-        "summary": "Get User Reputation & Ratings",
+        "summary": "Get vehicle rating breakdown and trend",
+        "description": "Retrieves the overall rating score and trends for a vehicle.",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully fetched vehicle rating details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "overallRating": {
+                      "type": "number"
+                    },
+                    "trend": {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down",
+                        "stable"
+                      ]
+                    },
+                    "totalReviews": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Rating & Review Service"
+        ]
+      }
+    },
+    "/api/vehicles/{vehicleId}/reviews": {
+      "get": {
+        "summary": "Fetch reviews for a vehicle",
+        "description": "Retrieves a paginated list of reviews submitted for a given vehicle.",
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date",
+                "rating"
+              ],
+              "default": "date"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated reviews list retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Rating & Review Service"
+        ]
+      }
+    },
+    "/api/bookings/{bookingId}/cancel": {
+      "post": {
+        "summary": "Cancel a booking",
+        "description": "Cancels a booking and computes potential late penalties based on cancellation rules.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "cancelledByRole"
+                ],
+                "properties": {
+                  "cancelledByRole": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "passenger"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isLate": {
+                      "type": "boolean"
+                    },
+                    "penaltyApplied": {
+                      "type": "boolean"
+                    },
+                    "penaltyAmount": {
+                      "type": "number"
+                    },
+                    "cancellationDeadline": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Booking is not in a cancellable state"
+          },
+          "403": {
+            "description": "Forbidden cancellation attempt"
+          },
+          "404": {
+            "description": "Booking not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Rating & Review Service"
+        ]
+      }
+    },
+    "/api/users/{userId}/cancellation-stats": {
+      "get": {
+        "summary": "Fetch cancellation stats and reliability badge for a user",
+        "description": "Returns a user's total cancellations, late rate, and reliability metrics.",
         "parameters": [
           {
             "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Successfully fetched cancellation stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalCancellations": {
+                      "type": "integer"
+                    },
+                    "lateCancellations": {
+                      "type": "integer"
+                    },
+                    "lateRate": {
+                      "type": "number"
+                    },
+                    "reliabilityScore": {
+                      "type": "number"
+                    },
+                    "badgeLevel": {
+                      "type": "string",
+                      "enum": [
+                        "Excellent",
+                        "VeryGood",
+                        "Fair",
+                        "Concerning",
+                        "Poor"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
           }
         },
         "tags": [
-          "Other Services"
+          "Rating & Review Service"
+        ]
+      }
+    },
+    "/api/bookings/{bookingId}/cancellation-deadline": {
+      "get": {
+        "summary": "Calculate the cancellation deadline for a booking",
+        "description": "Computes the penalty deadline, hours remaining, and if the current time is inside the cancellation window.",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancellation deadline computed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cancellationDeadline": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "hoursRemaining": {
+                      "type": "number"
+                    },
+                    "isInsideWindow": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Booking not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Rating & Review Service"
         ]
       }
     },
     "/communication/chat/rooms": {
       "get": {
         "summary": "Get Active Chat Rooms",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "Communication Service"
+        ]
+      }
+    },
+    "/communication/chat,rooms": {
+      "get": {
+        "summary": "Get Active Chat Rooms (Comma Alias)",
+        "description": "Alternative comma-based endpoint for listing active chat rooms.",
         "responses": {
           "200": {
             "description": "Success"
@@ -3567,6 +4584,248 @@
         },
         "tags": [
           "Communication Service"
+        ]
+      }
+    },
+    "/trips/{id}/route-to-pickup": {
+      "get": {
+        "summary": "Navigate to Pickup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "polyline": {
+                      "type": "string"
+                    },
+                    "etaMinutes": {
+                      "type": "number"
+                    },
+                    "distanceKm": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trips Service"
+        ]
+      }
+    },
+    "/trips/{id}/start": {
+      "post": {
+        "summary": "Start Trip",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "polyline": {
+                      "type": "string"
+                    },
+                    "etaMinutes": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trips Service"
+        ]
+      }
+    },
+    "/trips/{id}/location": {
+      "post": {
+        "summary": "Post Driver Location Update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trips Service"
+        ]
+      }
+    },
+    "/geocode/reverse": {
+      "get": {
+        "summary": "Reverse Geocode Coordinates",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "formatted_address": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trips Service"
+        ]
+      }
+    },
+    "/places/{placeId}": {
+      "get": {
+        "summary": "Get Place Details",
+        "parameters": [
+          {
+            "name": "placeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "formatted_address": {
+                      "type": "string"
+                    },
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Trips Service"
         ]
       }
     }

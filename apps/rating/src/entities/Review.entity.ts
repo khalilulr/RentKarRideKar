@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Unique,
+} from 'typeorm';
 
 @Entity('reviews')
 @Unique(['bookingId', 'reviewerRole', 'targetType'])
@@ -42,7 +48,11 @@ export class Review {
   @Column({ type: 'text', name: 'response_text', nullable: true })
   responseText?: string;
 
-  @Column({ type: 'timestamptz', name: 'response_submitted_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'response_submitted_at',
+    nullable: true,
+  })
   responseSubmittedAt?: Date;
 
   @Column({ type: 'timestamptz', name: 'expires_at' })

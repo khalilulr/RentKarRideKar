@@ -16,11 +16,14 @@ export class RevealReviewsJobService implements OnApplicationBootstrap {
     );
 
     // Schedule task to run every 15 minutes (15 * 60 * 1000 ms)
-    setInterval(() => {
-      this.runRevealJob().catch((err) =>
-        console.error('[Reveal Job Cron Run Error]:', err),
-      );
-    }, 15 * 60 * 1000);
+    setInterval(
+      () => {
+        this.runRevealJob().catch((err) =>
+          console.error('[Reveal Job Cron Run Error]:', err),
+        );
+      },
+      15 * 60 * 1000,
+    );
   }
 
   async runRevealJob(): Promise<void> {

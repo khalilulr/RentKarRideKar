@@ -83,37 +83,57 @@ export class VehicleEntity {
     enum: VehicleStatus,
     default: VehicleStatus.DRAFT,
   })
-  status: VehicleStatus;              // controlled by admin
+  status: VehicleStatus; // controlled by admin
 
   @Column({ default: false, name: 'is_available' })
-  isAvailable: boolean;               // ← controlled by owner (online/offline toggle)
+  isAvailable: boolean; // ← controlled by owner (online/offline toggle)
 
   // ─── Plate & Permit Details (NEW) ─────────────────────────
 
   @Column({ default: 'WHITE', name: 'plate_type' })
-  plateType: string;                  // 'WHITE' | 'YELLOW'
+  plateType: string; // 'WHITE' | 'YELLOW'
 
   @Column({ nullable: true, name: 'commercial_permit_number' })
   commercialPermitNumber: string;
 
   @Column({ nullable: true, name: 'permit_type' })
-  permitType: string;                 // e.g. CONTRACT_CARRIAGE
+  permitType: string; // e.g. CONTRACT_CARRIAGE
 
   @Column({ type: 'date', nullable: true, name: 'permit_expiry_date' })
   permitExpiryDate: Date;
 
   // ─── Pricing Details (NEW) ─────────────────────────────────
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: true, name: 'per_km_outstation' })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'per_km_outstation',
+  })
   perKmOutstation: number;
 
-  @Column('decimal', { precision: 10, scale: 2, nullable: true, name: 'per_hour_local' })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    name: 'per_hour_local',
+  })
   perHourLocal: number;
 
-  @Column({ type: 'int', nullable: true, name: 'minimum_booking_hours', default: 4 })
+  @Column({
+    type: 'int',
+    nullable: true,
+    name: 'minimum_booking_hours',
+    default: 4,
+  })
   minimumBookingHours: number;
 
-  @Column({ type: 'int', nullable: true, name: 'night_charge_percentage', default: 20 })
+  @Column({
+    type: 'int',
+    nullable: true,
+    name: 'night_charge_percentage',
+    default: 20,
+  })
   nightChargePercentage: number;
 
   @Column({ type: 'simple-json', nullable: true, name: 'event_package' })
@@ -128,8 +148,7 @@ export class VehicleEntity {
   // ─── Relations ─────────────────────────────────────────────
 
   @OneToMany(() => VehicleBlockEntity, (block) => block.vehicle)
-  blocks: VehicleBlockEntity[];       // ← date-specific blocks
-
+  blocks: VehicleBlockEntity[]; // ← date-specific blocks
 
   // ─── Drivers ───────────────────────────────────
   // On VehicleEntity — two separate columns

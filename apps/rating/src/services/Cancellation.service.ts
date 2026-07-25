@@ -13,12 +13,17 @@ export class CancellationService {
     private readonly bookingIntegration: BookingIntegrationService,
   ) {}
 
-  calculateDeadline(createdAt: Date, tripStartDate: Date): { deadlineDays: number; cancellationDeadline: Date } {
+  calculateDeadline(
+    createdAt: Date,
+    tripStartDate: Date,
+  ): { deadlineDays: number; cancellationDeadline: Date } {
     const diffTime = tripStartDate.getTime() - createdAt.getTime();
     const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     const deadlineDays = Math.min(7, Math.floor(diffDays / 2));
 
-    const cancellationDeadline = new Date(tripStartDate.getTime() - deadlineDays * 24 * 60 * 60 * 1000);
+    const cancellationDeadline = new Date(
+      tripStartDate.getTime() - deadlineDays * 24 * 60 * 60 * 1000,
+    );
     cancellationDeadline.setUTCHours(0, 0, 0, 0); // midnight UTC
 
     return { deadlineDays, cancellationDeadline };
@@ -39,24 +44,39 @@ export class CancellationService {
 
     const vehicles = await this.bookingIntegration.getOrderVehicles(bookingId);
     const isPassenger = booking.passengerId === userId;
-    const isOwner = vehicles.some(v => v.owner_id === userId);
+    const isOwner = vehicles.some((v) => v.owner_id === userId);
 
     if (cancelledByRole === 'passenger' && !isPassenger) {
-      throw new AppError(403, 'FORBIDDEN_USER', 'You do not have permission to cancel as passenger');
+      throw new AppError(
+        403,
+        'FORBIDDEN_USER',
+        'You do not have permission to cancel as passenger',
+      );
     }
     if (cancelledByRole === 'owner' && !isOwner) {
-      throw new AppError(403, 'FORBIDDEN_USER', 'You do not have permission to cancel as owner');
+      throw new AppError(
+        403,
+        'FORBIDDEN_USER',
+        'You do not have permission to cancel as owner',
+      );
     }
 
     // 2. Validate booking is in a cancellable state
     const uncancellable = ['CANCELLED', 'COMPLETED', 'IN_TRANSIT'];
     if (uncancellable.includes(booking.status)) {
-      throw new AppError(400, 'INVALID_BOOKING_STATE', 'Booking is not in a cancellable state');
+      throw new AppError(
+        400,
+        'INVALID_BOOKING_STATE',
+        'Booking is not in a cancellable state',
+      );
     }
 
     // 3. Check advance payment & calculate deadline
     const advancePaid = booking.paymentStatus === 'PAID';
-    const { cancellationDeadline } = this.calculateDeadline(booking.createdAt, booking.tripStartDate);
+    const { cancellationDeadline } = this.calculateDeadline(
+      booking.createdAt,
+      booking.tripStartDate,
+    );
 
     const now = new Date();
     const isLate = advancePaid && now > cancellationDeadline;
@@ -67,11 +87,15 @@ export class CancellationService {
 
     if (isLate) {
       // Count prior late cancellations
-      const stats = await this.cancellationRepo.countCancellationsByUser(userId);
+      const stats =
+        await this.cancellationRepo.countCancellationsByUser(userId);
       offenseCount = stats.late;
 
       penaltyApplied = true;
-      penaltyAmount = offenseCount === 0 ? booking.advanceAmount * 0.5 : booking.advanceAmount;
+      penaltyAmount =
+        offenseCount === 0
+          ? booking.advanceAmount * 0.5
+          : booking.advanceAmount;
     }
 
     // 4. Save Cancellation record
@@ -80,7 +104,12 @@ export class CancellationService {
       cancelledById: userId,
       cancelledByRole,
       isLate,
-      hoursBeforeTrip: Number(((booking.tripStartDate.getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(2)),
+      hoursBeforeTrip: Number(
+        (
+          (booking.tripStartDate.getTime() - now.getTime()) /
+          (1000 * 60 * 60)
+        ).toFixed(2),
+      ),
       advanceWasPaid: advancePaid,
       penaltyApplied,
       penaltyAmount,
@@ -88,7 +117,11 @@ export class CancellationService {
     });
 
     // 5. Update Booking Status
-    await this.bookingIntegration.updateBookingStatus(bookingId, 'CANCELLED', 'CANCELLED');
+    await this.bookingIntegration.updateBookingStatus(
+      bookingId,
+      'CANCELLED',
+      'CANCELLED',
+    );
 
     // 6. Invalidate reputation cache for the canceller
     await this.reputationRepo.invalidate(userId);
@@ -96,7 +129,7 @@ export class CancellationService {
     // 7. Stub Notification Event
     console.log(
       `[EVENT] Booking ${bookingId} cancelled by ${cancelledByRole} (${userId}). ` +
-      `Notification sent to other party. IsLate: ${isLate}, PenaltyApplied: ${penaltyApplied}`
+        `Notification sent to other party. IsLate: ${isLate}, PenaltyApplied: ${penaltyApplied}`,
     );
 
     return {
@@ -108,11 +141,14 @@ export class CancellationService {
   }
 
   async getCancellationStats(userId: string): Promise<any> {
-    const { total, late } = await this.cancellationRepo.countCancellationsByUser(userId);
-    const lateRate = total === 0 ? 0 : Number(((late / total) * 100).toFixed(2));
+    const { total, late } =
+      await this.cancellationRepo.countCancellationsByUser(userId);
+    const lateRate =
+      total === 0 ? 0 : Number(((late / total) * 100).toFixed(2));
 
     let reliabilityScore = 5.0;
-    let badgeLevel: 'Excellent' | 'VeryGood' | 'Fair' | 'Concerning' | 'Poor' = 'Excellent';
+    let badgeLevel: 'Excellent' | 'VeryGood' | 'Fair' | 'Concerning' | 'Poor' =
+      'Excellent';
 
     if (lateRate === 0) {
       reliabilityScore = 5.0;
@@ -146,9 +182,20 @@ export class CancellationService {
       throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
     }
 
-    const { cancellationDeadline } = this.calculateDeadline(booking.createdAt, booking.tripStartDate);
+    const { cancellationDeadline } = this.calculateDeadline(
+      booking.createdAt,
+      booking.tripStartDate,
+    );
     const now = new Date();
-    const hoursRemaining = Math.max(0, Number(((cancellationDeadline.getTime() - now.getTime()) / (1000 * 60 * 60)).toFixed(2)));
+    const hoursRemaining = Math.max(
+      0,
+      Number(
+        (
+          (cancellationDeadline.getTime() - now.getTime()) /
+          (1000 * 60 * 60)
+        ).toFixed(2),
+      ),
+    );
     const isInsideWindow = now > cancellationDeadline;
 
     return {

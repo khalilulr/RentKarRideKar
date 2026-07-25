@@ -11,6 +11,7 @@ export interface DiscountServiceClient {
   checkEligibility(request: any): Observable<any>;
   getOfferHistory(request: any): Observable<any>;
   recordOfferUsage(request: any): Observable<any>;
+  applyReferral(request: any): Observable<any>;
 }
 
 export interface DiscountServiceController {
@@ -21,4 +22,5 @@ export interface DiscountServiceController {
   checkEligibility(request: any): Promise<any> | Observable<any> | any;
   getOfferHistory(request: any): Promise<any> | Observable<any> | any;
   recordOfferUsage(request: any): Promise<any> | Observable<any> | any;
+  applyReferral(request: any): Promise<any> | Observable<any> | any;
 }

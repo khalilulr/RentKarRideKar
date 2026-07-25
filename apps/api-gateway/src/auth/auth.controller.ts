@@ -1,4 +1,24 @@
-import { Controller, Post, Body, Get, Put, Patch, Delete, Inject, OnModuleInit, Req, Res, UnauthorizedException, BadRequestException, UseGuards, UseInterceptors, UploadedFile, InternalServerErrorException, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Put,
+  Patch,
+  Delete,
+  Inject,
+  OnModuleInit,
+  Req,
+  Res,
+  UnauthorizedException,
+  BadRequestException,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  InternalServerErrorException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import type { ClientGrpc } from '@nestjs/microservices';
 import { map, Observable, from, forkJoin } from 'rxjs';
 import { mergeMap, catchError, switchMap } from 'rxjs/operators';
@@ -33,6 +53,36 @@ import type {
   UpdateMeResponse,
 } from '../../../../libs/types/auth-service';
 
+function parseRolesRobustly(roles: any): string[] {
+  let rolesArray: string[] = [];
+  if (Array.isArray(roles)) {
+    rolesArray = roles;
+  } else if (typeof roles === 'string') {
+    const trimmed = roles.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          rolesArray = parsed;
+        } else {
+          rolesArray = trimmed
+            .slice(1, -1)
+            .split(',')
+            .map((r) => r.replace(/['"]/g, '').trim());
+        }
+      } catch {
+        rolesArray = trimmed
+          .slice(1, -1)
+          .split(',')
+          .map((r) => r.replace(/['"]/g, '').trim());
+      }
+    } else {
+      rolesArray = trimmed.split(',').map((r) => r.trim());
+    }
+  }
+  return rolesArray.filter(Boolean).map((r: string) => String(r).toUpperCase());
+}
+
 @Controller()
 export class AuthController implements OnModuleInit {
   private authService: any;
@@ -42,34 +92,46 @@ export class AuthController implements OnModuleInit {
 
   constructor(
     @Inject('AUTH_SERVICE') private readonly client: ClientGrpc,
-    @Inject('VERIFICATION_SERVICE') private readonly verificationClient: ClientGrpc,
-    @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly searchClient: ClientGrpc,
+    @Inject('VERIFICATION_SERVICE')
+    private readonly verificationClient: ClientGrpc,
+    @Inject('SEARCH_AND_CATALOG_SERVICE')
+    private readonly searchClient: ClientGrpc,
     private readonly jwtService: JwtService,
     private readonly cloudinaryService: CloudinaryService,
-  ) { }
+  ) {}
 
   onModuleInit() {
     this.authService = this.client.getService<any>('AuthService');
-    this.verificationService = this.verificationClient.getService<any>('VerificationService');
-    this.searchAndCatalogService = this.searchClient.getService<any>('SearchAndCatalogService');
+    this.verificationService = this.verificationClient.getService<any>(
+      'VerificationService',
+    );
+    this.searchAndCatalogService = this.searchClient.getService<any>(
+      'SearchAndCatalogService',
+    );
   }
 
   @Post('auth/send-otp')
   sendOtp(@Body() body: SendOtpRequest): Observable<MessageResponse> {
-    return this.authService.sendOtp(body) as unknown as Observable<MessageResponse>;
+    return this.authService.sendOtp(
+      body,
+    ) as unknown as Observable<MessageResponse>;
   }
 
   @Post('auth/verify-otp')
   verifyOtp(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: VerifyOtpRequest
+    @Body() body: VerifyOtpRequest,
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
     if (!body || !body.mobile || !body.otp) {
-      throw new BadRequestException('Request body with mobile and otp is required');
+      throw new BadRequestException(
+        'Request body with mobile and otp is required',
+      );
     }
 
-    body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
+    body.ipAddress = (req.headers['x-forwarded-for'] ||
+      req.ip ||
+      'unknown') as string;
     body.userAgent = req.headers['user-agent'] || 'unknown';
 
     return (this.authService.verifyOtp(body) as Observable<AuthResponse>).pipe(
@@ -96,12 +158,16 @@ export class AuthController implements OnModuleInit {
   loginAdmin(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: LoginAdminRequest
+    @Body() body: LoginAdminRequest,
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
     if (!body || !body.email || !body.password) {
-      throw new BadRequestException('Request body with email and password is required');
+      throw new BadRequestException(
+        'Request body with email and password is required',
+      );
     }
-    body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
+    body.ipAddress = (req.headers['x-forwarded-for'] ||
+      req.ip ||
+      'unknown') as string;
     body.userAgent = req.headers['user-agent'] || 'unknown';
 
     return (this.authService.loginAdmin(body) as Observable<AuthResponse>).pipe(
@@ -126,15 +192,21 @@ export class AuthController implements OnModuleInit {
   createDemoAdmin(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body() body: CreateDemoAdminRequest
+    @Body() body: CreateDemoAdminRequest,
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
     if (!body || !body.email || !body.password) {
-      throw new BadRequestException('Request body with email and password is required');
+      throw new BadRequestException(
+        'Request body with email and password is required',
+      );
     }
-    body.ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
+    body.ipAddress = (req.headers['x-forwarded-for'] ||
+      req.ip ||
+      'unknown') as string;
     body.userAgent = req.headers['user-agent'] || 'unknown';
 
-    return (this.authService.createDemoAdmin(body) as Observable<AuthResponse>).pipe(
+    return (
+      this.authService.createDemoAdmin(body) as Observable<AuthResponse>
+    ).pipe(
       map((response: AuthResponse) => {
         res.cookie('refreshToken', response.refreshToken, {
           httpOnly: true,
@@ -155,9 +227,8 @@ export class AuthController implements OnModuleInit {
   @Post('auth/refresh-token')
   refreshToken(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ): Observable<Omit<AuthResponse, 'refreshToken'>> {
-
     // Extract token from cookies
     const tokenFromCookie = req.cookies['refreshToken'];
 
@@ -175,7 +246,9 @@ export class AuthController implements OnModuleInit {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const ipAddress = (req.headers['x-forwarded-for'] || req.ip || 'unknown') as string;
+    const ipAddress = (req.headers['x-forwarded-for'] ||
+      req.ip ||
+      'unknown') as string;
     const userAgent = req.headers['user-agent'] || 'unknown';
 
     const grpcRequest = {
@@ -184,7 +257,9 @@ export class AuthController implements OnModuleInit {
       userAgent,
     };
 
-    return (this.authService.refreshToken(grpcRequest) as Observable<AuthResponse>).pipe(
+    return (
+      this.authService.refreshToken(grpcRequest) as Observable<AuthResponse>
+    ).pipe(
       map((response: AuthResponse) => {
         // Update the cookie with the newly generated refresh token
         res.cookie('refreshToken', response.refreshToken, {
@@ -209,7 +284,7 @@ export class AuthController implements OnModuleInit {
   logout(
     @CurrentUser() user: any,
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ): Observable<MessageResponse> {
     const tokenFromCookie = req.cookies?.['refreshToken'];
 
@@ -224,7 +299,9 @@ export class AuthController implements OnModuleInit {
       refreshToken: tokenFromCookie,
     };
 
-    return (this.authService.logout(logoutRequest) as Observable<MessageResponse>).pipe(
+    return (
+      this.authService.logout(logoutRequest) as Observable<MessageResponse>
+    ).pipe(
       map((response) => {
         // Clear the refresh token cookie
         res.clearCookie('refreshToken', {
@@ -234,7 +311,7 @@ export class AuthController implements OnModuleInit {
         });
 
         return response;
-      })
+      }),
     );
   }
 
@@ -242,13 +319,17 @@ export class AuthController implements OnModuleInit {
   @UseGuards(JwtAuthGuard)
   logoutAllDevices(
     @CurrentUser() user: any,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ): Observable<MessageResponse> {
     const logoutAllRequest = {
       userId: user.userId,
     };
 
-    return (this.authService.logoutAllDevices(logoutAllRequest) as Observable<MessageResponse>).pipe(
+    return (
+      this.authService.logoutAllDevices(
+        logoutAllRequest,
+      ) as Observable<MessageResponse>
+    ).pipe(
       map((response) => {
         // Clear the refresh token cookie for this current device
         res.clearCookie('refreshToken', {
@@ -258,18 +339,27 @@ export class AuthController implements OnModuleInit {
         });
 
         return response;
-      })
+      }),
     );
   }
 
   @Get('auth/me')
   @UseGuards(JwtAuthGuard)
   getMe(@CurrentUser() user: any): Observable<GetMeResponse> {
-    return (this.authService.getMe({ userId: user.userId }) as Observable<GetMeResponse>).pipe(
-      map(res => ({ ...res, user: this.mapUserResponse(res.user) }))
-    );
+    return (
+      this.authService.getMe({
+        userId: user.userId,
+      }) as Observable<GetMeResponse>
+    ).pipe(map((res) => ({ ...res, user: this.mapUserResponse(res.user) })));
   }
 
+  @Get('users/profile/:id')
+  @UseGuards(JwtAuthGuard)
+  getUserProfile(@Param('id') userId: string): Observable<any> {
+    return (this.authService.getMe({ userId }) as Observable<any>).pipe(
+      map((res) => ({ ...res, user: this.mapUserResponse(res.user) })),
+    );
+  }
 
   @Put('auth/me')
   @UseGuards(JwtAuthGuard)
@@ -283,12 +373,16 @@ export class AuthController implements OnModuleInit {
     if (body.name !== undefined) {
       grpcRequest.name = body.name;
     }
-    if (body.roles?.length) {
-      grpcRequest.roles = body.roles
-        .map((r: string) => String(r).toUpperCase());
+    if (body.roles) {
+      const parsedRoles = parseRolesRobustly(body.roles);
+      if (parsedRoles.length > 0) {
+        grpcRequest.roles = parsedRoles;
+      }
     }
     if (body.activePerspective !== undefined) {
-      grpcRequest.activePerspective = String(body.activePerspective).toUpperCase();
+      grpcRequest.activePerspective = String(
+        body.activePerspective,
+      ).toUpperCase();
     }
     if (body.bankAccountNumber !== undefined) {
       grpcRequest.bankAccountNumber = body.bankAccountNumber;
@@ -302,6 +396,12 @@ export class AuthController implements OnModuleInit {
     if (body.bankIfscCode !== undefined) {
       grpcRequest.bankIfscCode = body.bankIfscCode;
     }
+    if (body.emergencyContactNumber !== undefined) {
+      grpcRequest.emergencyContactNumber = body.emergencyContactNumber;
+    }
+    if (body.emergencyContactRelation !== undefined) {
+      grpcRequest.emergencyContactRelation = body.emergencyContactRelation;
+    }
 
     const performUpdate = (profileUrl?: string) => {
       if (profileUrl) {
@@ -312,27 +412,37 @@ export class AuthController implements OnModuleInit {
         grpcRequest.profileImage = body.profilePicture;
       }
 
-      let update$ = (this.authService.updateMe(grpcRequest) as Observable<UpdateMeResponse>).pipe(
-        map(res => ({ ...res, user: this.mapUserResponse(res.user) })),
+      let update$ = (
+        this.authService.updateMe(grpcRequest) as Observable<UpdateMeResponse>
+      ).pipe(
+        map((res) => ({ ...res, user: this.mapUserResponse(res.user) })),
         catchError((err) => {
-          console.error('[AuthController] Error calling updateMe microservice:', err);
-          throw new InternalServerErrorException(err.message || 'Error updating profile');
+          console.error(
+            '[AuthController] Error calling updateMe microservice:',
+            err,
+          );
+          throw new InternalServerErrorException(
+            err.message || 'Error updating profile',
+          );
         }),
       );
 
       if (body.kycStatus === 'APPROVED' || body.kycStatus === 'VERIFIED') {
         update$ = update$.pipe(
           switchMap((res) => {
-            return (this.verificationService.getVerificationStatus({
-              userId: user.userId,
-              role: 'VEHICLE_OWNER',
-            }) as Observable<any>).pipe(
+            return (
+              this.verificationService.getUserKycStatus({
+                userId: user.userId,
+              }) as Observable<any>
+            ).pipe(
               switchMap((statusRes) => {
                 if (statusRes && statusRes.verificationId) {
-                  return (this.verificationService.approveVerification({
-                    verificationId: statusRes.verificationId,
-                    adminUserId: user.userId,
-                  }) as Observable<any>).pipe(
+                  return (
+                    this.verificationService.approveVerification({
+                      verificationId: statusRes.verificationId,
+                      adminUserId: user.userId,
+                    }) as Observable<any>
+                  ).pipe(
                     map(() => {
                       if (res.user) {
                         res.user.kycStatus = 'VERIFIED';
@@ -340,19 +450,25 @@ export class AuthController implements OnModuleInit {
                       return res;
                     }),
                     catchError((err) => {
-                      console.error('[AuthController] Error auto-approving verification:', err);
+                      console.error(
+                        '[AuthController] Error auto-approving verification:',
+                        err,
+                      );
                       return [res];
-                    })
+                    }),
                   );
                 }
                 return [res];
               }),
               catchError((err) => {
-                console.error('[AuthController] Error fetching status for auto-approval:', err);
+                console.error(
+                  '[AuthController] Error fetching status for auto-approval:',
+                  err,
+                );
                 return [res];
-              })
+              }),
             );
-          })
+          }),
         );
       }
 
@@ -364,7 +480,9 @@ export class AuthController implements OnModuleInit {
         mergeMap((url) => performUpdate(url)),
         catchError((err) => {
           console.error('[AuthController] Error in upload/pipeline:', err);
-          throw new InternalServerErrorException(err.message || 'Error uploading file to Cloudinary');
+          throw new InternalServerErrorException(
+            err.message || 'Error uploading file to Cloudinary',
+          );
         }),
       );
     }
@@ -372,12 +490,48 @@ export class AuthController implements OnModuleInit {
     return performUpdate();
   }
 
+  @Put('auth/me/roles')
+  @UseGuards(JwtAuthGuard)
+  updateRoles(
+    @CurrentUser() user: any,
+    @Body() body: any,
+  ): Observable<UpdateMeResponse> {
+    if (!body.roles) {
+      throw new BadRequestException('roles is required');
+    }
+
+    const rolesArray = parseRolesRobustly(body.roles);
+
+    if (rolesArray.length === 0) {
+      throw new BadRequestException('roles cannot be empty');
+    }
+
+    const grpcRequest: UpdateMeRequest = {
+      userId: user.userId,
+      roles: rolesArray,
+    };
+
+    return (
+      this.authService.updateMe(grpcRequest) as Observable<UpdateMeResponse>
+    ).pipe(
+      map((res) => ({ ...res, user: this.mapUserResponse(res.user) })),
+      catchError((err) => {
+        console.error(
+          '[AuthController] Error calling updateMe microservice for roles:',
+          err,
+        );
+        throw new InternalServerErrorException(
+          err.message || 'Error updating roles',
+        );
+      }),
+    );
+  }
 
   @Put('auth/switch-perspective')
   @UseGuards(JwtAuthGuard)
   switchPerspective(
     @CurrentUser() user: any,
-    @Body() body: any
+    @Body() body: any,
   ): Observable<UpdateMeResponse> {
     const perspective = body.perspective ?? body.activePerspective;
     if (!perspective) {
@@ -389,23 +543,29 @@ export class AuthController implements OnModuleInit {
       perspective: String(perspective).toUpperCase(),
     };
 
-    return (this.authService.switchPerspective(grpcRequest) as Observable<UpdateMeResponse>).pipe(
-      map(res => ({ ...res, user: this.mapUserResponse(res.user) }))
-    );
+    return (
+      this.authService.switchPerspective(
+        grpcRequest,
+      ) as Observable<UpdateMeResponse>
+    ).pipe(map((res) => ({ ...res, user: this.mapUserResponse(res.user) })));
   }
 
   @Post('rides/search')
   @UseGuards(JwtAuthGuard)
   searchRides(@Body() body: any): Observable<any> {
     return this.searchAndCatalogService.searchVehicles({
-      from: (body.fromLat && body.fromLng) ? `${body.fromLat},${body.fromLng}` : '',
-      to: (body.toLat && body.toLng) ? `${body.toLat},${body.toLng}` : '',
+      from:
+        body.fromLat && body.fromLng ? `${body.fromLat},${body.fromLng}` : '',
+      to: body.toLat && body.toLng ? `${body.toLat},${body.toLng}` : '',
       date: body.date ?? '',
       time: body.time ?? '',
       vehicleType: body.vehicleType ?? '',
       seats: body.seats ? parseInt(body.seats, 10) : 0,
       color: body.color ?? '',
-      ac: body.ac !== undefined ? (String(body.ac) === 'true' || body.ac === true) : undefined,
+      ac:
+        body.ac !== undefined
+          ? String(body.ac) === 'true' || body.ac === true
+          : undefined,
     });
   }
 
@@ -416,12 +576,12 @@ export class AuthController implements OnModuleInit {
       throw new BadRequestException('Search query is required');
     }
     return (this.authService.searchDriver({ query }) as Observable<any>).pipe(
-      map(res => {
+      map((res) => {
         if (res.drivers) {
-          res.drivers = res.drivers.map(d => this.mapUserResponse(d));
+          res.drivers = res.drivers.map((d) => this.mapUserResponse(d));
         }
         return res;
-      })
+      }),
     );
   }
 
@@ -434,7 +594,10 @@ export class AuthController implements OnModuleInit {
     if (!driverId) {
       throw new BadRequestException('driverId is required');
     }
-    return this.authService.inviteDriver({ ownerId: user.userId, driverId }) as Observable<any>;
+    return this.authService.inviteDriver({
+      ownerId: user.userId,
+      driverId,
+    }) as Observable<any>;
   }
 
   @Get('auth/drivers/trusted/invitations')
@@ -444,10 +607,15 @@ export class AuthController implements OnModuleInit {
     @Query('type') type?: string,
   ): Observable<any> {
     const requestType = type === 'received' ? 'received' : 'sent';
-    return (this.authService.listInvitations({ userId: user.userId, type: requestType }) as Observable<any>).pipe(
-      map(res => {
+    return (
+      this.authService.listInvitations({
+        userId: user.userId,
+        type: requestType,
+      }) as Observable<any>
+    ).pipe(
+      map((res) => {
         if (res.invitations) {
-          res.invitations = res.invitations.map(inv => {
+          res.invitations = res.invitations.map((inv) => {
             if (inv.targetUser) {
               inv.targetUser = this.mapUserResponse(inv.targetUser);
             }
@@ -455,7 +623,7 @@ export class AuthController implements OnModuleInit {
           });
         }
         return res;
-      })
+      }),
     );
   }
 
@@ -488,15 +656,15 @@ export class AuthController implements OnModuleInit {
     @CurrentUser() user: any,
     @Param('id') driverId: string,
   ): Observable<any> {
-    return this.authService.removeTrustedDriver({ ownerId: user.userId, driverId });
+    return this.authService.removeTrustedDriver({
+      ownerId: user.userId,
+      driverId,
+    });
   }
 
   @Post('me/addresses')
   @UseGuards(JwtAuthGuard)
-  saveAddress(
-    @CurrentUser() user: any,
-    @Body() body: any,
-  ): Observable<any> {
+  saveAddress(@CurrentUser() user: any, @Body() body: any): Observable<any> {
     return this.authService.saveAddress({
       userId: user.userId,
       label: body.label,
@@ -615,7 +783,9 @@ export class AuthController implements OnModuleInit {
   @Get('referrals/me')
   @UseGuards(JwtAuthGuard)
   getReferrals(@CurrentUser() user: any): Observable<any> {
-    return (this.authService.getReferrals({ userId: user.userId }) as Observable<any>).pipe(
+    return (
+      this.authService.getReferrals({ userId: user.userId }) as Observable<any>
+    ).pipe(
       map((res: any) => {
         if (res.earningsJson) {
           try {
@@ -630,14 +800,16 @@ export class AuthController implements OnModuleInit {
           } catch (e) {}
         }
         return res;
-      })
+      }),
     );
   }
 
   @Get('user/referral')
   @UseGuards(JwtAuthGuard)
   getReferralCode(@CurrentUser() user: any): Observable<any> {
-    return (this.authService.getReferrals({ userId: user.userId }) as Observable<any>).pipe(
+    return (
+      this.authService.getReferrals({ userId: user.userId }) as Observable<any>
+    ).pipe(
       map((res: any) => {
         if (res.earningsJson) {
           try {
@@ -652,7 +824,7 @@ export class AuthController implements OnModuleInit {
           } catch (e) {}
         }
         return res;
-      })
+      }),
     );
   }
 
@@ -674,10 +846,7 @@ export class AuthController implements OnModuleInit {
 
   @Post('referrals/apply')
   @UseGuards(JwtAuthGuard)
-  applyReferral(
-    @CurrentUser() user: any,
-    @Body() body: any,
-  ): Observable<any> {
+  applyReferral(@CurrentUser() user: any, @Body() body: any): Observable<any> {
     return this.authService.applyReferral({
       userId: user.userId,
       referralCode: body.referralCode,
@@ -687,7 +856,9 @@ export class AuthController implements OnModuleInit {
   @Get('me/wallet')
   @UseGuards(JwtAuthGuard)
   getWallet(@CurrentUser() user: any): Observable<any> {
-    return (this.authService.getWallet({ userId: user.userId }) as Observable<any>).pipe(
+    return (
+      this.authService.getWallet({ userId: user.userId }) as Observable<any>
+    ).pipe(
       map((res: any) => {
         if (res.transactionsJson) {
           try {
@@ -696,7 +867,7 @@ export class AuthController implements OnModuleInit {
           } catch (e) {}
         }
         return res;
-      })
+      }),
     );
   }
 
@@ -708,19 +879,21 @@ export class AuthController implements OnModuleInit {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ): Observable<any> {
-    return this.authService.adminGetUsers({
-      role: role || '',
-      kycStatus: kycStatus || '',
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
-    }).pipe(
-      map((res: any) => {
-        if (res.users) {
-          res.users = res.users.map(u => this.mapUserResponse(u));
-        }
-        return res;
+    return this.authService
+      .adminGetUsers({
+        role: role || '',
+        kycStatus: kycStatus || '',
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
       })
-    );
+      .pipe(
+        map((res: any) => {
+          if (res.users) {
+            res.users = res.users.map((u) => this.mapUserResponse(u));
+          }
+          return res;
+        }),
+      );
   }
 
   @Patch('admin/users/:id/status')
@@ -741,8 +914,10 @@ export class AuthController implements OnModuleInit {
   getOwnerOnboardingStatus(@CurrentUser() user: any): Observable<any> {
     const userId = user.userId;
 
-    const auth$ = (this.authService.getMe({ userId }) as unknown as Observable<any>).pipe(
-      map(res => {
+    const auth$ = (
+      this.authService.getMe({ userId }) as unknown as Observable<any>
+    ).pipe(
+      map((res) => {
         const u = res?.user;
         return {
           bankAccountNumber: u?.bankAccountNumber || '',
@@ -751,52 +926,84 @@ export class AuthController implements OnModuleInit {
           bankIfscCode: u?.bankIfscCode || '',
         };
       }),
-      catchError(err => {
-        console.error('[AuthController] Error fetching owner profile for onboarding:', err);
-        return [{ bankAccountNumber: '', bankAccountHolderName: '', bankName: '', bankIfscCode: '' }];
-      })
+      catchError((err) => {
+        console.error(
+          '[AuthController] Error fetching owner profile for onboarding:',
+          err,
+        );
+        return [
+          {
+            bankAccountNumber: '',
+            bankAccountHolderName: '',
+            bankName: '',
+            bankIfscCode: '',
+          },
+        ];
+      }),
     );
 
-    const kyc$ = (this.verificationService.getVerificationStatus({
-      userId,
-      role: 'VEHICLE_OWNER',
-    }) as unknown as Observable<any>).pipe(
-      catchError(err => {
-        console.error('[AuthController] Error fetching owner KYC for onboarding:', err);
+    const kyc$ = (
+      this.verificationService.getUserKycStatus({
+        userId,
+      }) as unknown as Observable<any>
+    ).pipe(
+      catchError((err) => {
+        console.error(
+          '[AuthController] Error fetching owner KYC for onboarding:',
+          err,
+        );
         return [{ status: 'NONE', documents: [], missingDocs: [] }];
-      })
+      }),
     );
 
-    const vehicles$ = (this.searchAndCatalogService.getMyVehicles({ ownerId: userId }) as unknown as Observable<any>).pipe(
+    const vehicles$ = (
+      this.searchAndCatalogService.getMyVehicles({
+        ownerId: userId,
+      }) as unknown as Observable<any>
+    ).pipe(
       switchMap((vehiclesRes: any) => {
         const vehicles = vehiclesRes?.vehicles || [];
         if (vehicles.length === 0) {
           return from([[]]);
         }
         const vehicleStatusObservables = vehicles.map((v: any) =>
-          (this.verificationService.getVehicleVerificationStatus({
-            vehicleId: v.id,
-            role: 'VEHICLE_OWNER',
-          }) as unknown as Observable<any>).pipe(
+          (
+            this.verificationService.getVehicleVerificationStatus({
+              vehicleId: v.id,
+              role: 'VEHICLE_OWNER',
+            }) as unknown as Observable<any>
+          ).pipe(
             map((statusRes: any) => ({
               ...v,
               verification: statusRes,
             })),
-            catchError(err => {
-              console.error(`[AuthController] Error fetching verification status for vehicle ${v.id}:`, err);
-              return [{
-                ...v,
-                verification: { status: 'NONE', documents: [], missingDocs: [] }
-              }];
-            })
-          )
+            catchError((err) => {
+              console.error(
+                `[AuthController] Error fetching verification status for vehicle ${v.id}:`,
+                err,
+              );
+              return [
+                {
+                  ...v,
+                  verification: {
+                    status: 'NONE',
+                    documents: [],
+                    missingDocs: [],
+                  },
+                },
+              ];
+            }),
+          ),
         );
         return forkJoin(vehicleStatusObservables);
       }),
-      catchError(err => {
-        console.error('[AuthController] Error fetching owner vehicles for onboarding:', err);
+      catchError((err) => {
+        console.error(
+          '[AuthController] Error fetching owner vehicles for onboarding:',
+          err,
+        );
         return [[]];
-      })
+      }),
     );
 
     return forkJoin({
@@ -805,13 +1012,18 @@ export class AuthController implements OnModuleInit {
       vehicles: vehicles$,
     }).pipe(
       map(({ bankDetails, userKyc, vehicles }: any) => {
-        const kycStatusString = (userKyc?.status || 'NOT_SUBMITTED').toUpperCase();
-        const kycVerified = kycStatusString === 'APPROVED' || kycStatusString === 'VERIFIED';
+        const kycStatusString = (
+          userKyc?.status || 'NOT_SUBMITTED'
+        ).toUpperCase();
+        const kycVerified =
+          kycStatusString === 'APPROVED' || kycStatusString === 'VERIFIED';
         const hasVehicle = vehicles.length > 0;
-        const docsVerified = hasVehicle && vehicles.every((v: any) => {
-          const vKyc = (v.verification?.status || '').toUpperCase();
-          return vKyc === 'APPROVED' || vKyc === 'VERIFIED';
-        });
+        const docsVerified =
+          hasVehicle &&
+          vehicles.every((v: any) => {
+            const vKyc = (v.verification?.status || '').toUpperCase();
+            return vKyc === 'APPROVED' || vKyc === 'VERIFIED';
+          });
         const bankAdded = !!bankDetails.bankAccountNumber;
 
         return {
@@ -824,19 +1036,25 @@ export class AuthController implements OnModuleInit {
             count: vehicles.length,
           },
           docs: {
-            status: hasVehicle ? (docsVerified ? 'APPROVED' : 'PENDING') : 'NOT_SUBMITTED',
+            status: hasVehicle
+              ? docsVerified
+                ? 'APPROVED'
+                : 'PENDING'
+              : 'NOT_SUBMITTED',
             verified: docsVerified,
           },
           bank: {
             added: bankAdded,
-            details: bankAdded ? {
-              bankName: bankDetails.bankName,
-              accountLast4: bankDetails.bankAccountNumber.slice(-4),
-            } : null,
+            details: bankAdded
+              ? {
+                  bankName: bankDetails.bankName,
+                  accountLast4: bankDetails.bankAccountNumber.slice(-4),
+                }
+              : null,
           },
           ready: kycVerified && hasVehicle && docsVerified && bankAdded,
         };
-      })
+      }),
     );
   }
 
@@ -860,7 +1078,9 @@ export class AuthController implements OnModuleInit {
     };
 
     if (user.roles) {
-      user.roles = user.roles.map(r => typeof r === 'number' ? roleMapping[r] : r);
+      user.roles = user.roles.map((r) =>
+        typeof r === 'number' ? roleMapping[r] : r,
+      );
     }
 
     if (typeof user.activePerspective === 'number') {
@@ -873,7 +1093,4 @@ export class AuthController implements OnModuleInit {
 
     return user;
   }
-
 }
-
-

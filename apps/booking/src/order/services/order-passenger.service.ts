@@ -22,7 +22,10 @@ export class OrderPassengerService {
     });
 
     if (!order) {
-      throw new NotFoundException({ error: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
     }
 
     order.status = OrderStatus.CANCELLED;
@@ -33,8 +36,11 @@ export class OrderPassengerService {
     await this.orderGrpcService.triggerDeactivateProxy(orderId, 'cancelled');
 
     const first = order.vehicles[0];
-    const pickupTime = first?.pickupDatetime ? new Date(first.pickupDatetime) : new Date();
-    const hoursDifference = (pickupTime.getTime() - Date.now()) / (1000 * 60 * 60);
+    const pickupTime = first?.pickupDatetime
+      ? new Date(first.pickupDatetime)
+      : new Date();
+    const hoursDifference =
+      (pickupTime.getTime() - Date.now()) / (1000 * 60 * 60);
 
     let refundAmount = 0;
     let percentage = 0;
@@ -72,7 +78,9 @@ export class OrderPassengerService {
             ? Number(order.advanceAmount)
             : undefined,
         forfeitedTo:
-          refundAmount === 0 && order.paymentStatus === PaymentStatus.COMPLETED ? 'owner' : undefined,
+          refundAmount === 0 && order.paymentStatus === PaymentStatus.COMPLETED
+            ? 'owner'
+            : undefined,
       },
       ownerNotified: true,
     };

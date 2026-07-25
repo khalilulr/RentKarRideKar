@@ -1,15 +1,15 @@
-import { 
-  Column, 
-  CreateDateColumn, 
-  Entity, 
-  PrimaryGeneratedColumn, 
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
   DeleteDateColumn,
-  OneToMany
-} from "typeorm";
-import { Role } from "../enum/role.enum";
-import { KycStatus } from "../enum/kycStatus.enum";
-import { DocumentEntity } from "./document.entity";
+  OneToMany,
+} from 'typeorm';
+import { Role } from '../enum/role.enum';
+import { KycStatus } from '../enum/kycStatus.enum';
+import { DocumentEntity } from './document.entity';
 
 @Entity('kyc_verifications')
 export class KycVerificationEntity {
@@ -26,42 +26,43 @@ export class KycVerificationEntity {
 
   @Column({
     type: 'enum',
-    enum: Role
+    enum: Role,
+    nullable: true,
   })
-  role: Role;
+  role?: Role;
 
   @Column({
     type: 'enum',
     enum: KycStatus,
-    default: KycStatus.PENDING
+    default: KycStatus.PENDING,
   })
   status: KycStatus;
 
-  @Column({ 
-    type: 'text', 
-    nullable: true, 
-    name: 'rejection_reason' 
+  @Column({
+    type: 'text',
+    nullable: true,
+    name: 'rejection_reason',
   })
   rejectionReason?: string;
 
-  @Column({ 
-    type: 'uuid', 
-    nullable: true, 
-    name: 'reviewed_by' 
+  @Column({
+    type: 'uuid',
+    nullable: true,
+    name: 'reviewed_by',
   })
   reviewedBy?: string; // admin userId who reviewed
 
-  @Column({ 
-    type: 'timestamp', 
-    nullable: true, 
-    name: 'submitted_at' 
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'submitted_at',
   })
   submittedAt?: Date; // when user hit submit
 
-  @Column({ 
-    type: 'timestamp', 
-    nullable: true, 
-    name: 'reviewed_at' 
+  @Column({
+    type: 'timestamp',
+    nullable: true,
+    name: 'reviewed_at',
   })
   reviewedAt?: Date; // when admin approved/rejected
 

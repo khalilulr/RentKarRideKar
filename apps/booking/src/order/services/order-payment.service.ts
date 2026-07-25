@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
@@ -29,7 +33,10 @@ export class OrderPaymentService {
     });
 
     if (!order) {
-      throw new NotFoundException({ error: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
     }
 
     if (order.paymentStatus === PaymentStatus.COMPLETED) {
@@ -60,7 +67,8 @@ export class OrderPaymentService {
       advanceAmount: Number(order.advanceAmount),
       paymentLink: order.paymentLink,
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // link valid 30 min
-      message: 'Complete the advance payment to confirm your booking and unlock chat.',
+      message:
+        'Complete the advance payment to confirm your booking and unlock chat.',
     };
   }
 
@@ -71,7 +79,8 @@ export class OrderPaymentService {
     // So we can check the signature and body, but we'll bypass signature checking in development.
     const isDev = process.env.NODE_ENV !== 'production';
 
-    const razorpayOrderId: string = webhookBody.payload?.payment?.entity?.order_id;
+    const razorpayOrderId: string =
+      webhookBody.payload?.payment?.entity?.order_id;
     if (!razorpayOrderId) {
       throw new BadRequestException({
         error: 'MISSING_ORDER_ID',
@@ -137,7 +146,11 @@ export class OrderPaymentService {
       `[PaymentWebhook] Order ${order.id} confirmed. Chat rooms opened for ${chatRoomResults.length} vehicle(s).`,
     );
 
-    return { received: true, orderId: order.id, chatRoomsOpened: chatRoomResults.length };
+    return {
+      received: true,
+      orderId: order.id,
+      chatRoomsOpened: chatRoomResults.length,
+    };
   }
 
   async confirmPayment(orderId: string) {
@@ -154,7 +167,11 @@ export class OrderPaymentService {
     }
 
     if (order.paymentStatus === PaymentStatus.COMPLETED) {
-      return { success: true, message: 'Payment already completed.', orderId: order.id };
+      return {
+        success: true,
+        message: 'Payment already completed.',
+        orderId: order.id,
+      };
     }
 
     order.paymentStatus = PaymentStatus.COMPLETED;
@@ -198,19 +215,30 @@ export class OrderPaymentService {
     };
   }
 
-  async payBalance(orderId: string, vehicleId: string, passengerId: string, body: any) {
+  async payBalance(
+    orderId: string,
+    vehicleId: string,
+    passengerId: string,
+    body: any,
+  ) {
     const order = await this.orderRepository.findOne({
       where: { id: orderId, passengerId },
       relations: ['vehicles'],
     });
 
     if (!order) {
-      throw new NotFoundException({ error: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
     }
 
-    const ov = order.vehicles.find(v => v.vehicleId === vehicleId);
+    const ov = order.vehicles.find((v) => v.vehicleId === vehicleId);
     if (!ov) {
-      throw new NotFoundException({ error: 'VEHICLE_NOT_FOUND', message: 'Vehicle not found in this order.' });
+      throw new NotFoundException({
+        error: 'VEHICLE_NOT_FOUND',
+        message: 'Vehicle not found in this order.',
+      });
     }
 
     const price = Number(ov.price) || 0;
@@ -218,7 +246,9 @@ export class OrderPaymentService {
     const remainingBalance = price - advancePaid;
 
     const useWallet = body.useWalletCredit || false;
-    const walletAmount = useWallet ? (body.walletCreditAmount || remainingBalance) : 0;
+    const walletAmount = useWallet
+      ? body.walletCreditAmount || remainingBalance
+      : 0;
     const amountPaid = remainingBalance - walletAmount;
 
     order.paymentStatus = PaymentStatus.COMPLETED;
@@ -245,6 +275,61 @@ export class OrderPaymentService {
       paymentStatus: 'PAID',
       tripStatus: 'COMPLETED',
       paidAt: new Date().toISOString(),
+    };
+  }
+
+  async completePayment(
+    orderId: string,
+    passengerId: string,
+    paidAmount: number,
+    transactionId: string,
+  ) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId, passengerId },
+      relations: ['vehicles'],
+    });
+
+    if (!order) {
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
+    }
+
+    order.paymentStatus = PaymentStatus.COMPLETED;
+    order.status = OrderStatus.COMPLETED;
+    order.visibleStatus = VisibleStatus.COMPLETED;
+    await this.orderRepository.save(order);
+
+    if (order.vehicles && order.vehicles.length > 0) {
+      for (const ov of order.vehicles) {
+        ov.status = OrderVehicleStatus.COMPLETED;
+        ov.completedAt = new Date();
+        await this.orderVehicleRepository.save(ov);
+      }
+    }
+
+    const ot = this.orderTimelineRepository.create({
+      orderId: order.id,
+      status: 'BALANCE_PAID',
+      description: `Remaining final payment of INR ${paidAmount} completed successfully. Transaction ID: ${transactionId}`,
+      timestamp: new Date(),
+    });
+    await this.orderTimelineRepository.save(ot);
+
+    try {
+      await this.orderGrpcService.closeChatRooms(orderId);
+    } catch (e) {
+      console.error('[OrderPaymentService] Failed to close chat rooms:', e);
+    }
+
+    return {
+      success: true,
+      message: 'Remaining payment completed and trip marked as completed.',
+      orderId: order.id,
+      paidAmount,
+      transactionId,
+      status: 'PAID',
     };
   }
 }

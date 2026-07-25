@@ -3,6 +3,7 @@ import { ReviewRepository } from '../repositories/Review.repository';
 import { ReputationRepository } from '../repositories/Reputation.repository';
 import { CancellationService } from './Cancellation.service';
 import { ReputationCache } from '../entities/ReputationCache.entity';
+import { RedisService } from 'apps/common/src/redis/redis.service';
 
 @Injectable()
 export class ReputationService {
@@ -10,6 +11,7 @@ export class ReputationService {
     private readonly reviewRepo: ReviewRepository,
     private readonly reputationRepo: ReputationRepository,
     private readonly cancellationService: CancellationService,
+    private readonly redisService: RedisService,
   ) {}
 
   getStarVisualization(rating: number): string {
@@ -18,16 +20,26 @@ export class ReputationService {
   }
 
   async getReputation(userId: string): Promise<any> {
+    const cacheKey = `reputation:scorecard:${userId}`;
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (err) {}
+
     const now = new Date();
     const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
 
-    // 1. Check Cache
+    // 1. Check DB-backed Cache as fallback
     const cached = await this.reputationRepo.findByUserId(userId);
     if (cached && new Date(cached.lastComputedAt) > tenMinutesAgo) {
       const recentReviews = await this.getRecentReviews(userId, 3);
-      return {
+      const scorecard = {
         overallRating: Number(cached.overallRating || 0),
-        starVisualization: this.getStarVisualization(Number(cached.overallRating || 0)),
+        starVisualization: this.getStarVisualization(
+          Number(cached.overallRating || 0),
+        ),
         categoryBreakdown: {},
         reliabilityScore: Number(cached.reliabilityScore || 5.0),
         badgeLevel: cached.badgeLevel || 'Excellent',
@@ -35,11 +47,17 @@ export class ReputationService {
         tripCompletionCount: cached.totalReviews || 0,
         ratingTrend: cached.ratingTrend || 'stable',
       };
+      try {
+        await this.redisService.set(cacheKey, JSON.stringify(scorecard), 600); // 10 minutes
+      } catch (err) {}
+      return scorecard;
     }
 
     // 2. Compute Fresh Stats
-    const reviews = await this.reviewRepo.findRevealedReviewsForCalculation(userId);
-    const cancellationStats = await this.cancellationService.getCancellationStats(userId);
+    const reviews =
+      await this.reviewRepo.findRevealedReviewsForCalculation(userId);
+    const cancellationStats =
+      await this.cancellationService.getCancellationStats(userId);
 
     let overallRating = 0;
     let ratingTrend: 'up' | 'down' | 'stable' = 'stable';
@@ -50,7 +68,9 @@ export class ReputationService {
       let weightSum = 0;
 
       for (const r of reviews) {
-        const diffDays = (now.getTime() - new Date(r.submittedAt).getTime()) / (1000 * 60 * 60 * 24);
+        const diffDays =
+          (now.getTime() - new Date(r.submittedAt).getTime()) /
+          (1000 * 60 * 60 * 24);
         let weight = 0.5;
         if (diffDays <= 30) weight = 1.0;
         else if (diffDays <= 90) weight = 0.8;
@@ -61,9 +81,18 @@ export class ReputationService {
       overallRating = Number((weightedSum / weightSum).toFixed(2));
 
       // B. Trend Analysis
-      const allTimeAvg = Number((reviews.reduce((acc, r) => acc + r.overallRating, 0) / reviews.length).toFixed(2));
+      const allTimeAvg = Number(
+        (
+          reviews.reduce((acc, r) => acc + r.overallRating, 0) / reviews.length
+        ).toFixed(2),
+      );
       const recent10 = reviews.slice(0, 10);
-      const recent10Avg = Number((recent10.reduce((acc, r) => acc + r.overallRating, 0) / recent10.length).toFixed(2));
+      const recent10Avg = Number(
+        (
+          recent10.reduce((acc, r) => acc + r.overallRating, 0) /
+          recent10.length
+        ).toFixed(2),
+      );
 
       if (recent10Avg > allTimeAvg + 0.1) {
         ratingTrend = 'up';
@@ -90,8 +119,7 @@ export class ReputationService {
     await this.reputationRepo.save(freshCache);
 
     const recentReviews = await this.getRecentReviews(userId, 3);
-
-    return {
+    const scorecard = {
       overallRating,
       starVisualization: this.getStarVisualization(overallRating),
       categoryBreakdown: {},
@@ -101,14 +129,25 @@ export class ReputationService {
       tripCompletionCount: reviews.length,
       ratingTrend,
     };
+
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(scorecard), 600); // 10 minutes
+    } catch (err) {}
+
+    return scorecard;
   }
 
-  private async getRecentReviews(userId: string, count: number): Promise<any[]> {
-    const list = await this.reviewRepo.findRevealedReviewsForCalculation(userId);
+  private async getRecentReviews(
+    userId: string,
+    count: number,
+  ): Promise<any[]> {
+    const list =
+      await this.reviewRepo.findRevealedReviewsForCalculation(userId);
     const recent = list.slice(0, count);
 
-    return recent.map(r => ({
-      reviewerName: r.reviewerRole === 'passenger' ? 'Passenger Client' : 'Owner Partner',
+    return recent.map((r) => ({
+      reviewerName:
+        r.reviewerRole === 'passenger' ? 'Passenger Client' : 'Owner Partner',
       rating: r.overallRating,
       textSnippet: r.reviewText
         ? r.reviewText.length > 120

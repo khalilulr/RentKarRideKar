@@ -13,6 +13,7 @@ service DiscountService {
   rpc CheckEligibility(CheckEligibilityRequest) returns (CheckEligibilityResponse);
   rpc GetOfferHistory(GetOfferHistoryRequest) returns (GetOfferHistoryResponse);
   rpc RecordOfferUsage(RecordOfferUsageRequest) returns (RecordOfferUsageResponse);
+  rpc ApplyReferral(ApplyReferralRequest) returns (ApplyReferralResponse);
 }
 
 message OfferCondition {
@@ -109,4 +110,15 @@ message RecordOfferUsageRequest {
 
 message RecordOfferUsageResponse {
   bool success = 1;
+}
+
+message ApplyReferralRequest {
+  string referralCode = 1;
+  string userId = 2;
+}
+
+message ApplyReferralResponse {
+  bool success = 1;
+  string message = 2;
+  double discountAmount = 3;
 }

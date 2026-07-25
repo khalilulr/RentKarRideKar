@@ -1,98 +1,146 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🚗 RentKarRideKar
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> **A Next-Gen Multi-Vehicle & Advance Ride Booking Platform**
+> 
+> *Solving complex event logistics, multi-vehicle bookings, and opening up private vehicle rentals for Tier 2/3 cities.*
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🌟 Overview & Problem Statement
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Most modern ride-hailing and rental platforms (like Uber, Ola, or Lyft) are designed primarily for **on-demand, single-vehicle point-to-point rides**. However, they break down when handling **advance event planning** and **multi-vehicle logistics**.
 
-## Project setup
+### The Gap in Existing Platforms
+- **Event & Multi-Vehicle Bookings**: Planning weddings, corporate events, or group trips requiring multiple vehicles (e.g., 3 SUVs and a luxury bus weeks in advance) forces users into making separate bookings, managing isolated payments, verifying drivers individually, and coordinating multiple OTPs.
+- **Private Car Owner Exclusion**: In Tier 2 and Tier 3 cities, local rental markets rely heavily on individual private car owners rather than registered taxi fleets. Standard platforms completely ignore this massive supply market.
 
-```bash
-$ npm install
+### The RentKarRideKar Solution
+1. **Advance Booking First**: Built from the ground up for scheduled and multi-day bookings across custom dates.
+2. **Unified Multi-Vehicle Orders**: 
+   - Book multiple vehicles (cars, buses, bikes) under **a single order**.
+   - Single advance payment upfront, single completion OTP, and single final settlement verified post-trip.
+   - Automated earnings distribution to individual vehicle owners.
+3. **Private Vehicle Peer-to-Peer Onboarding**: Enables private non-commercial car owners in Tier 2/3 cities to monetize their vehicles with robust identity and document verification.
+
+---
+
+## 🏗 System Architecture & Microservices Design
+
+RentKarRideKar is built using a **NestJS Microservices Architecture** designed for high throughput, scalability, independent service deployments, and strict domain separation.
+
+```
+                    ┌───────────────────────────────┐
+                    │      Client / Frontend        │
+                    └───────────────┬───────────────┘
+                                    │  REST / HTTP / WS
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │          API Gateway          │
+                    └───────────────┬───────────────┘
+                                    │
+           ┌────────────────────────┼────────────────────────┐
+           │ gRPC                   │ gRPC                   │ gRPC
+           ▼                        ▼                        ▼
+┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│    Auth Service     │  │   Booking Service   │  │ Verification Service│
+│ (Identity, Tokens)  │  │ (Orders, Trips, OTP)│  │ (KYC, Docs, License)│
+└─────────────────────┘  └─────────────────────┘  └─────────────────────┘
+           │ gRPC                   │ gRPC                   │ gRPC
+           ▼                        ▼                        ▼
+┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│   Search & Catalog  │  │  Communication Svc  │  │  Rating & Review    │
+│(Vehicles, Availability)│ (Chat, Calls, SOS)  │  │ (Reputation, Karma) │
+└─────────────────────┘  └─────────────────────┘  └─────────────────────┘
+           │ gRPC                   │ gRPC
+           ▼                        ▼
+┌─────────────────────┐  ┌─────────────────────┐
+│  Discount Service   │  │   Payment Service   │
+│(Promos, Dynamic Pricing)│(Escrow, Razorpay) │
+└─────────────────────┘  └─────────────────────┘
 ```
 
-## Compile and run the project
+### Communication Protocols
+- **API Gateway**: Single entry point exposing clean **RESTful APIs** and **WebSockets** for real-time trip tracking/chat.
+- **Internal Microservices**: Direct inter-service communication over **gRPC (Protocol Buffers)** for high performance, low latency, and strong static type safety.
 
+---
+
+## 🛠 Tech Stack
+
+| Domain | Technologies |
+| :--- | :--- |
+| **Framework** | [NestJS](https://nestjs.com/) (Node.js & TypeScript) |
+| **Architecture** | Microservices Architecture with Monorepo structure |
+| **Inter-Service IPC** | **gRPC** via Protocol Buffers (`.proto`) |
+| **Database & ORM** | PostgreSQL / TypeORM |
+| **Caching & Pub/Sub** | Redis |
+| **API Protocol** | REST, WebSockets (Socket.IO / Gateways) |
+| **Containerization** | Docker & Docker Compose |
+
+---
+
+## 📁 Repository Structure (`apps/`)
+
+- `apps/api-gateway`: Unified entry point routing HTTP requests to downstream gRPC services.
+- `apps/auth-service`: Authentication, JWT issuing, user accounts, and security access control.
+- `apps/booking`: Multi-vehicle order processing, pricing calculations, trip status, and trip lifecycle.
+- `apps/search`: Vehicle catalog management, location indexing, and vehicle availability lookup.
+- `apps/verification`: Identity verification (KYC), driving license, RC, and vehicle inspection documents.
+- `apps/communication`: Real-time chat between passengers and owners, call masking, and emergency SOS alerts.
+- `apps/rating`: User & driver rating system, dynamic reputation caching, and cancellation tracking.
+- `apps/discount`: Promotional offers, discount codes, dynamic pricing adjustments, and offer history.
+- `apps/payment`: Payment processing, advance hold payouts, and owner earnings distribution.
+- `libs/proto`: Shared Protocol Buffer definitions for gRPC contracts across all microservices.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [Docker](https://www.docker.com/) & Docker Compose
+- [npm](https://www.npmjs.com/)
+
+### Environment Setup
+Copy sample environment files or configure `.env`:
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp todo.env .env
 ```
 
-## Run tests
-
+### 🐳 Running via Docker Compose
+To run all microservices, databases, and Redis instances simultaneously:
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker-compose up --build
 ```
 
-## Deployment
+### 💻 Running Locally (Development Mode)
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+2. **Start Shared Infra (PostgreSQL/Redis)**:
+   ```bash
+   docker-compose up postgres redis -d
+   ```
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+3. **Start Microservices**:
+   ```bash
+   # Start API Gateway
+   npm run start:dev api-gateway
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+   # Start Microservices individually or concurrently
+   npm run start:dev booking
+   npm run start:dev search
+   npm run start:dev verification
+   npm run start:dev auth-service
+   npm run start:dev communication
+   npm run start:dev rating
+   npm run start:dev discount
+   npm run start:dev payment
+   ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 📄 License
+This project is proprietary software under the RentKarRideKar Platform. All rights reserved.

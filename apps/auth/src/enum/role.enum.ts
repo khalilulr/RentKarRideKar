@@ -1,6 +1,6 @@
-export enum Role{
-    PASSENGER = 'PASSENGER',
-    DRIVER = 'DRIVER',
-    ADMIN = 'ADMIN',
-    VEHICLE_OWNER = 'VEHICLE_OWNER',
+export enum Role {
+  PASSENGER = 'PASSENGER',
+  DRIVER = 'DRIVER',
+  ADMIN = 'ADMIN',
+  VEHICLE_OWNER = 'VEHICLE_OWNER',
 }

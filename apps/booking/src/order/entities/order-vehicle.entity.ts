@@ -41,13 +41,24 @@ export class OrderVehicle {
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
-  @Column({ type: 'timestamp', name: 'owner_response_deadline', nullable: true })
+  @Column({ type: 'jsonb', name: 'price_breakdown', nullable: true })
+  priceBreakdown: any;
+
+  @Column({
+    type: 'timestamp',
+    name: 'owner_response_deadline',
+    nullable: true,
+  })
   ownerResponseDeadline: Date;
 
   @Column({ type: 'uuid', name: 'assigned_driver_id', nullable: true })
   assignedDriverId: string | null;
 
-  @Column({ type: 'timestamp', name: 'driver_response_deadline', nullable: true })
+  @Column({
+    type: 'timestamp',
+    name: 'driver_response_deadline',
+    nullable: true,
+  })
   driverResponseDeadline: Date;
 
   @Column({ type: 'varchar', name: 'driver_assignment_type', nullable: true })
@@ -77,7 +88,12 @@ export class OrderVehicle {
   @Column({ type: 'int', name: 'final_odometer_reading', nullable: true })
   finalOdometerReading: number;
 
-  @Column('decimal', { precision: 10, scale: 2, name: 'actual_distance_km', nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    name: 'actual_distance_km',
+    nullable: true,
+  })
   actualDistanceKm: number;
 
   @Column({ name: 'cancellation_reason', nullable: true })
@@ -89,16 +105,36 @@ export class OrderVehicle {
   @Column({ name: 'drop_address', nullable: true })
   dropAddress: string;
 
-  @Column('decimal', { precision: 10, scale: 7, name: 'pickup_lat', nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    name: 'pickup_lat',
+    nullable: true,
+  })
   pickupLat: number;
 
-  @Column('decimal', { precision: 10, scale: 7, name: 'pickup_lng', nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    name: 'pickup_lng',
+    nullable: true,
+  })
   pickupLng: number;
 
-  @Column('decimal', { precision: 10, scale: 7, name: 'drop_lat', nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    name: 'drop_lat',
+    nullable: true,
+  })
   dropLat: number;
 
-  @Column('decimal', { precision: 10, scale: 7, name: 'drop_lng', nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    name: 'drop_lng',
+    nullable: true,
+  })
   dropLng: number;
 
   @Column({ type: 'timestamp', name: 'pickup_datetime', nullable: true })

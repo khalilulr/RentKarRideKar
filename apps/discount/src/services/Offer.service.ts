@@ -1,15 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
+import type { ClientGrpc } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 import { OfferRepository } from '../repositories/Offer.repository';
 import { OfferHistoryRepository } from '../repositories/OfferHistory.repository';
 import { Offer } from '../entities/Offer.entity';
 import { OfferHistory } from '../entities/OfferHistory.entity';
+import {
+  AuthServiceClient,
+  AUTH_SERVICE_NAME,
+} from '../../../../libs/types/auth-service';
 
 @Injectable()
-export class OfferService {
+export class OfferService implements OnModuleInit {
+  private authService: AuthServiceClient;
+
   constructor(
     private readonly offerRepo: OfferRepository,
     private readonly offerHistoryRepo: OfferHistoryRepository,
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
   ) {}
+
+  onModuleInit() {
+    this.authService =
+      this.authClient.getService<AuthServiceClient>(AUTH_SERVICE_NAME);
+  }
 
   async createOffer(offerData: {
     code: string;
@@ -30,7 +44,10 @@ export class OfferService {
     });
   }
 
-  async toggleOffer(id: string, isActive: boolean): Promise<Offer & { usageCount: number }> {
+  async toggleOffer(
+    id: string,
+    isActive: boolean,
+  ): Promise<Offer & { usageCount: number }> {
     const offer = await this.offerRepo.findById(id);
     if (!offer) {
       throw new Error('Offer not found');
@@ -44,10 +61,12 @@ export class OfferService {
     };
   }
 
-  async listOffers(filter: 'active' | 'inactive' | 'all'): Promise<(Offer & { usageCount: number })[]> {
+  async listOffers(
+    filter: 'active' | 'inactive' | 'all',
+  ): Promise<(Offer & { usageCount: number })[]> {
     const offers = await this.offerRepo.findAll(filter);
     const usageCounts = await this.offerHistoryRepo.getUsageCounts();
-    return offers.map(offer => {
+    return offers.map((offer) => {
       const codeKey = offer.code.toLowerCase();
       return {
         ...offer,
@@ -162,5 +181,43 @@ export class OfferService {
       discountAmount,
     });
     return true;
+  }
+
+  async applyReferral(
+    referralCode: string,
+    userId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    discountAmount: number;
+  }> {
+    try {
+      if (
+        this.authService &&
+        typeof this.authService.validateReferralCode === 'function'
+      ) {
+        const response = await lastValueFrom(
+          this.authService.validateReferralCode({ referralCode, userId }),
+        );
+        if (response && response.isValid) {
+          return {
+            success: true,
+            message: 'Referral applied successfully',
+            discountAmount: 50,
+          };
+        }
+      }
+    } catch (e: any) {
+      console.error(
+        '[OfferService] Failed to validate referral code via gRPC:',
+        e?.message,
+      );
+    }
+
+    return {
+      success: false,
+      message: 'Invalid referral code',
+      discountAmount: 0,
+    };
   }
 }

@@ -17,6 +17,7 @@ import { ReviewLike } from './entities/ReviewLike.entity';
 import { ReviewLikeRepository } from './repositories/ReviewLike.repository';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import * as path from 'path';
+import { RedisModule } from 'apps/common/src/redis/redis.module';
 
 const BOOKING_SERVICE_PROTO_PATH = path.join(
   process.cwd(),
@@ -33,6 +34,7 @@ const envFilePath =
       isGlobal: true,
       envFilePath: envFilePath,
     }),
+    RedisModule.registerAsync(),
     // 1. Default Connection (Rating DB)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -42,8 +44,10 @@ const envFilePath =
         host: configService.get<string>('RATING_DB_HOST') || 'localhost',
         port: configService.get<number>('RATING_DB_PORT') || 5437,
         username: configService.get<string>('RATING_DB_USER') || 'postgres',
-        password: configService.get<string>('RATING_DB_PASSWORD') || 'ashif1234',
-        database: configService.get<string>('RATING_DB_NAME') || 'rkrk_rating_db',
+        password:
+          configService.get<string>('RATING_DB_PASSWORD') || 'ashif1234',
+        database:
+          configService.get<string>('RATING_DB_NAME') || 'rkrk_rating_db',
         autoLoadEntities: true,
         synchronize: true,
       }),
@@ -60,7 +64,12 @@ const envFilePath =
         },
       },
     ]),
-    TypeOrmModule.forFeature([Review, Cancellation, ReputationCache, ReviewLike]),
+    TypeOrmModule.forFeature([
+      Review,
+      Cancellation,
+      ReputationCache,
+      ReviewLike,
+    ]),
   ],
   controllers: [RatingController],
   providers: [

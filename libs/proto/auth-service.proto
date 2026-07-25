@@ -47,6 +47,7 @@ service AuthService {
   rpc GetReferrals(GetReferralsRequest) returns (ReferralsResponse);
   rpc ApplyReferral(ApplyReferralRequest) returns (ApplyReferralResponse);
   rpc GetWallet(GetWalletRequest) returns (WalletResponse);
+  rpc ValidateReferralCode(ValidateReferralCodeRequest) returns (ValidateReferralCodeResponse);
   rpc AdminGetUsers(AdminGetUsersRequest) returns (AdminGetUsersResponse);
   rpc AdminUpdateUserStatus(AdminUpdateUserStatusRequest) returns (UserResponse);
 }
@@ -77,7 +78,7 @@ message User {
   string mobile = 2;
   string name = 3;
   repeated Role roles = 4;
-  Role activePerspective = 5;
+  optional Role activePerspective = 5;
   bool isActive = 6;
   string profilePicture = 7;
   optional string email = 8;
@@ -87,6 +88,8 @@ message User {
   optional string bankAccountHolderName = 12;
   optional string bankName = 13;
   optional string bankIfscCode = 14;
+  optional string emergencyContactNumber = 15;
+  optional string emergencyContactRelation = 16;
 }
 
 message AuthResponse {
@@ -174,6 +177,8 @@ message UpdateMeRequest {
   optional string bankAccountHolderName = 7;
   optional string bankName = 8;
   optional string bankIfscCode = 9;
+  optional string emergencyContactNumber = 10;
+  optional string emergencyContactRelation = 11;
 }
 
 
@@ -366,6 +371,16 @@ message WalletResponse {
   int32 walletBalance = 1;
   string currency = 2;
   string transactionsJson = 3;
+}
+
+message ValidateReferralCodeRequest {
+  string referralCode = 1;
+  string userId = 2;
+}
+
+message ValidateReferralCodeResponse {
+  bool isValid = 1;
+  string referrerName = 2;
 }
 
 message AdminGetUsersRequest {

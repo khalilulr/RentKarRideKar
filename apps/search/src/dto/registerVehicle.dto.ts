@@ -17,7 +17,6 @@ import { SeatingCapacity } from '../enum/seatingCapacity.enum';
 import { VehicleStatus } from '../enum/vehicleStatus.enum';
 
 export class RegisterVehicleDto {
-
   @IsEnum(VehicleCategory)
   vehicleCategory: VehicleCategory;
 

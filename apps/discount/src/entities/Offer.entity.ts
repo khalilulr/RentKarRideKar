@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Unique,
+} from 'typeorm';
 
 @Entity('offers')
 @Unique(['code'])
@@ -21,7 +28,13 @@ export class Offer {
   @Column({ type: 'boolean', name: 'first_booking_only', default: false })
   firstBookingOnly: boolean;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'min_booking_amount', default: 0.0 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'min_booking_amount',
+    default: 0.0,
+  })
   minBookingAmount: number;
 
   @Column({ type: 'text', name: 'description', nullable: true })

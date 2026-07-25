@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Order } from '../entities/order.entity';
@@ -53,22 +57,28 @@ export class OrderQueryService {
       const formatted = await Promise.all(
         orders.map(async (o) => {
           const first = o.vehicles[0];
-          const pickupArea = first?.pickupAddress?.split(',')[0].trim() || 'Jadugoda';
-          const dropArea = first?.dropAddress?.split(',')[0].trim() || 'Jamshedpur';
+          const pickupArea =
+            first?.pickupAddress?.split(',')[0].trim() || '';
+          const dropArea =
+            first?.dropAddress?.split(',')[0].trim() || '';
           const platformFee = Math.round(Number(o.totalAmount) * 0.03);
 
           const vehiclesResponse = await Promise.all(
             o.vehicles.map(async (v) => {
-              let vehicleName = 'Ertiga (White)';
-              let driverName = 'Rajesh Kumar';
+              let vehicleName = '';
+              let driverName = 'Driver';
 
-              const vehRes = await this.orderGrpcService.getVehicleById(v.vehicleId);
+              const vehRes = await this.orderGrpcService.getVehicleById(
+                v.vehicleId,
+              );
               if (vehRes?.vehicle) {
                 vehicleName = `${vehRes.vehicle.make} (${vehRes.vehicle.color})`;
               }
 
               if (v.assignedDriverId) {
-                const driverRes = await this.orderGrpcService.getMe(v.assignedDriverId);
+                const driverRes = await this.orderGrpcService.getMe(
+                  v.assignedDriverId,
+                );
                 driverName = driverRes?.user?.name || driverName;
               }
 
@@ -76,7 +86,10 @@ export class OrderQueryService {
                 vehicle: vehicleName,
                 vehicleId: v.vehicleId,
                 driver: driverName,
-                status: v.status === 'PENDING_OWNER_RESPONSE' ? 'PENDING' : 'CONFIRMED',
+                status:
+                  v.status === 'PENDING_OWNER_RESPONSE'
+                    ? 'PENDING'
+                    : 'CONFIRMED',
               };
             }),
           );
@@ -101,7 +114,12 @@ export class OrderQueryService {
 
       return {
         data: formatted,
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       };
     } else if (roleQuery === 'DRIVER') {
       // Driver perspective
@@ -126,55 +144,56 @@ export class OrderQueryService {
         }
       }
 
-      const [orderVehicles, total] = await this.orderVehicleRepository.findAndCount({
-        where,
-        relations: ['order'],
-        order: { createdAt: 'DESC' },
-        skip,
-        take: limit,
-      });
+      const [orderVehicles, total] =
+        await this.orderVehicleRepository.findAndCount({
+          where,
+          relations: ['order'],
+          order: { createdAt: 'DESC' },
+          skip,
+          take: limit,
+        });
 
       const formatted = await Promise.all(
         orderVehicles.map(async (ov) => {
-          const pickupArea = ov.pickupAddress?.split(',')[0].trim() || 'Jadugoda';
-          const dropArea = ov.dropAddress?.split(',')[0].trim() || 'Jamshedpur';
+          const pickupArea = ov.pickupAddress?.split(',')[0].trim() || '';
+          const dropArea = ov.dropAddress?.split(',')[0].trim() || '';
 
-          let passengerName = 'Priya Sharma';
+          let passengerName = 'Passenger';
           if (ov.order && ov.order.passengerId) {
-            const passRes = await this.orderGrpcService.getMe(ov.order.passengerId);
+            const passRes = await this.orderGrpcService.getMe(
+              ov.order.passengerId,
+            );
             passengerName = passRes?.user?.name || passengerName;
           }
 
-          let ownerName = 'Rajesh Kumar';
+          let ownerName = 'Owner';
           const ownerRes = await this.orderGrpcService.getMe(ov.ownerId);
           ownerName = ownerRes?.user?.name || ownerName;
 
-          let vehicleName = 'Ertiga (JH05AB1234)';
-          const vehRes = await this.orderGrpcService.getVehicleById(ov.vehicleId);
+          let vehicleName = '';
+          const vehRes = await this.orderGrpcService.getVehicleById(
+            ov.vehicleId,
+          );
           if (vehRes?.vehicle) {
             vehicleName = `${vehRes.vehicle.make} (${vehRes.vehicle.registrationNumber})`;
           }
-
-          const pricing = this.pricingService.calculatePricing(ov.totalDays);
 
           return {
             orderId: ov.orderId,
             orderVehicleId: ov.id,
             vehicleId: ov.vehicleId,
             status: ov.status,
+            paymentStatus: ov.order?.paymentStatus || 'PENDING',
             route: `${pickupArea} → ${dropArea}`,
             pickupDatetime: ov.pickupDatetime.toISOString(),
             pickupAddress: ov.pickupAddress,
             dropAddress: ov.dropAddress,
             tripType: ov.tripType,
-            passenger: { name: passengerName, rating: 4.5 },
-            owner: { name: ownerName, rating: 4.6 },
+            passenger: { name: passengerName },
+            owner: { name: ownerName },
             vehicle: vehicleName,
-            earnings: {
-              driverFees: pricing.breakdown.driverFees,
-              platformFee: Math.round(pricing.breakdown.driverFees * 0.02),
-              netEarnings: Math.round(pricing.breakdown.driverFees * 0.98),
-            },
+            // Driver fees intentionally omitted — payment is arranged privately
+            // between the owner and their trusted driver.
             responseDeadline: ov.driverResponseDeadline
               ? ov.driverResponseDeadline.toISOString()
               : null,
@@ -185,7 +204,12 @@ export class OrderQueryService {
 
       return {
         data: formatted,
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       };
     } else {
       // Owner perspective
@@ -193,32 +217,56 @@ export class OrderQueryService {
       if (statusQuery) {
         where.status = statusQuery;
       }
-      const [orderVehicles, total] = await this.orderVehicleRepository.findAndCount({
-        where,
-        relations: ['order'],
-        order: { createdAt: 'DESC' },
-        skip,
-        take: limit,
-      });
+      const [orderVehicles, total] =
+        await this.orderVehicleRepository.findAndCount({
+          where,
+          relations: ['order'],
+          order: { createdAt: 'DESC' },
+          skip,
+          take: limit,
+        });
 
       const formatted = await Promise.all(
         orderVehicles.map(async (ov) => {
-          const pickupArea = ov.pickupAddress?.split(',')[0].trim() || 'Jadugoda';
-          const dropArea = ov.dropAddress?.split(',')[0].trim() || 'Jamshedpur';
+          const pickupArea =
+            ov.pickupAddress?.split(',')[0].trim() || '';
+          const dropArea = ov.dropAddress?.split(',')[0].trim() || '';
 
-          let passengerName = 'Priya Sharma';
+          let passengerName = 'Passenger';
           if (ov.order && ov.order.passengerId) {
-            const passRes = await this.orderGrpcService.getMe(ov.order.passengerId);
+            const passRes = await this.orderGrpcService.getMe(
+              ov.order.passengerId,
+            );
             passengerName = passRes?.user?.name || passengerName;
           }
 
-          let vehicleName = 'Ertiga (JH05AB1234)';
-          const vehRes = await this.orderGrpcService.getVehicleById(ov.vehicleId);
+          let vehicleName = '';
+          let plateType = 'WHITE';
+          const vehRes = await this.orderGrpcService.getVehicleById(
+            ov.vehicleId,
+          );
           if (vehRes?.vehicle) {
             vehicleName = `${vehRes.vehicle.make} (${vehRes.vehicle.registrationNumber})`;
+            plateType = vehRes.vehicle.plateType || 'WHITE';
           }
 
-          const pricing = this.pricingService.calculatePricing(ov.totalDays);
+          const pb = ov.priceBreakdown || {
+            basePrice: Number(ov.price),
+            gst: 0,
+            platformFee: 0,
+            discount: 0,
+            total: Number(ov.price),
+            advancePercentage: 25,
+            advanceAmount: Math.round(Number(ov.price) * 0.25),
+            balanceAmount:
+              Number(ov.price) - Math.round(Number(ov.price) * 0.25),
+            currency: 'INR',
+          };
+          const totalFee =
+            pb.totalPlatformFee !== undefined
+              ? pb.totalPlatformFee
+              : pb.platformFee;
+          const yourEarnings = pb.total - totalFee;
           const mustConfirmDriverBy = new Date(ov.pickupDatetime);
           mustConfirmDriverBy.setHours(mustConfirmDriverBy.getHours() - 48);
 
@@ -230,40 +278,263 @@ export class OrderQueryService {
             route: `${pickupArea} → ${dropArea}`,
             pickupDatetime: ov.pickupDatetime.toISOString(),
             tripType: ov.tripType,
-            passenger: { name: passengerName, rating: 4.5 },
+            passenger: { name: passengerName },
             yourVehicle: vehicleName,
-            yourEarnings: pricing.yourEarnings,
+            plateType: plateType,
+            yourEarnings: yourEarnings,
+            // Full pricing so the owner sees ride price, platform commission,
+            // and their own earnings on the request card.
+            pricing: {
+              total: pb.total,
+              basePrice: pb.basePrice,
+              gst: pb.gst || 0,
+              platformFee: totalFee || 0,
+              yourEarnings,
+            },
             responseDeadline: ov.ownerResponseDeadline
               ? ov.ownerResponseDeadline.toISOString()
               : null,
             createdAt: ov.createdAt.toISOString(),
-            driverArrangement: {
-              mode: 'POOL',
-              availableDrivers: [
-                { driverId: 'drv_001', name: 'Mahesh Kumar', tripsCompleted: 42, isAvailableOnDate: true },
-                { driverId: 'drv_002', name: 'Suresh Yadav', tripsCompleted: 18, isAvailableOnDate: true },
-              ],
-              mustConfirmDriverBy: mustConfirmDriverBy.toISOString(),
-            },
+            mustConfirmDriverBy: mustConfirmDriverBy.toISOString(),
           };
         }),
       );
 
       return {
         data: formatted,
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       };
     }
   }
 
+  async getDriverTrip(orderId: string, vehicleId: string, driverId: string) {
+    const ov = await this.orderVehicleRepository.findOne({
+      where: { orderId, vehicleId, assignedDriverId: driverId },
+      relations: ['order'],
+    });
+
+    if (!ov) {
+      throw new NotFoundException({
+        error: 'TRIP_NOT_FOUND',
+        message:
+          'Trip not found or you are not assigned as the driver for this vehicle.',
+      });
+    }
+
+    const pickupArea = ov.pickupAddress?.split(',')[0].trim() || '';
+    const dropArea = ov.dropAddress?.split(',')[0].trim() || '';
+
+    let passengerName = 'Passenger';
+    let passengerProfilePicture = '';
+    if (ov.order && ov.order.passengerId) {
+      const passRes = await this.orderGrpcService.getMe(ov.order.passengerId);
+      passengerName = passRes?.user?.name || passengerName;
+      passengerProfilePicture =
+        passRes?.user?.profilePicture || passengerProfilePicture;
+    }
+
+    let ownerName = 'Owner';
+    const ownerRes = await this.orderGrpcService.getMe(ov.ownerId);
+    ownerName = ownerRes?.user?.name || ownerName;
+
+    let vehicleName = '';
+    let vehicleDetails: any = null;
+    const vehRes = await this.orderGrpcService.getVehicleById(ov.vehicleId);
+    if (vehRes?.vehicle) {
+      vehicleName = `${vehRes.vehicle.make} (${vehRes.vehicle.registrationNumber})`;
+      vehicleDetails = {
+        id: ov.vehicleId,
+        make: vehRes.vehicle.make || '',
+        model: vehRes.vehicle.model || '',
+        color: vehRes.vehicle.color || '',
+        seatingCapacity: vehRes.vehicle.seatingCapacity || '',
+        rating: (vehRes.vehicle as any).rating || 0.0,
+        photos: vehRes.vehicle.vehiclePhotos || [],
+        variant: vehRes.vehicle.variant || '',
+        registrationNumber: vehRes.vehicle.registrationNumber || '',
+        hasAC: vehRes.vehicle.hasAC !== undefined ? vehRes.vehicle.hasAC : true,
+        totalTrips: (vehRes.vehicle as any).totalTrips || 0,
+        plateType: vehRes.vehicle.plateType || 'WHITE',
+      };
+    }
+
+    return {
+      orderId: ov.orderId,
+      orderVehicleId: ov.id,
+      vehicleId: ov.vehicleId,
+      status: ov.status,
+      paymentStatus: ov.order?.paymentStatus || 'PENDING',
+      route: `${pickupArea} → ${dropArea}`,
+      pickupDatetime: ov.pickupDatetime.toISOString(),
+      pickupAddress: ov.pickupAddress,
+      dropAddress: ov.dropAddress,
+      tripType: ov.tripType,
+      passenger: {
+        id: ov.order?.passengerId || '',
+        name: passengerName,
+        profilePicture: passengerProfilePicture,
+      },
+      owner: { id: ov.ownerId, name: ownerName },
+      vehicle: vehicleName,
+      vehicleDetails,
+      // Driver fees intentionally omitted — payment is arranged privately
+      // between the owner and their trusted driver.
+      responseDeadline: ov.driverResponseDeadline
+        ? ov.driverResponseDeadline.toISOString()
+        : '',
+      createdAt: ov.createdAt.toISOString(),
+    };
+  }
+
+  async getDriverMyTrips(
+    driverId: string,
+    statusQuery?: string,
+    pageQuery?: number,
+    limitQuery?: number,
+  ) {
+    const page = pageQuery || 1;
+    const limit = limitQuery || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = { assignedDriverId: driverId };
+
+    if (statusQuery) {
+      const normalizedStatus = statusQuery.toUpperCase();
+      if (normalizedStatus === 'PENDING') {
+        where.status = OrderVehicleStatus.DRIVER_PENDING;
+      } else if (
+        normalizedStatus === 'UPCOMING' ||
+        normalizedStatus === 'FUTURE'
+      ) {
+        where.status = In([
+          OrderVehicleStatus.DRIVER_ACCEPTED,
+          OrderVehicleStatus.ARRIVED,
+          OrderVehicleStatus.IN_TRANSIT,
+        ]);
+      } else if (normalizedStatus === 'COMPLETED') {
+        where.status = OrderVehicleStatus.COMPLETED;
+      } else {
+        where.status = statusQuery;
+      }
+    }
+
+    const [orderVehicles, total] =
+      await this.orderVehicleRepository.findAndCount({
+        where,
+        relations: ['order'],
+        order: { createdAt: 'DESC' },
+        skip,
+        take: limit,
+      });
+
+    const formatted = await Promise.all(
+      orderVehicles.map(async (ov) => {
+        const pickupArea = ov.pickupAddress?.split(',')[0].trim() || '';
+        const dropArea = ov.dropAddress?.split(',')[0].trim() || '';
+
+        let passengerName = 'Passenger';
+        let passengerProfilePicture = '';
+        if (ov.order && ov.order.passengerId) {
+          const passRes = await this.orderGrpcService.getMe(
+            ov.order.passengerId,
+          );
+          passengerName = passRes?.user?.name || passengerName;
+          passengerProfilePicture =
+            passRes?.user?.profilePicture || passengerProfilePicture;
+        }
+
+        let ownerName = 'Owner';
+        const ownerRes = await this.orderGrpcService.getMe(ov.ownerId);
+        ownerName = ownerRes?.user?.name || ownerName;
+
+        let vehicleName = '';
+        let vehicleDetails: any = null;
+        const vehRes = await this.orderGrpcService.getVehicleById(ov.vehicleId);
+        if (vehRes?.vehicle) {
+          vehicleName = `${vehRes.vehicle.make} (${vehRes.vehicle.registrationNumber})`;
+          vehicleDetails = {
+            id: ov.vehicleId,
+            make: vehRes.vehicle.make || '',
+            model: vehRes.vehicle.model || '',
+            color: vehRes.vehicle.color || '',
+            seatingCapacity: vehRes.vehicle.seatingCapacity || '',
+            rating: (vehRes.vehicle as any).rating || 0.0,
+            photos: vehRes.vehicle.vehiclePhotos || [],
+            variant: vehRes.vehicle.variant || '',
+            registrationNumber: vehRes.vehicle.registrationNumber || '',
+            hasAC:
+              vehRes.vehicle.hasAC !== undefined ? vehRes.vehicle.hasAC : true,
+            totalTrips: (vehRes.vehicle as any).totalTrips || 0,
+            plateType: vehRes.vehicle.plateType || 'WHITE',
+          };
+        }
+
+        return {
+          orderId: ov.orderId,
+          orderVehicleId: ov.id,
+          vehicleId: ov.vehicleId,
+          status: ov.status,
+          paymentStatus: ov.order?.paymentStatus || 'PENDING',
+          route: `${pickupArea} → ${dropArea}`,
+          pickupDatetime: ov.pickupDatetime.toISOString(),
+          pickupAddress: ov.pickupAddress,
+          dropAddress: ov.dropAddress,
+          tripType: ov.tripType,
+          passenger: {
+            id: ov.order?.passengerId || '',
+            name: passengerName,
+            rating: 0,
+            totalTrips: 10,
+            profilePicture: passengerProfilePicture,
+          },
+          owner: {
+            id: ov.ownerId,
+            name: ownerName,
+            rating: 4.6,
+            totalTrips: 10,
+          },
+          vehicle: vehicleName,
+          vehicleDetails,
+          // Driver fees intentionally omitted — payment is arranged privately
+          // between the owner and their trusted driver.
+          responseDeadline: ov.driverResponseDeadline
+            ? ov.driverResponseDeadline.toISOString()
+            : '',
+          createdAt: ov.createdAt.toISOString(),
+        };
+      }),
+    );
+
+    return {
+      data: formatted,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
   async getOrderDetails(orderId: string, user: any) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!orderId || !uuidRegex.test(orderId)) {
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
+    }
+
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: ['vehicles', 'timeline'],
     });
 
     if (!order) {
-      throw new NotFoundException({ error: 'ORDER_NOT_FOUND', message: 'Order not found.' });
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
     }
 
     const first = order.vehicles[0];
@@ -280,8 +551,9 @@ export class OrderQueryService {
           seatingCapacity: 'SIX_SEVEN',
           hasAC: true,
           photos: [] as string[],
+          plateType: 'WHITE',
         };
-        
+
         const vehRes = await this.orderGrpcService.getVehicleById(v.vehicleId);
         if (vehRes?.vehicle) {
           vehicleDetails = {
@@ -290,21 +562,30 @@ export class OrderQueryService {
             model: vehRes.vehicle.model || vehicleDetails.model,
             variant: vehRes.vehicle.variant || vehicleDetails.variant,
             color: vehRes.vehicle.color || vehicleDetails.color,
-            registrationNumber: vehRes.vehicle.registrationNumber || vehicleDetails.registrationNumber,
-            seatingCapacity: vehRes.vehicle.seatingCapacity || vehicleDetails.seatingCapacity,
-            hasAC: vehRes.vehicle.hasAC !== undefined ? vehRes.vehicle.hasAC : vehicleDetails.hasAC,
+            registrationNumber:
+              vehRes.vehicle.registrationNumber ||
+              vehicleDetails.registrationNumber,
+            seatingCapacity:
+              vehRes.vehicle.seatingCapacity || vehicleDetails.seatingCapacity,
+            hasAC:
+              vehRes.vehicle.hasAC !== undefined
+                ? vehRes.vehicle.hasAC
+                : vehicleDetails.hasAC,
             photos: vehRes.vehicle.vehiclePhotos || vehicleDetails.photos,
+            plateType: vehRes.vehicle.plateType || 'WHITE',
           };
         }
 
-        let ownerName = 'Rajesh Kumar';
+        let ownerName = 'Owner';
         const ownerRes = await this.orderGrpcService.getMe(v.ownerId);
         ownerName = ownerRes?.user?.name || ownerName;
 
         let driverDetails: any = null;
         if (v.assignedDriverId) {
-          let driverName = 'Rajesh Kumar';
-          const driverRes = await this.orderGrpcService.getMe(v.assignedDriverId);
+          let driverName = 'Driver';
+          const driverRes = await this.orderGrpcService.getMe(
+            v.assignedDriverId,
+          );
           driverName = driverRes?.user?.name || driverName;
 
           driverDetails = {
@@ -320,21 +601,44 @@ export class OrderQueryService {
           };
         }
 
-        const pricing = this.pricingService.calculatePricing(v.totalDays);
+        const pb = v.priceBreakdown || {
+          basePrice: Number(v.price),
+          gst: 0,
+          platformFee: 0,
+          discount: 0,
+          total: Number(v.price),
+          advancePercentage: 25,
+          advanceAmount: Math.round(Number(v.price) * 0.25),
+          balanceAmount: Number(v.price) - Math.round(Number(v.price) * 0.25),
+          currency: 'INR',
+        };
 
         return {
           orderVehicleId: v.id,
           vehicle: vehicleDetails,
-          owner: { id: v.ownerId, name: ownerName, rating: 4.6, totalTrips: 23 },
-          driver: driverDetails,
-          pricing: {
-            total: pricing.total,
-            advance: pricing.advanceRequired,
-            remaining: pricing.total - pricing.advanceRequired,
+          owner: {
+            id: v.ownerId,
+            name: ownerName,
+            rating: 4.6,
+            totalTrips: 23,
           },
+          driver: driverDetails,
+          pricing: pb,
         };
       }),
     );
+
+    const orderPb = order.priceBreakdown || {
+      basePrice: Number(order.totalAmount),
+      gst: 0,
+      platformFee: 0,
+      discount: Number(order.discountAmount),
+      total: Number(order.totalAmount),
+      advancePercentage: 25,
+      advanceAmount: Number(order.advanceAmount),
+      balanceAmount: Number(order.totalAmount) - Number(order.advanceAmount),
+      currency: 'INR',
+    };
 
     return {
       orderId: order.id,
@@ -355,21 +659,30 @@ export class OrderQueryService {
       pickupDatetime: first?.pickupDatetime
         ? first.pickupDatetime.toISOString()
         : new Date().toISOString(),
-      returnDatetime: first?.returnDatetime ? first.returnDatetime.toISOString() : null,
+      returnDatetime: first?.returnDatetime
+        ? first.returnDatetime.toISOString()
+        : null,
       tripType: first?.tripType || 'ROUND_TRIP',
       totalDays: first?.totalDays || 1,
       passengerNote: order.passengerNote,
       vehicles,
       payment: {
         status: order.paymentStatus,
-        advanceAmount: Number(order.advanceAmount),
+        advanceAmount: orderPb.advanceAmount,
         advanceDue: order.paymentStatus === PaymentStatus.PENDING,
         paymentLink:
-          order.paymentStatus === PaymentStatus.PENDING ? order.paymentLink : null,
-        totalAmount: Number(order.totalAmount),
-        originalAmount: Number(order.originalAmount || order.totalAmount),
-        discountAmount: Number(order.discountAmount),
+          order.paymentStatus === PaymentStatus.PENDING
+            ? order.paymentLink
+            : null,
+        totalAmount: orderPb.total,
+        originalAmount: orderPb.basePrice,
+        discountAmount: orderPb.discount,
         promoCode: order.promoCode || '',
+        basePrice: orderPb.basePrice,
+        gst: orderPb.gst,
+        platformFee: orderPb.platformFee,
+        balanceAmount: orderPb.balanceAmount,
+        currency: orderPb.currency,
       },
       communication:
         order.paymentStatus === PaymentStatus.COMPLETED
@@ -392,7 +705,9 @@ export class OrderQueryService {
   }
 
   async getBooking(orderId: string) {
-    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
     if (!order) {
       throw new NotFoundException({
         error: 'BOOKING_NOT_FOUND',
@@ -400,10 +715,17 @@ export class OrderQueryService {
       });
     }
 
-    const vehicles = await this.orderVehicleRepository.find({ where: { orderId } });
-    const tripStartDate = vehicles.length > 0
-      ? new Date(Math.min(...vehicles.map(v => new Date(v.pickupDatetime).getTime())))
-      : new Date();
+    const vehicles = await this.orderVehicleRepository.find({
+      where: { orderId },
+    });
+    const tripStartDate =
+      vehicles.length > 0
+        ? new Date(
+            Math.min(
+              ...vehicles.map((v) => new Date(v.pickupDatetime).getTime()),
+            ),
+          )
+        : new Date();
 
     return {
       id: order.id,
@@ -418,8 +740,10 @@ export class OrderQueryService {
   }
 
   async getOrderVehicles(orderId: string) {
-    const vehicles = await this.orderVehicleRepository.find({ where: { orderId } });
-    const mapped = vehicles.map(v => ({
+    const vehicles = await this.orderVehicleRepository.find({
+      where: { orderId },
+    });
+    const mapped = vehicles.map((v) => ({
       id: v.id,
       orderId: v.orderId,
       vehicleId: v.vehicleId,
@@ -431,8 +755,44 @@ export class OrderQueryService {
     return { vehicles: mapped };
   }
 
-  async updateBookingStatus(orderId: string, status: string, visibleStatus: string) {
-    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+  async getOrderVehicle(id: string) {
+    const v = await this.orderVehicleRepository.findOne({
+      where: { id },
+      relations: ['order'],
+    });
+    if (!v) {
+      throw new NotFoundException({
+        error: 'ORDER_VEHICLE_NOT_FOUND',
+        message: 'Order vehicle not found',
+      });
+    }
+
+    return {
+      id: v.id,
+      orderId: v.orderId,
+      vehicleId: v.vehicleId,
+      ownerId: v.ownerId,
+      status: v.status,
+      price: Number(v.price),
+      assignedDriverId: v.assignedDriverId || '',
+      pickupLat: v.pickupLat ? parseFloat(v.pickupLat.toString()) : 0,
+      pickupLng: v.pickupLng ? parseFloat(v.pickupLng.toString()) : 0,
+      dropLat: v.dropLat ? parseFloat(v.dropLat.toString()) : 0,
+      dropLng: v.dropLng ? parseFloat(v.dropLng.toString()) : 0,
+      pickupAddress: v.pickupAddress || '',
+      dropAddress: v.dropAddress || '',
+      passengerId: v.order ? v.order.passengerId : '',
+    };
+  }
+
+  async updateBookingStatus(
+    orderId: string,
+    status: string,
+    visibleStatus: string,
+  ) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
     if (!order) {
       throw new NotFoundException({
         error: 'BOOKING_NOT_FOUND',
@@ -446,8 +806,14 @@ export class OrderQueryService {
     return { success: true };
   }
 
-  async getOwnerEarnings(ownerId: string, period: string, year: number, month: number) {
-    const query = this.orderVehicleRepository.createQueryBuilder('ov')
+  async getOwnerEarnings(
+    ownerId: string,
+    period: string,
+    year: number,
+    month: number,
+  ) {
+    const query = this.orderVehicleRepository
+      .createQueryBuilder('ov')
       .where('ov.ownerId = :ownerId', { ownerId })
       .andWhere('ov.status = :status', { status: 'COMPLETED' });
 
@@ -455,17 +821,27 @@ export class OrderQueryService {
 
     let totalGross = 0;
     let totalTrips = 0;
-    const byVehicle: Record<string, { gross: number; trips: number; vehicleId: string }> = {};
+    const byVehicle: Record<
+      string,
+      { gross: number; trips: number; vehicleId: string }
+    > = {};
 
     for (const ov of completed) {
       if (ov.completedAt) {
         const compDate = new Date(ov.completedAt);
-        if (compDate.getFullYear() === year && (month === 0 || compDate.getMonth() + 1 === month)) {
+        if (
+          compDate.getFullYear() === year &&
+          (month === 0 || compDate.getMonth() + 1 === month)
+        ) {
           const price = Number(ov.price) || 0;
           totalGross += price;
           totalTrips++;
           if (!byVehicle[ov.vehicleId]) {
-            byVehicle[ov.vehicleId] = { gross: 0, trips: 0, vehicleId: ov.vehicleId };
+            byVehicle[ov.vehicleId] = {
+              gross: 0,
+              trips: 0,
+              vehicleId: ov.vehicleId,
+            };
           }
           byVehicle[ov.vehicleId].gross += price;
           byVehicle[ov.vehicleId].trips++;
@@ -499,10 +875,14 @@ export class OrderQueryService {
     };
   }
 
-  async getPayoutHistory(ownerId: string, pageQuery?: number, limitQuery?: number) {
+  async getPayoutHistory(
+    ownerId: string,
+    pageQuery?: number,
+    limitQuery?: number,
+  ) {
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
-    
+
     const mockPayouts = [
       {
         payoutId: 'pay_uuid_1092',
@@ -519,7 +899,7 @@ export class OrderQueryService {
         processedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
         bankName: 'State Bank of India',
         accountLast4: '4321',
-      }
+      },
     ];
 
     return {
@@ -552,7 +932,7 @@ export class OrderQueryService {
 
     return {
       year,
-      ownerName: 'Rajesh Kumar',
+      ownerName: 'Owner',
       panNumber: 'ABCDE1234F',
       totalGrossEarnings: totalGross,
       totalPlatformFee: platformFee,
@@ -563,12 +943,19 @@ export class OrderQueryService {
     };
   }
 
-  async getDriverEarnings(driverId: string, pageQuery?: number, limitQuery?: number) {
+  async getDriverEarnings(
+    driverId: string,
+    pageQuery?: number,
+    limitQuery?: number,
+  ) {
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
 
     const completed = await this.orderVehicleRepository.find({
-      where: { assignedDriverId: driverId, status: OrderVehicleStatus.COMPLETED },
+      where: {
+        assignedDriverId: driverId,
+        status: OrderVehicleStatus.COMPLETED,
+      },
     });
 
     let totalGross = 0;
@@ -576,13 +963,14 @@ export class OrderQueryService {
     const list: any[] = [];
 
     for (const ov of completed) {
-      const pricing = this.pricingService.calculatePricing(ov.totalDays);
-      const driverFee = pricing.breakdown.driverFees || 1500;
+      const driverFee = 300 * (ov.totalDays || 1);
       totalGross += driverFee;
       totalTrips++;
       list.push({
         orderId: ov.orderId,
-        date: ov.completedAt ? ov.completedAt.toISOString() : new Date().toISOString(),
+        date: ov.completedAt
+          ? ov.completedAt.toISOString()
+          : new Date().toISOString(),
         gross: driverFee,
         platformFee: Math.round(driverFee * 0.02 * 100) / 100,
         net: Math.round(driverFee * 0.98 * 100) / 100,
@@ -659,7 +1047,11 @@ export class OrderQueryService {
     };
   }
 
-  async adminGetDisputes(statusQuery?: string, pageQuery?: number, limitQuery?: number) {
+  async adminGetDisputes(
+    statusQuery?: string,
+    pageQuery?: number,
+    limitQuery?: number,
+  ) {
     const page = pageQuery || 1;
     const limit = limitQuery || 10;
     const skip = (page - 1) * limit;
@@ -676,7 +1068,7 @@ export class OrderQueryService {
       take: limit,
     });
 
-    const mapped = disputes.map(d => ({
+    const mapped = disputes.map((d) => ({
       disputeId: d.id,
       orderId: d.orderId,
       userId: d.userId,
@@ -702,7 +1094,14 @@ export class OrderQueryService {
   }
 
   async adminResolveDispute(body: any) {
-    const { disputeId, resolution, refundAmount, refundTo, penaliseOwner, penaltyAmount } = body;
+    const {
+      disputeId,
+      resolution,
+      refundAmount,
+      refundTo,
+      penaliseOwner,
+      penaltyAmount,
+    } = body;
     const dispute = await this.disputeRepository.findOne({
       where: { id: disputeId },
     });
@@ -716,7 +1115,7 @@ export class OrderQueryService {
     dispute.status = 'RESOLVED';
     dispute.resolution = resolution;
     dispute.refundAmount = refundAmount || 0;
-    dispute.refundTo = refundTo || 'PASSENGER';
+    dispute.refundTo = refundTo || '';
     dispute.penaliseOwner = penaliseOwner || false;
     dispute.penaltyAmount = penaltyAmount || 0;
     dispute.resolvedAt = new Date();
@@ -739,6 +1138,7 @@ export class OrderQueryService {
   async getOrderOtp(orderId: string, vehicleId: string, userId: string) {
     const ov = await this.orderVehicleRepository.findOne({
       where: { orderId, vehicleId },
+      relations: ['order'],
     });
     if (!ov) {
       throw new NotFoundException({
@@ -746,11 +1146,21 @@ export class OrderQueryService {
         message: 'Order vehicle association not found.',
       });
     }
+
+    if (ov.order && ov.order.paymentStatus !== PaymentStatus.COMPLETED) {
+      throw new BadRequestException({
+        error: 'ADVANCE_PAYMENT_PENDING',
+        message: 'Advance payment must be completed before retrieving the OTP.',
+      });
+    }
+
     return {
       orderId: ov.orderId,
       vehicleId: ov.vehicleId,
       otp: ov.otp || '4729',
-      otpExpiresAt: ov.otpExpiresAt ? ov.otpExpiresAt.toISOString() : new Date().toISOString(),
+      otpExpiresAt: ov.otpExpiresAt
+        ? ov.otpExpiresAt.toISOString()
+        : new Date().toISOString(),
       otpStatus: ov.otp ? 'ACTIVE' : 'NOT_GENERATED',
       instruction: 'Share this OTP with the driver to start the trip.',
     };
@@ -758,25 +1168,31 @@ export class OrderQueryService {
 
   async adminGetAnalytics(from: string, to: string) {
     const totalBookings = await this.orderRepository.count();
-    const totalCompleted = await this.orderVehicleRepository.count({ where: { status: OrderVehicleStatus.COMPLETED } });
-    const totalCancelled = await this.orderVehicleRepository.count({ where: { status: OrderVehicleStatus.OWNER_CANCELLED } });
-    
-    const revenue = await this.orderRepository.createQueryBuilder('o')
+    const totalCompleted = await this.orderVehicleRepository.count({
+      where: { status: OrderVehicleStatus.COMPLETED },
+    });
+    const totalCancelled = await this.orderVehicleRepository.count({
+      where: { status: OrderVehicleStatus.OWNER_CANCELLED },
+    });
+
+    const revenue = await this.orderRepository
+      .createQueryBuilder('o')
       .select('SUM(o.totalAmount)', 'total')
       .getRawOne();
-    
+
     const totalRevenue = Number(revenue?.total) || 128500;
 
     const totals = {
       totalBookings,
       totalRevenue,
-      averageOrderValue: totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 3400,
+      averageOrderValue:
+        totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 3400,
       activeVehicles: 24,
       totalUsers: 142,
     };
 
     const bookingsByDay = [
-      { date: new Date().toISOString().split('T')[0], bookings: totalBookings }
+      { date: new Date().toISOString().split('T')[0], bookings: totalBookings },
     ];
 
     const topCities = [
@@ -789,8 +1205,50 @@ export class OrderQueryService {
       totalsJson: JSON.stringify(totals),
       bookingsByDayJson: JSON.stringify(bookingsByDay),
       topCitiesJson: JSON.stringify(topCities),
-      cancellationRate: totalBookings > 0 ? `${Math.round((totalCancelled / totalBookings) * 100)}%` : '5%',
+      cancellationRate:
+        totalBookings > 0
+          ? `${Math.round((totalCancelled / totalBookings) * 100)}%`
+          : '5%',
       averageRating: 4.7,
+    };
+  }
+
+  async getOrderPaymentStatus(orderId: string) {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['vehicles'],
+    });
+
+    if (!order) {
+      throw new NotFoundException({
+        error: 'ORDER_NOT_FOUND',
+        message: 'Order not found.',
+      });
+    }
+
+    let calculatedStatus = 'PENDING';
+    if (order.paymentStatus === 'FAILED') {
+      calculatedStatus = 'FAILED';
+    } else if (
+      order.paymentStatus === 'COMPLETED' ||
+      order.paymentStatus === 'PAID'
+    ) {
+      const allCompleted =
+        order.vehicles.length > 0 &&
+        order.vehicles.every((v) => v.status === OrderVehicleStatus.COMPLETED);
+      calculatedStatus = allCompleted ? 'FULLY_PAID' : 'ADVANCE_PAID';
+    }
+
+    const totalAmount = Number(order.totalAmount) || 0;
+    const advanceAmount = Number(order.advanceAmount) || 0;
+    const remainingAmount = totalAmount - advanceAmount;
+
+    return {
+      orderId: order.id,
+      paymentStatus: calculatedStatus,
+      totalAmount,
+      advanceAmount,
+      remainingAmount,
     };
   }
 }

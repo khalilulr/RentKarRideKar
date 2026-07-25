@@ -17,7 +17,7 @@ export class CloudinaryService {
       console.error('[CloudinaryService] No file provided for upload');
       throw new Error('No file provided');
     }
-    
+
     try {
       let response;
       if (file.buffer) {
@@ -30,12 +30,18 @@ export class CloudinaryService {
           folder: 'rent-kar-ride-kar',
         });
       } else {
-        console.error('[CloudinaryService] File object has neither buffer nor path:', file);
+        console.error(
+          '[CloudinaryService] File object has neither buffer nor path:',
+          file,
+        );
         throw new Error('File object has neither buffer nor path');
       }
       return response.secure_url;
     } catch (error) {
-      console.error('[CloudinaryService] Error uploading file to Cloudinary:', error);
+      console.error(
+        '[CloudinaryService] Error uploading file to Cloudinary:',
+        error,
+      );
       throw error;
     }
   }

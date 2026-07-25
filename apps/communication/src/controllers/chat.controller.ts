@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, Headers, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  Headers,
+  BadRequestException,
+} from '@nestjs/common';
 import { CommunicationService } from '../communication.service';
 
 @Controller('communication/chat')
@@ -27,7 +37,12 @@ export class ChatController {
       throw new BadRequestException('Missing x-user-id header');
     }
     const limitNum = limit ? parseInt(limit, 10) : 50;
-    return this.commsService.getMessages(roomId, userId, limitNum, beforeMessageId);
+    return this.commsService.getMessages(
+      roomId,
+      userId,
+      limitNum,
+      beforeMessageId,
+    );
   }
 
   @Post('rooms/:roomId/messages')
@@ -43,7 +58,12 @@ export class ChatController {
     if (!content) {
       throw new BadRequestException('Message content is required');
     }
-    return this.commsService.sendMessage(roomId, userId, content, contentType || 'text');
+    return this.commsService.sendMessage(
+      roomId,
+      userId,
+      content,
+      contentType || 'text',
+    );
   }
 
   @Patch('rooms/:roomId/messages/read')

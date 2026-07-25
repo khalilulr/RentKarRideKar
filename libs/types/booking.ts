@@ -16,6 +16,8 @@ export interface BookingServiceClient {
   ownerRemoveDriver(request: any): Observable<any>;
   driverAccept(request: any): Observable<any>;
   driverReject(request: any): Observable<any>;
+  getDriverTrip(request: any): Observable<any>;
+  getDriverMyTrips(request: any): Observable<any>;
   driverArrive(request: any): Observable<any>;
   verifyOtp(request: any): Observable<any>;
   completeVehicleTrip(request: any): Observable<any>;
@@ -24,8 +26,11 @@ export interface BookingServiceClient {
   ownerCancelVehicle(request: any): Observable<any>;
   getBooking(request: any): Observable<any>;
   getOrderVehicles(request: any): Observable<any>;
+  getOrderVehicle(request: any): Observable<any>;
   updateBookingStatus(request: any): Observable<any>;
   confirmPayment(request: any): Observable<any>;
+  completePayment(request: any): Observable<any>;
+  startTrip(request: any): Observable<any>;
   assignDriver(request: any): Observable<any>;
   getOwnerEarnings(request: any): Observable<any>;
   getPayoutHistory(request: any): Observable<any>;
@@ -38,6 +43,10 @@ export interface BookingServiceClient {
   getOrderOtp(request: any): Observable<any>;
   payBalance(request: any): Observable<any>;
   adminGetAnalytics(request: any): Observable<any>;
+  getOrderPaymentStatus(request: any): Observable<any>;
+  setPlatformFeePercent(request: any): Observable<any>;
+  getPlatformFeePercent(request: any): Observable<any>;
+  calculatePrice(request: any): Observable<any>;
 }
 
 export interface BookingServiceController {
@@ -53,6 +62,8 @@ export interface BookingServiceController {
   ownerRemoveDriver(request: any): Promise<any> | Observable<any> | any;
   driverAccept(request: any): Promise<any> | Observable<any> | any;
   driverReject(request: any): Promise<any> | Observable<any> | any;
+  getDriverTrip(request: any): Promise<any> | Observable<any> | any;
+  getDriverMyTrips(request: any): Promise<any> | Observable<any> | any;
   driverArrive(request: any): Promise<any> | Observable<any> | any;
   verifyOtp(request: any): Promise<any> | Observable<any> | any;
   completeVehicleTrip(request: any): Promise<any> | Observable<any> | any;
@@ -61,8 +72,11 @@ export interface BookingServiceController {
   ownerCancelVehicle(request: any): Promise<any> | Observable<any> | any;
   getBooking(request: any): Promise<any> | Observable<any> | any;
   getOrderVehicles(request: any): Promise<any> | Observable<any> | any;
+  getOrderVehicle(request: any): Promise<any> | Observable<any> | any;
   updateBookingStatus(request: any): Promise<any> | Observable<any> | any;
   confirmPayment(request: any): Promise<any> | Observable<any> | any;
+  completePayment(request: any): Promise<any> | Observable<any> | any;
+  startTrip(request: any): Promise<any> | Observable<any> | any;
   assignDriver(request: any): Promise<any> | Observable<any> | any;
   getOwnerEarnings(request: any): Promise<any> | Observable<any> | any;
   getPayoutHistory(request: any): Promise<any> | Observable<any> | any;
@@ -75,4 +89,8 @@ export interface BookingServiceController {
   getOrderOtp(request: any): Promise<any> | Observable<any> | any;
   payBalance(request: any): Promise<any> | Observable<any> | any;
   adminGetAnalytics(request: any): Promise<any> | Observable<any> | any;
+  getOrderPaymentStatus(request: any): Promise<any> | Observable<any> | any;
+  setPlatformFeePercent(request: any): Promise<any> | Observable<any> | any;
+  getPlatformFeePercent(request: any): Promise<any> | Observable<any> | any;
+  calculatePrice(request: any): Promise<any> | Observable<any> | any;
 }

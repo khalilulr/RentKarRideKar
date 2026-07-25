@@ -5,10 +5,10 @@
 // source: search-and-catalog.proto
 
 /* eslint-disable */
-import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
-import { Observable } from "rxjs";
+import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
+import { Observable } from 'rxjs';
 
-export const protobufPackage = "searchAndCatalog";
+export const protobufPackage = 'searchAndCatalog';
 
 export interface Vehicle {
   id: string;
@@ -230,8 +230,7 @@ export interface SearchVehiclesByCityRequest {
   city: string;
 }
 
-export interface GetAllVehiclesRequest {
-}
+export interface GetAllVehiclesRequest {}
 
 export interface VehicleResponse {
   vehicle: Vehicle | undefined;
@@ -241,7 +240,7 @@ export interface ListVehiclesResponse {
   vehicles: Vehicle[];
 }
 
-export const SEARCH_AND_CATALOG_PACKAGE_NAME = "searchAndCatalog";
+export const SEARCH_AND_CATALOG_PACKAGE_NAME = 'searchAndCatalog';
 
 export interface SearchAndCatalogServiceClient {
   /** Catalog / Vehicle CRUD */
@@ -254,7 +253,9 @@ export interface SearchAndCatalogServiceClient {
 
   updateVehicle(request: UpdateVehicleRequest): Observable<VehicleResponse>;
 
-  deleteVehicle(request: DeleteVehicleRequest): Observable<DeleteVehicleResponse>;
+  deleteVehicle(
+    request: DeleteVehicleRequest,
+  ): Observable<DeleteVehicleResponse>;
 
   /** Admin Controls */
 
@@ -264,35 +265,55 @@ export interface SearchAndCatalogServiceClient {
 
   /** Online/Offline Toggles */
 
-  updateVehicleOnlineStatus(request: UpdateVehicleOnlineStatusRequest): Observable<VehicleResponse>;
+  updateVehicleOnlineStatus(
+    request: UpdateVehicleOnlineStatusRequest,
+  ): Observable<VehicleResponse>;
 
-  updateOwnerVehiclesAvailability(request: UpdateOwnerVehiclesAvailabilityRequest): Observable<ListVehiclesResponse>;
+  updateOwnerVehiclesAvailability(
+    request: UpdateOwnerVehiclesAvailabilityRequest,
+  ): Observable<ListVehiclesResponse>;
 
   /** Date-Specific Blocking */
 
   blockVehicle(request: BlockVehicleRequest): Observable<VehicleResponse>;
 
-  blockAllOwnerVehicles(request: BlockAllOwnerVehiclesRequest): Observable<ListVehiclesResponse>;
+  blockAllOwnerVehicles(
+    request: BlockAllOwnerVehiclesRequest,
+  ): Observable<ListVehiclesResponse>;
 
-  unblockVehicle(request: UnblockVehicleRequest): Observable<UnblockVehicleResponse>;
+  unblockVehicle(
+    request: UnblockVehicleRequest,
+  ): Observable<UnblockVehicleResponse>;
 
-  unblockAllOwnerVehicles(request: UnblockAllOwnerVehiclesRequest): Observable<ListVehiclesResponse>;
+  unblockAllOwnerVehicles(
+    request: UnblockAllOwnerVehiclesRequest,
+  ): Observable<ListVehiclesResponse>;
 
   /** Availability Check */
 
-  isVehicleAvailable(request: IsVehicleAvailableRequest): Observable<IsVehicleAvailableResponse>;
+  isVehicleAvailable(
+    request: IsVehicleAvailableRequest,
+  ): Observable<IsVehicleAvailableResponse>;
 
   /** Search */
 
-  searchVehicles(request: SearchVehiclesRequest): Observable<ListVehiclesResponse>;
+  searchVehicles(
+    request: SearchVehiclesRequest,
+  ): Observable<ListVehiclesResponse>;
 
-  getMyVehicles(request: GetMyVehiclesRequest): Observable<ListVehiclesResponse>;
+  getMyVehicles(
+    request: GetMyVehiclesRequest,
+  ): Observable<ListVehiclesResponse>;
 
   getVehicleById(request: GetVehicleByIdRequest): Observable<VehicleResponse>;
 
-  searchVehiclesByCity(request: SearchVehiclesByCityRequest): Observable<ListVehiclesResponse>;
+  searchVehiclesByCity(
+    request: SearchVehiclesByCityRequest,
+  ): Observable<ListVehiclesResponse>;
 
-  getAllVehicles(request: GetAllVehiclesRequest): Observable<ListVehiclesResponse>;
+  getAllVehicles(
+    request: GetAllVehiclesRequest,
+  ): Observable<ListVehiclesResponse>;
 
   updatePlateType(request: UpdatePlateTypeRequest): Observable<VehicleResponse>;
 
@@ -308,11 +329,16 @@ export interface SearchAndCatalogServiceController {
     request: RegisterVehicleRequest,
   ): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
 
-  getVehicle(request: GetVehicleRequest): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
+  getVehicle(
+    request: GetVehicleRequest,
+  ): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
 
   listVehicles(
     request: ListVehiclesRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   updateVehicle(
     request: UpdateVehicleRequest,
@@ -320,7 +346,10 @@ export interface SearchAndCatalogServiceController {
 
   deleteVehicle(
     request: DeleteVehicleRequest,
-  ): Promise<DeleteVehicleResponse> | Observable<DeleteVehicleResponse> | DeleteVehicleResponse;
+  ):
+    | Promise<DeleteVehicleResponse>
+    | Observable<DeleteVehicleResponse>
+    | DeleteVehicleResponse;
 
   /** Admin Controls */
 
@@ -340,39 +369,62 @@ export interface SearchAndCatalogServiceController {
 
   updateOwnerVehiclesAvailability(
     request: UpdateOwnerVehiclesAvailabilityRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   /** Date-Specific Blocking */
 
-  blockVehicle(request: BlockVehicleRequest): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
+  blockVehicle(
+    request: BlockVehicleRequest,
+  ): Promise<VehicleResponse> | Observable<VehicleResponse> | VehicleResponse;
 
   blockAllOwnerVehicles(
     request: BlockAllOwnerVehiclesRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   unblockVehicle(
     request: UnblockVehicleRequest,
-  ): Promise<UnblockVehicleResponse> | Observable<UnblockVehicleResponse> | UnblockVehicleResponse;
+  ):
+    | Promise<UnblockVehicleResponse>
+    | Observable<UnblockVehicleResponse>
+    | UnblockVehicleResponse;
 
   unblockAllOwnerVehicles(
     request: UnblockAllOwnerVehiclesRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   /** Availability Check */
 
   isVehicleAvailable(
     request: IsVehicleAvailableRequest,
-  ): Promise<IsVehicleAvailableResponse> | Observable<IsVehicleAvailableResponse> | IsVehicleAvailableResponse;
+  ):
+    | Promise<IsVehicleAvailableResponse>
+    | Observable<IsVehicleAvailableResponse>
+    | IsVehicleAvailableResponse;
 
   /** Search */
 
   searchVehicles(
     request: SearchVehiclesRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   getMyVehicles(
     request: GetMyVehiclesRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   getVehicleById(
     request: GetVehicleByIdRequest,
@@ -380,11 +432,17 @@ export interface SearchAndCatalogServiceController {
 
   searchVehiclesByCity(
     request: SearchVehiclesByCityRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   getAllVehicles(
     request: GetAllVehiclesRequest,
-  ): Promise<ListVehiclesResponse> | Observable<ListVehiclesResponse> | ListVehiclesResponse;
+  ):
+    | Promise<ListVehiclesResponse>
+    | Observable<ListVehiclesResponse>
+    | ListVehiclesResponse;
 
   updatePlateType(
     request: UpdatePlateTypeRequest,
@@ -396,45 +454,62 @@ export interface SearchAndCatalogServiceController {
 
   getPricing(
     request: GetPricingRequest,
-  ): Promise<GetPricingResponse> | Observable<GetPricingResponse> | GetPricingResponse;
+  ):
+    | Promise<GetPricingResponse>
+    | Observable<GetPricingResponse>
+    | GetPricingResponse;
 }
 
 export function SearchAndCatalogServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "registerVehicle",
-      "getVehicle",
-      "listVehicles",
-      "updateVehicle",
-      "deleteVehicle",
-      "activateVehicle",
-      "suspendVehicle",
-      "updateVehicleOnlineStatus",
-      "updateOwnerVehiclesAvailability",
-      "blockVehicle",
-      "blockAllOwnerVehicles",
-      "unblockVehicle",
-      "unblockAllOwnerVehicles",
-      "isVehicleAvailable",
-      "searchVehicles",
-      "getMyVehicles",
-      "getVehicleById",
-      "searchVehiclesByCity",
-      "getAllVehicles",
-      "updatePlateType",
-      "setPricing",
-      "getPricing",
+      'registerVehicle',
+      'getVehicle',
+      'listVehicles',
+      'updateVehicle',
+      'deleteVehicle',
+      'activateVehicle',
+      'suspendVehicle',
+      'updateVehicleOnlineStatus',
+      'updateOwnerVehiclesAvailability',
+      'blockVehicle',
+      'blockAllOwnerVehicles',
+      'unblockVehicle',
+      'unblockAllOwnerVehicles',
+      'isVehicleAvailable',
+      'searchVehicles',
+      'getMyVehicles',
+      'getVehicleById',
+      'searchVehiclesByCity',
+      'getAllVehicles',
+      'updatePlateType',
+      'setPricing',
+      'getPricing',
     ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("SearchAndCatalogService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod('SearchAndCatalogService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("SearchAndCatalogService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod('SearchAndCatalogService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
   };
 }
 
-export const SEARCH_AND_CATALOG_SERVICE_NAME = "SearchAndCatalogService";
+export const SEARCH_AND_CATALOG_SERVICE_NAME = 'SearchAndCatalogService';

@@ -9,14 +9,17 @@ import {
 async function bootstrap() {
   assertDiscountServiceProtoExists();
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(DiscountModule, {
-    transport: Transport.GRPC,
-    options: {
-      package: 'discount',
-      protoPath: DISCOUNT_SERVICE_PROTO_PATH,
-      url: '0.0.0.0:50057',
-    }
-  });
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    DiscountModule,
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: 'discount',
+        protoPath: DISCOUNT_SERVICE_PROTO_PATH,
+        url: '0.0.0.0:50057',
+      },
+    },
+  );
   await app.listen();
 }
 bootstrap();

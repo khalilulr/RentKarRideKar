@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ApiGatewayController } from './api-gateway.controller';
 import { ApiGatewayService } from './api-gateway.service';
+import { CommunicationGateway } from './communication/communication.gateway';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -11,6 +12,8 @@ import { AuthController } from './auth/auth.controller';
 import { VerificationController } from './verification/verification.controller';
 import { SearchAndCatalogController } from './search-and-catalog/search-and-catalog.controller';
 import { BookingController } from './booking/booking.controller';
+import { TripsController } from './booking/trips.controller';
+import { TripsGateway } from './booking/trips.gateway';
 import { RatingController } from './rating/rating.controller';
 import { CommunicationController } from './communication/communication.controller';
 import { AdminCommunicationController } from './communication/admin-communication.controller';
@@ -49,7 +52,10 @@ assertBookingServiceProtoExists();
 assertRatingServiceProtoExists();
 assertDiscountServiceProtoExists();
 
-const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
+const envFilePath =
+  process.env.NODE_ENV?.trim() === 'production'
+    ? '.env'
+    : `.env.${process.env.NODE_ENV?.trim()}`;
 
 @Module({
   imports: [
@@ -60,8 +66,12 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     }),
 
     JwtModule.register({
-      privateKey: fs.readFileSync(path.join(process.cwd(), 'secrets/private.pem')),
-      publicKey: fs.readFileSync(path.join(process.cwd(), 'secrets/public.pem')),
+      privateKey: fs.readFileSync(
+        path.join(process.cwd(), 'secrets/private.pem'),
+      ),
+      publicKey: fs.readFileSync(
+        path.join(process.cwd(), 'secrets/public.pem'),
+      ),
       signOptions: { algorithm: 'RS256' },
     }),
     RedisModule.registerAsync(),
@@ -128,27 +138,32 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     VerificationController,
     SearchAndCatalogController,
     BookingController,
+    TripsController,
     RatingController,
     AdminCommunicationController,
     CommunicationController,
     DiscountController,
   ],
 
-
-  providers: [ApiGatewayService],
+  providers: [ApiGatewayService, CommunicationGateway, TripsGateway],
 })
 export class ApiGatewayModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-  consumer
-    .apply((req: any, res: any, next: any) => {
-      const contentType = req.headers['content-type'] || '';
-      if (!contentType.includes('multipart/form-data')) {
-        console.log(`[GATEWAY REQUEST] ${req.method} & ${req.originalUrl || req.url}  - Body:`, JSON.stringify(req.body));
-      } else {
-        console.log(`[GATEWAY REQUEST] ${req.method} & ${req.originalUrl || req.url} - multipart (body logged in controller)`);
-      }
-      next();
-    })
-    .forRoutes('*');
-}
+    consumer
+      .apply((req: any, res: any, next: any) => {
+        const contentType = req.headers['content-type'] || '';
+        if (!contentType.includes('multipart/form-data')) {
+          console.log(
+            `[GATEWAY REQUEST] ${req.method} & ${req.originalUrl || req.url}  - Body:`,
+            JSON.stringify(req.body),
+          );
+        } else {
+          console.log(
+            `[GATEWAY REQUEST] ${req.method} & ${req.originalUrl || req.url} - multipart (body logged in controller)`,
+          );
+        }
+        next();
+      })
+      .forRoutes('*');
+  }
 }

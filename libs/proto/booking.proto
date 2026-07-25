@@ -22,6 +22,8 @@ service BookingService {
   // Driver Response Workflows
   rpc DriverAccept(DriverAcceptRequest) returns (DriverAcceptResponse);
   rpc DriverReject(DriverRejectRequest) returns (DriverRejectResponse);
+  rpc GetDriverTrip(GetDriverTripRequest) returns (GetDriverTripResponse);
+  rpc GetDriverMyTrips(GetDriverMyTripsRequest) returns (GetDriverMyTripsResponse);
 
   // Trip Execution
   rpc DriverArrive(DriverArriveRequest) returns (DriverArriveResponse);
@@ -36,8 +38,11 @@ service BookingService {
   // Integration queries for Ratings/Cancellations
   rpc GetBooking(GetBookingRequest) returns (GetBookingResponse);
   rpc GetOrderVehicles(GetOrderVehiclesRequest) returns (GetOrderVehiclesResponse);
+  rpc GetOrderVehicle(GetOrderVehicleRequest) returns (GetOrderVehicleResponse);
   rpc UpdateBookingStatus(UpdateBookingStatusRequest) returns (UpdateBookingStatusResponse);
   rpc ConfirmPayment(ConfirmPaymentRequest) returns (ConfirmPaymentResponse);
+  rpc CompletePayment(CompletePaymentRequest) returns (CompletePaymentResponse);
+  rpc StartTrip(StartTripRequest) returns (StartTripResponse);
   rpc AssignDriver(AssignDriverRequest) returns (AssignDriverResponse);
   rpc GetOwnerEarnings(GetOwnerEarningsRequest) returns (GetOwnerEarningsResponse);
   rpc GetPayoutHistory(GetPayoutHistoryRequest) returns (GetPayoutHistoryResponse);
@@ -50,11 +55,27 @@ service BookingService {
   rpc GetOrderOtp(GetOrderOtpRequest) returns (OrderOtpResponse);
   rpc PayBalance(PayBalanceRequest) returns (PayBalanceResponse);
   rpc AdminGetAnalytics(AdminGetAnalyticsRequest) returns (AdminGetAnalyticsResponse);
+  rpc GetOrderPaymentStatus(GetOrderPaymentStatusRequest) returns (GetOrderPaymentStatusResponse);
+  rpc SetPlatformFeePercent(SetPlatformFeePercentRequest) returns (SetPlatformFeePercentResponse);
+  rpc GetPlatformFeePercent(GetPlatformFeePercentRequest) returns (GetPlatformFeePercentResponse);
+  rpc CalculatePrice(CalculatePriceRequest) returns (CalculatePriceResponse);
 }
 
 // ─────────────────────────────────────────────────────────────
 // Common Types
 // ─────────────────────────────────────────────────────────────
+
+message PriceBreakdown {
+  double basePrice = 1;
+  double gst = 2;
+  double platformFee = 3;
+  double discount = 4;
+  double total = 5;
+  double advancePercentage = 6;
+  double advanceAmount = 7;
+  double balanceAmount = 8;
+  string currency = 9;
+}
 
 message CartItem {
   string cartItemId = 1;
@@ -63,7 +84,7 @@ message CartItem {
   string pickupDatetime = 4;
   string route = 5;
   string tripType = 6;
-  double price = 7;
+  PriceBreakdown price = 7;
   string expiresAt = 8;
   string pickupAddress = 9;
   string dropAddress = 10;
@@ -83,6 +104,7 @@ message VehicleSummary {
   string registrationNumber = 9;
   bool hasAC = 10;
   int32 totalTrips = 11;
+  string plateType = 12;
 }
 
 message OwnerSummary {
@@ -90,6 +112,7 @@ message OwnerSummary {
   string name = 2;
   double rating = 3;
   int32 totalTrips = 4;
+  string profilePicture = 5;
 }
 
 message DriverSummary {
@@ -115,11 +138,14 @@ message TimelineSummary {
 
 message CartSummary {
   int32 totalVehicles = 1;
-  double totalAmount = 2;
-  double totalAdvance = 3;
-  double originalAmount = 4;
-  double discountAmount = 5;
-  string promoCode = 6;
+  double basePrice = 2;
+  double gst = 3;
+  double platformFee = 4;
+  double discount = 5;
+  double totalAmount = 6;
+  double advanceAmount = 7;
+  double balanceAmount = 8;
+  string currency = 9;
 }
 
 message OrderVehicleSummary {
@@ -127,7 +153,7 @@ message OrderVehicleSummary {
   VehicleSummary vehicle = 2;
   OwnerSummary owner = 3;
   DriverSummary driver = 4;
-  PricingSummary pricing = 5;
+  PriceBreakdown pricing = 5;
 }
 
 message PaymentSummary {
@@ -139,6 +165,11 @@ message PaymentSummary {
   double originalAmount = 6;
   double discountAmount = 7;
   string promoCode = 8;
+  double basePrice = 9;
+  double gst = 10;
+  double platformFee = 11;
+  double balanceAmount = 12;
+  string currency = 13;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -164,7 +195,7 @@ message AddToCartResponse {
   string cartItemId = 1;
   VehicleSummary vehicle = 2;
   OwnerSummary owner = 3;
-  PricingSummary pricing = 4;
+  PriceBreakdown pricing = 4;
   string pickupDatetime = 5;
   string tripType = 6;
   string expiresAt = 7;
@@ -267,6 +298,7 @@ message OrderListItemVehicle {
   string vehicle = 1;
   string driver = 2;
   string status = 3;
+  string vehicleId = 4;
 }
 
 message ListOrdersResponse {
@@ -575,6 +607,60 @@ message ConfirmPaymentResponse {
   string chatRoomsJson = 5;
 }
 
+message CompletePaymentRequest {
+  string orderId = 1;
+  string passengerId = 2;
+  double paidAmount = 3;
+  string transactionId = 4;
+}
+
+message CompletePaymentResponse {
+  bool success = 1;
+  string message = 2;
+  string orderId = 3;
+  double paidAmount = 4;
+  string transactionId = 5;
+  string status = 6;
+}
+
+message GetOrderVehicleRequest {
+  string id = 1;
+}
+
+message GetOrderVehicleResponse {
+  string id = 1;
+  string orderId = 2;
+  string vehicleId = 3;
+  string ownerId = 4;
+  string status = 5;
+  double price = 6;
+  string assignedDriverId = 7;
+  double pickupLat = 8;
+  double pickupLng = 9;
+  double dropLat = 10;
+  double dropLng = 11;
+  string pickupAddress = 12;
+  string dropAddress = 13;
+  string passengerId = 14;
+}
+
+message StartTripRequest {
+  string orderVehicleId = 1;
+  string driverId = 2;
+}
+
+message StartTripResponse {
+  bool success = 1;
+  string message = 2;
+  string status = 3;
+  double pickupLat = 4;
+  double pickupLng = 5;
+  double dropLat = 6;
+  double dropLng = 7;
+  string passengerId = 8;
+  string orderId = 9;
+}
+
 message AssignDriverRequest {
   string orderId = 1;
   string vehicleId = 2;
@@ -739,4 +825,111 @@ message AdminResolveDisputeRequest {
   string refundTo = 4;
   bool penaliseOwner = 5;
   double penaltyAmount = 6;
+}
+
+message GetOrderPaymentStatusRequest {
+  string orderId = 1;
+}
+
+message GetOrderPaymentStatusResponse {
+  string orderId = 1;
+  string paymentStatus = 2;
+  double totalAmount = 3;
+  double advanceAmount = 4;
+  double remainingAmount = 5;
+}
+
+message SetPlatformFeePercentRequest {
+  double percent = 1;
+  optional double passengerShare = 2;
+  optional double ownerShare = 3;
+}
+
+message SetPlatformFeePercentResponse {
+  bool success = 1;
+  double percent = 2;
+  string message = 3;
+  double passengerShare = 4;
+  double ownerShare = 5;
+}
+
+message GetPlatformFeePercentRequest {}
+
+message GetPlatformFeePercentResponse {
+  double percent = 1;
+  double passengerShare = 2;
+  double ownerShare = 3;
+}
+
+message GetDriverTripRequest {
+  string orderId = 1;
+  string vehicleId = 2;
+  string driverId = 3;
+}
+
+message GetDriverTripResponse {
+  string orderId = 1;
+  string orderVehicleId = 2;
+  string vehicleId = 3;
+  string status = 4;
+  string route = 5;
+  string pickupDatetime = 6;
+  string pickupAddress = 7;
+  string dropAddress = 8;
+  string tripType = 9;
+  OwnerSummary passenger = 10;
+  OwnerSummary owner = 11;
+  string vehicle = 12;
+  VehicleSummary vehicleDetails = 13;
+  DriverEarningsSummary earnings = 14;
+  string responseDeadline = 15;
+  string createdAt = 16;
+  string paymentStatus = 17;
+}
+
+message DriverEarningsSummary {
+  double driverFees = 1;
+  double platformFee = 2;
+  double netEarnings = 3;
+}
+
+message GetDriverMyTripsRequest {
+  string driverId = 1;
+  string status = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message GetDriverMyTripsResponse {
+  repeated GetDriverTripResponse data = 1;
+  PaginationSummary pagination = 2;
+}
+
+message CalculatePriceRequest {
+  string vehicleId = 1;
+  string seatingCapacity = 2;
+  string tripType = 3;
+  int32 totalDays = 4;
+  double pickupLat = 5;
+  double pickupLng = 6;
+  double dropLat = 7;
+  double dropLng = 8;
+  string pickupDatetime = 9;
+  string returnDatetime = 10;
+  double discount = 11;
+}
+
+message CalculatePriceResponse {
+  double basePrice = 1;
+  double gst = 2;
+  double platformFee = 3;
+  double discount = 4;
+  double total = 5;
+  double advancePercentage = 6;
+  double advanceAmount = 7;
+  double balanceAmount = 8;
+  string currency = 9;
+  int32 seater = 10;
+  string tripType = 11;
+  double distanceKm = 12;
 }

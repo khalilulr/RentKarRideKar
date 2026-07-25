@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,8 +19,6 @@ import { Dispute } from './order/entities/dispute.entity';
 import { CartService } from './cart/cart.service';
 import { OrderService } from './order/order.service';
 import { PricingService } from './pricing/pricing.service';
-
-
 
 import {
   assertAuthServiceProtoExists,
@@ -45,23 +44,32 @@ import { OrderPaymentService } from './order/services/order-payment.service';
 import { OrderOwnerService } from './order/services/order-owner.service';
 import { OrderDriverService } from './order/services/order-driver.service';
 import { OrderPassengerService } from './order/services/order-passenger.service';
+import { BookingExpiryService } from './order/services/booking-expiry.service';
 
 assertAuthServiceProtoExists();
 assertSearchAndCatalogServiceProtoExists();
 assertCommunicationServiceProtoExists();
 assertDiscountServiceProtoExists();
 
-const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
+const envFilePath =
+  process.env.NODE_ENV?.trim() === 'production'
+    ? '.env'
+    : `.env.${process.env.NODE_ENV?.trim()}`;
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: envFilePath,
     }),
     JwtModule.register({
-      privateKey: fs.readFileSync(path.join(process.cwd(), 'secrets/private.pem')),
-      publicKey: fs.readFileSync(path.join(process.cwd(), 'secrets/public.pem')),
+      privateKey: fs.readFileSync(
+        path.join(process.cwd(), 'secrets/private.pem'),
+      ),
+      publicKey: fs.readFileSync(
+        path.join(process.cwd(), 'secrets/public.pem'),
+      ),
       signOptions: { algorithm: 'RS256' },
     }),
     RedisModule.registerAsync(),
@@ -73,13 +81,22 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
         host: configService.get<string>('BOOKING_DB_HOST') || 'localhost',
         port: configService.get<number>('BOOKING_DB_PORT') || 5436,
         username: configService.get<string>('BOOKING_DB_USER') || 'postgres',
-        password: configService.get<string>('BOOKING_DB_PASSWORD') || 'ashif1234',
-        database: configService.get<string>('BOOKING_DB_NAME') || 'rkrk_booking_db',
+        password:
+          configService.get<string>('BOOKING_DB_PASSWORD') || 'ashif1234',
+        database:
+          configService.get<string>('BOOKING_DB_NAME') || 'rkrk_booking_db',
         autoLoadEntities: true,
         synchronize: true,
       }),
     }),
-    TypeOrmModule.forFeature([Cart, CartItem, Order, OrderVehicle, OrderTimeline, Dispute]),
+    TypeOrmModule.forFeature([
+      Cart,
+      CartItem,
+      Order,
+      OrderVehicle,
+      OrderTimeline,
+      Dispute,
+    ]),
     ClientsModule.register([
       {
         name: 'AUTH_SERVICE',
@@ -132,6 +149,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
     OrderOwnerService,
     OrderDriverService,
     OrderPassengerService,
+    BookingExpiryService,
   ],
 })
 export class BookingModule {}

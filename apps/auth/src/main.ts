@@ -10,14 +10,17 @@ import {
 async function bootstrap() {
   assertAuthServiceProtoExists();
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AuthModule, {
-    transport: Transport.GRPC,
-    options: {
-      package: 'auth',
-      protoPath: AUTH_SERVICE_PROTO_PATH,
-      url: 'auth-service:50051',
-    }
-  });
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    AuthModule,
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: 'auth',
+        protoPath: AUTH_SERVICE_PROTO_PATH,
+        url: 'auth-service:50051',
+      },
+    },
+  );
   // await app.startAll();
   await app.listen();
 }

@@ -38,15 +38,13 @@ export class OrderCreationService {
       });
     }
 
-
-
     // Re-verify availability
     for (const item of cart.items) {
       const start = new Date(item.pickupDatetime).toISOString().split('T')[0];
       const end = item.returnDatetime
         ? new Date(item.returnDatetime).toISOString().split('T')[0]
         : start;
-        
+
       const isAvailableRes = await this.orderGrpcService.isVehicleAvailable(
         item.vehicleId,
         start,
@@ -57,7 +55,8 @@ export class OrderCreationService {
         await this.cartService.removeCartItem(passengerId, item.id);
         throw new BadRequestException({
           error: 'VEHICLE_UNAVAILABLE',
-          message: 'Vehicle is no longer available. It has been removed from your order.',
+          message:
+            'Vehicle is no longer available. It has been removed from your order.',
           affectedVehicle: {
             vehicleId: item.vehicleId,
             reason: 'Booked by another passenger',
@@ -70,10 +69,26 @@ export class OrderCreationService {
     const orderVehiclesData: OrderVehicle[] = [];
 
     for (const item of cart.items) {
-      const vehicleRes = await this.orderGrpcService.getVehicleById(item.vehicleId);
+      const vehicleRes = await this.orderGrpcService.getVehicleById(
+        item.vehicleId,
+      );
       const vehicle = vehicleRes?.vehicle;
 
-      const pricing = this.pricingService.calculatePricing(item.totalDays);
+      let pricing = item.priceBreakdown;
+      if (!pricing) {
+        pricing = await this.pricingService.calculatePricing(
+          item.totalDays,
+          vehicle,
+          item.pickupLat,
+          item.pickupLng,
+          item.dropLat,
+          item.dropLng,
+          item.returnDatetime ? item.returnDatetime.toISOString() : undefined,
+          item.pickupDatetime ? item.pickupDatetime.toISOString() : undefined,
+          0,
+          item.tripType,
+        );
+      }
       originalAmount += pricing.total;
 
       const ownerResponseDeadline = new Date();
@@ -83,6 +98,7 @@ export class OrderCreationService {
         vehicleId: item.vehicleId,
         ownerId: vehicle?.ownerId || 'usr_owner1',
         price: pricing.total,
+        priceBreakdown: pricing,
         status: OrderVehicleStatus.PENDING_OWNER_RESPONSE,
         ownerResponseDeadline,
         pickupAddress: item.pickupAddress,
@@ -100,11 +116,29 @@ export class OrderCreationService {
       orderVehiclesData.push(ov);
     }
 
+    let totalBasePrice = 0;
+    let totalGst = 0;
+    let totalPlatformFee = 0;
+    let totalDiscount = 0;
+    let totalAmount = 0;
+
+    for (const ov of orderVehiclesData) {
+      const pb = ov.priceBreakdown;
+      totalBasePrice += pb.basePrice || 0;
+      totalGst += pb.gst || 0;
+      totalPlatformFee += pb.platformFee || 0;
+      totalDiscount += pb.discount || 0;
+      totalAmount += pb.total || 0;
+    }
+
     let discountAmount = 0;
-    let totalAmount = originalAmount;
 
     if (body.promoCode) {
-      const validateRes = await this.orderGrpcService.validateCode(body.promoCode, passengerId, originalAmount);
+      const validateRes = await this.orderGrpcService.validateCode(
+        body.promoCode,
+        passengerId,
+        totalAmount,
+      );
       if (!validateRes || !validateRes.isValid) {
         throw new BadRequestException({
           error: 'INVALID_PROMO_CODE',
@@ -112,10 +146,24 @@ export class OrderCreationService {
         });
       }
       discountAmount = Number(validateRes.discountAmount);
+      totalDiscount += discountAmount;
       totalAmount = Number(validateRes.discountedPrice);
     }
 
     const totalAdvance = Math.round(totalAmount * 0.25);
+    const balanceAmount = totalAmount - totalAdvance;
+
+    const orderBreakdown = {
+      basePrice: totalBasePrice,
+      gst: totalGst,
+      platformFee: totalPlatformFee,
+      discount: totalDiscount,
+      total: totalAmount,
+      advancePercentage: 25,
+      advanceAmount: totalAdvance,
+      balanceAmount,
+      currency: 'INR',
+    };
 
     const order = this.orderRepository.create({
       passengerId,
@@ -125,6 +173,7 @@ export class OrderCreationService {
       originalAmount,
       discountAmount,
       promoCode: body.promoCode || '',
+      priceBreakdown: orderBreakdown,
       status: OrderStatus.OWNER_PENDING,
       visibleStatus: VisibleStatus.REQUEST_SENT,
       paymentStatus: PaymentStatus.PENDING,
@@ -163,7 +212,12 @@ export class OrderCreationService {
     }
 
     if (body.promoCode && discountAmount > 0) {
-      await this.orderGrpcService.recordOfferUsage(passengerId, body.promoCode, order.id, discountAmount);
+      await this.orderGrpcService.recordOfferUsage(
+        passengerId,
+        body.promoCode,
+        order.id,
+        discountAmount,
+      );
     }
 
     await this.cartService.clearCart(passengerId);
@@ -174,7 +228,11 @@ export class OrderCreationService {
       const ownerRes = await this.orderGrpcService.getMe(v.ownerId);
       ownerName = ownerRes?.user?.name || ownerName;
 
-      let vehicleDetails = { make: 'Maruti Suzuki', model: 'Ertiga', color: 'WHITE' };
+      let vehicleDetails = {
+        make: 'Maruti Suzuki',
+        model: 'Ertiga',
+        color: 'WHITE',
+      };
       const vehRes = await this.orderGrpcService.getVehicleById(v.vehicleId);
       if (vehRes?.vehicle) {
         vehicleDetails.make = vehRes.vehicle.make || vehicleDetails.make;
@@ -200,14 +258,18 @@ export class OrderCreationService {
       vehicles: vehiclesResponse,
       summary: {
         totalVehicles: order.vehicles.length,
-        totalAmount,
-        totalAdvance,
-        originalAmount,
-        discountAmount,
-        promoCode: order.promoCode,
+        basePrice: orderBreakdown.basePrice,
+        gst: orderBreakdown.gst,
+        platformFee: orderBreakdown.platformFee,
+        discount: orderBreakdown.discount,
+        totalAmount: orderBreakdown.total,
+        advanceAmount: orderBreakdown.advanceAmount,
+        balanceAmount: orderBreakdown.balanceAmount,
+        currency: 'INR',
       },
       whatsappStatus: order.whatsappStatus,
-      nextStep: 'Waiting for owner response. You will be notified within 1 hour.',
+      nextStep:
+        'Waiting for owner response. You will be notified within 1 hour.',
       createdAt: order.createdAt.toISOString(),
     };
   }

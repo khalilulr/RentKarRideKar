@@ -8,9 +8,13 @@ import { CatalogService } from './service/catalog.service';
 import { VehicleEntity } from './entity/vehicle.entity';
 import { VehicleBlockEntity } from './entity/vehicle-unavailability.entity';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { RedisModule } from 'apps/common/src/redis/redis.module';
 import { COMMUNICATION_SERVICE_PROTO_PATH } from '../../../libs/proto/communication.grpc-options';
 
-const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.env.${process.env.NODE_ENV?.trim()}`;
+const envFilePath =
+  process.env.NODE_ENV?.trim() === 'production'
+    ? '.env'
+    : `.env.${process.env.NODE_ENV?.trim()}`;
 
 @Module({
   imports: [
@@ -30,6 +34,7 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
         synchronize: true,
       }),
     }),
+    RedisModule.registerAsync(),
     ClientsModule.register([
       {
         name: 'COMMUNICATION_SERVICE',
@@ -42,19 +47,10 @@ const envFilePath = process.env.NODE_ENV?.trim() === 'production' ? '.env' : `.e
       },
     ]),
   ],
-  controllers: [
-    SearchController,
-    CatalogController,
-  ],
+  controllers: [SearchController, CatalogController],
 
-  providers: [
-    SearchService,
-    CatalogService,
-  ],
+  providers: [SearchService, CatalogService],
 
-  exports: [
-    SearchService,
-    CatalogService,
-  ],
+  exports: [SearchService, CatalogService],
 })
-export class SearchModule { }
+export class SearchModule {}

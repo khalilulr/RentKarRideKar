@@ -1,4 +1,11 @@
-import { Controller, All, Req, Res, UseGuards, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  All,
+  Req,
+  Res,
+  UseGuards,
+  HttpStatus,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -6,7 +13,9 @@ import axios from 'axios';
 
 @Controller('communication')
 export class CommunicationController {
-  private readonly internalUrl = process.env.COMMUNICATION_SERVICE_URL || 'http://communication-service:3003/communication';
+  private readonly internalUrl =
+    process.env.COMMUNICATION_SERVICE_URL ||
+    'http://communication-service:3003/communication';
 
   @All('call/webhook/twilio')
   async handleTwilioWebhook(@Req() req: Request, @Res() res: Response) {
@@ -17,13 +26,17 @@ export class CommunicationController {
         data: req.body,
         headers: {
           'content-type': req.headers['content-type'] || 'application/json',
-          ...(req.headers['x-twilio-signature'] ? { 'x-twilio-signature': req.headers['x-twilio-signature'] } : {}),
+          ...(req.headers['x-twilio-signature']
+            ? { 'x-twilio-signature': req.headers['x-twilio-signature'] }
+            : {}),
         },
       });
       return res.status(response.status).json(response.data);
     } catch (error: any) {
       const status = error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR;
-      const data = error.response?.data || { message: 'Internal Twilio Webhook proxy error' };
+      const data = error.response?.data || {
+        message: 'Internal Twilio Webhook proxy error',
+      };
       return res.status(status).json(data);
     }
   }
@@ -35,7 +48,13 @@ export class CommunicationController {
     @Res() res: Response,
     @CurrentUser() user: any,
   ) {
-    const targetPath = req.params['path'] || req.params[0] || '';
+    let targetPath = req.params['path'] || req.params[0] || '';
+    if (Array.isArray(targetPath)) {
+      targetPath = targetPath.join('/');
+    }
+    if (typeof targetPath === 'string') {
+      targetPath = targetPath.replace(/,/g, '/');
+    }
     const targetUrl = `${this.internalUrl}/${targetPath}`;
 
     try {

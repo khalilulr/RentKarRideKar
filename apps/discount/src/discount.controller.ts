@@ -29,7 +29,10 @@ export class DiscountController {
 
   @GrpcMethod('DiscountService', 'ToggleOffer')
   async toggleOffer(request: any) {
-    const offer = await this.offerService.toggleOffer(request.id, request.isActive);
+    const offer = await this.offerService.toggleOffer(
+      request.id,
+      request.isActive,
+    );
     return {
       success: true,
       offer: {
@@ -52,7 +55,7 @@ export class DiscountController {
   async listOffers(request: any) {
     const filter = request.filter || 'all';
     const offers = await this.offerService.listOffers(filter);
-    const mapped = offers.map(offer => ({
+    const mapped = offers.map((offer) => ({
       id: offer.id,
       code: offer.code,
       type: offer.type,
@@ -84,7 +87,7 @@ export class DiscountController {
       request.userId,
       request.originalPrice,
     );
-    const mapped = offers.map(offer => ({
+    const mapped = offers.map((offer) => ({
       id: offer.id,
       code: offer.code,
       type: offer.type,
@@ -103,7 +106,7 @@ export class DiscountController {
   @GrpcMethod('DiscountService', 'GetOfferHistory')
   async getOfferHistory(request: any) {
     const history = await this.offerService.getOfferHistory(request.userId);
-    const mapped = history.map(item => ({
+    const mapped = history.map((item) => ({
       id: item.id,
       offerCode: item.offerCode,
       bookingId: item.bookingId,
@@ -122,5 +125,14 @@ export class DiscountController {
       request.discountAmount,
     );
     return { success };
+  }
+
+  @GrpcMethod('DiscountService', 'ApplyReferral')
+  async applyReferral(request: any) {
+    const res = await this.offerService.applyReferral(
+      request.referralCode,
+      request.userId,
+    );
+    return res;
   }
 }

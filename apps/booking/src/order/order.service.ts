@@ -42,23 +42,49 @@ export class OrderService {
   }
 
   async initiateAdvancePayment(orderId: string, passengerId: string) {
-    return this.orderPaymentService.initiateAdvancePayment(orderId, passengerId);
+    return this.orderPaymentService.initiateAdvancePayment(
+      orderId,
+      passengerId,
+    );
   }
 
   async confirmAdvancePayment(webhookBody: any, razorpaySignature: string) {
-    return this.orderPaymentService.confirmAdvancePayment(webhookBody, razorpaySignature);
+    return this.orderPaymentService.confirmAdvancePayment(
+      webhookBody,
+      razorpaySignature,
+    );
   }
 
   async confirmPayment(orderId: string) {
     return this.orderPaymentService.confirmPayment(orderId);
   }
 
-  async ownerAccept(orderId: string, vehicleId: string, body: any, ownerId: string) {
-    return this.orderOwnerService.ownerAccept(orderId, vehicleId, body, ownerId);
+  async ownerAccept(
+    orderId: string,
+    vehicleId: string,
+    body: any,
+    ownerId: string,
+  ) {
+    return this.orderOwnerService.ownerAccept(
+      orderId,
+      vehicleId,
+      body,
+      ownerId,
+    );
   }
 
-  async ownerReject(orderId: string, vehicleId: string, body: any, ownerId: string) {
-    return this.orderOwnerService.ownerReject(orderId, vehicleId, body, ownerId);
+  async ownerReject(
+    orderId: string,
+    vehicleId: string,
+    body: any,
+    ownerId: string,
+  ) {
+    return this.orderOwnerService.ownerReject(
+      orderId,
+      vehicleId,
+      body,
+      ownerId,
+    );
   }
 
   async assignDriver(orderId: string, vehicleId: string, body: any) {
@@ -77,21 +103,53 @@ export class OrderService {
     return this.orderQueryService.getOrderVehicles(orderId);
   }
 
-  async updateBookingStatus(orderId: string, status: string, visibleStatus: string) {
-    return this.orderQueryService.updateBookingStatus(orderId, status, visibleStatus);
+  async getOrderVehicle(id: string) {
+    return this.orderQueryService.getOrderVehicle(id);
   }
-  async ownerCancelVehicle(orderId: string, vehicleId: string, body: any, ownerId: string) {
-    return this.orderOwnerService.ownerCancelVehicle(orderId, vehicleId, body, ownerId);
+
+  async updateBookingStatus(
+    orderId: string,
+    status: string,
+    visibleStatus: string,
+  ) {
+    return this.orderQueryService.updateBookingStatus(
+      orderId,
+      status,
+      visibleStatus,
+    );
+  }
+  async ownerCancelVehicle(
+    orderId: string,
+    vehicleId: string,
+    body: any,
+    ownerId: string,
+  ) {
+    return this.orderOwnerService.ownerCancelVehicle(
+      orderId,
+      vehicleId,
+      body,
+      ownerId,
+    );
   }
 
   async driverAccept(orderId: string, vehicleId: string, driverId: string) {
     return this.orderDriverService.driverAccept(orderId, vehicleId, driverId);
   }
-  
-  async driverReject(orderId: string, vehicleId: string, body: any, ownerId: string) {
-    return this.orderDriverService.driverReject(orderId, vehicleId, body, ownerId);
+
+  async driverReject(
+    orderId: string,
+    vehicleId: string,
+    body: any,
+    ownerId: string,
+  ) {
+    return this.orderDriverService.driverReject(
+      orderId,
+      vehicleId,
+      body,
+      ownerId,
+    );
   }
-  
+
   async arrive(orderId: string, vehicleId: string, body: any) {
     return this.orderDriverService.arrive(orderId, vehicleId, body);
   }
@@ -101,19 +159,33 @@ export class OrderService {
   }
 
   async completeVehicleTrip(orderId: string, vehicleId: string, body: any) {
-    return this.orderDriverService.completeVehicleTrip(orderId, vehicleId, body);
+    return this.orderDriverService.completeVehicleTrip(
+      orderId,
+      vehicleId,
+      body,
+    );
   }
-  
+
   async completeOrder(orderId: string) {
     return this.orderDriverService.completeOrder(orderId);
   }
-  
+
   async passengerCancelOrder(orderId: string, body: any) {
     return this.orderPassengerService.passengerCancelOrder(orderId, body);
   }
 
-  async getOwnerEarnings(ownerId: string, period: string, year: number, month: number) {
-    return this.orderQueryService.getOwnerEarnings(ownerId, period, year, month);
+  async getOwnerEarnings(
+    ownerId: string,
+    period: string,
+    year: number,
+    month: number,
+  ) {
+    return this.orderQueryService.getOwnerEarnings(
+      ownerId,
+      period,
+      year,
+      month,
+    );
   }
 
   async getPayoutHistory(ownerId: string, page: number, limit: number) {
@@ -126,6 +198,24 @@ export class OrderService {
 
   async getDriverEarnings(driverId: string, page: number, limit: number) {
     return this.orderQueryService.getDriverEarnings(driverId, page, limit);
+  }
+
+  async getDriverTrip(orderId: string, vehicleId: string, driverId: string) {
+    return this.orderQueryService.getDriverTrip(orderId, vehicleId, driverId);
+  }
+
+  async getDriverMyTrips(
+    driverId: string,
+    status: string,
+    page: number,
+    limit: number,
+  ) {
+    return this.orderQueryService.getDriverMyTrips(
+      driverId,
+      status,
+      page,
+      limit,
+    );
   }
 
   async raiseDispute(body: any) {
@@ -148,11 +238,43 @@ export class OrderService {
     return this.orderQueryService.getOrderOtp(orderId, vehicleId, userId);
   }
 
-  async payBalance(orderId: string, vehicleId: string, passengerId: string, body: any) {
-    return this.orderPaymentService.payBalance(orderId, vehicleId, passengerId, body);
+  async payBalance(
+    orderId: string,
+    vehicleId: string,
+    passengerId: string,
+    body: any,
+  ) {
+    return this.orderPaymentService.payBalance(
+      orderId,
+      vehicleId,
+      passengerId,
+      body,
+    );
+  }
+
+  async completePayment(
+    orderId: string,
+    passengerId: string,
+    paidAmount: number,
+    transactionId: string,
+  ) {
+    return this.orderPaymentService.completePayment(
+      orderId,
+      passengerId,
+      paidAmount,
+      transactionId,
+    );
+  }
+
+  async startTrip(orderVehicleId: string, driverId: string) {
+    return this.orderDriverService.startTrip(orderVehicleId, driverId);
   }
 
   async adminGetAnalytics(from: string, to: string) {
     return this.orderQueryService.adminGetAnalytics(from, to);
+  }
+
+  async getOrderPaymentStatus(orderId: string) {
+    return this.orderQueryService.getOrderPaymentStatus(orderId);
   }
 }

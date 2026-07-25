@@ -18,6 +18,7 @@ import { Reason as REASON } from '../enum/reason.enum';
 import { VehicleStatus } from '../enum/vehicleStatus.enum';
 import type { ClientGrpc } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
+import { RedisService } from 'apps/common/src/redis/redis.service';
 
 @Injectable()
 export class CatalogService implements OnModuleInit {
@@ -33,15 +34,49 @@ export class CatalogService implements OnModuleInit {
 
     @Inject('COMMUNICATION_SERVICE')
     private readonly communicationClient: ClientGrpc,
+
+    private readonly redisService: RedisService,
   ) {}
 
   onModuleInit() {
-    this.communicationService = this.communicationClient.getService<any>('CommunicationService');
+    this.communicationService = this.communicationClient.getService<any>(
+      'CommunicationService',
+    );
   }
 
-  async sendNotification(userId: string, title: string, content: string, channel = 'both') {
+  async clearVehicleCaches(vehicleId?: string) {
     try {
-      if (this.communicationService && typeof this.communicationService.sendNotification === 'function') {
+      const client = (this.redisService as any).redisClient;
+      if (client) {
+        const keys = await client.keys('search:query:*');
+        if (keys && keys.length > 0) {
+          await client.del(...keys);
+        }
+        if (vehicleId) {
+          const availKeys = await client.keys(
+            `vehicle:availability:${vehicleId}:*`,
+          );
+          if (availKeys && availKeys.length > 0) {
+            await client.del(...availKeys);
+          }
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to clear vehicle caches: ${err.message}`);
+    }
+  }
+
+  async sendNotification(
+    userId: string,
+    title: string,
+    content: string,
+    channel = 'both',
+  ) {
+    try {
+      if (
+        this.communicationService &&
+        typeof this.communicationService.sendNotification === 'function'
+      ) {
         await lastValueFrom(
           this.communicationService.sendNotification({
             userId,
@@ -53,7 +88,10 @@ export class CatalogService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[CatalogService] Failed to send notification via gRPC:', e.message);
+      console.error(
+        '[CatalogService] Failed to send notification via gRPC:',
+        e.message,
+      );
     }
   }
 
@@ -88,9 +126,7 @@ export class CatalogService implements OnModuleInit {
    */
   private assertValidDateRange(start: Date, end: Date): void {
     if (start >= end) {
-      throw new BadRequestException(
-        'startDate must be before endDate',
-      );
+      throw new BadRequestException('startDate must be before endDate');
     }
   }
 
@@ -114,9 +150,13 @@ export class CatalogService implements OnModuleInit {
     if (dto['rtoRawDataJson'] && dto['rtoRawDataJson'] !== '{}') {
       try {
         rtoRawData = JSON.parse(dto['rtoRawDataJson']);
-        this.logger.log(`[RTO Verification] Saved pre-fetched RTO data for vehicle ${dto.registrationNumber}.`);
+        this.logger.log(
+          `[RTO Verification] Saved pre-fetched RTO data for vehicle ${dto.registrationNumber}.`,
+        );
       } catch (err: any) {
-        this.logger.error(`[RTO Verification] Failed to parse rtoRawDataJson: ${err.message}`);
+        this.logger.error(
+          `[RTO Verification] Failed to parse rtoRawDataJson: ${err.message}`,
+        );
       }
     }
 
@@ -125,10 +165,39 @@ export class CatalogService implements OnModuleInit {
       const rtoData = await this.performRtoLookup(dto.registrationNumber);
       if (rtoData) {
         rtoRawData = rtoData;
-        this.logger.log(`[RTO Verification] Vehicle ${dto.registrationNumber} verified successfully via real-time RTO Lookup.`);
+        this.logger.log(
+          `[RTO Verification] Vehicle ${dto.registrationNumber} verified successfully via real-time RTO Lookup.`,
+        );
       } else {
-        this.logger.warn(`[RTO Verification] Vehicle ${dto.registrationNumber} could not be verified in real-time. Proceeding with manual admin review.`);
+        this.logger.warn(
+          `[RTO Verification] Vehicle ${dto.registrationNumber} could not be verified in real-time. Proceeding with manual admin review.`,
+        );
       }
+    }
+
+    const existingVehicle = await this.vehicleRepository.findOne({
+      where: { registrationNumber: dto.registrationNumber },
+    });
+
+    if (existingVehicle) {
+      if (existingVehicle.ownerId !== ownerId) {
+        throw new BadRequestException(
+          `Vehicle with registration number ${dto.registrationNumber} is already registered by another user.`,
+        );
+      }
+      this.logger.log(
+        `[Vehicle Registration] Vehicle ${dto.registrationNumber} already exists for this owner. Updating details.`,
+      );
+      const cleanDto = { ...dto };
+      delete cleanDto['rtoRawDataJson'];
+
+      const updatedVehicle = this.vehicleRepository.merge(existingVehicle, {
+        ...cleanDto,
+        rtoRawData: rtoRawData || existingVehicle.rtoRawData,
+      });
+      const saved = await this.vehicleRepository.save(updatedVehicle);
+      await this.clearVehicleCaches(saved.id);
+      return saved;
     }
 
     const cleanDto = { ...dto };
@@ -141,15 +210,19 @@ export class CatalogService implements OnModuleInit {
       isAvailable: false,
       rtoRawData,
     });
-    return this.vehicleRepository.save(newVehicle);
+    const savedNew = await this.vehicleRepository.save(newVehicle);
+    await this.clearVehicleCaches(savedNew.id);
+    return savedNew;
   }
 
   private async performRtoLookup(registrationNumber: string): Promise<any> {
     try {
-      this.logger.log(`[RTO Lookup] Querying RegCheck API for registration: ${registrationNumber}`);
-      
+      this.logger.log(
+        `[RTO Lookup] Querying RegCheck API for registration: ${registrationNumber}`,
+      );
+
       const cleanReg = registrationNumber.replace(/[\s-]/g, '').toUpperCase();
-      
+
       const xmlPayload = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
 <soap:Body>
@@ -160,13 +233,17 @@ export class CatalogService implements OnModuleInit {
 </soap:Body>
 </soap:Envelope>`;
 
-      const response = await axios.post('https://www.regcheck.org.uk/api/reg.asmx', xmlPayload, {
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          SOAPAction: 'http://regcheck.org.uk/CheckIndia',
+      const response = await axios.post(
+        'https://www.regcheck.org.uk/api/reg.asmx',
+        xmlPayload,
+        {
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            SOAPAction: 'http://regcheck.org.uk/CheckIndia',
+          },
+          timeout: 8000,
         },
-        timeout: 8000,
-      });
+      );
 
       const xml = response.data;
       const match = xml.match(/<vehicleJson>([\s\S]*?)<\/vehicleJson>/);
@@ -178,16 +255,26 @@ export class CatalogService implements OnModuleInit {
           .replace(/&quot;/g, '"')
           .replace(/&apos;/g, "'");
         const vehicleData = JSON.parse(vehicleJsonString);
-        this.logger.log(`[RTO Lookup] Verified details: ${JSON.stringify(vehicleData)}`);
+        this.logger.log(
+          `[RTO Lookup] Verified details: ${JSON.stringify(vehicleData)}`,
+        );
         return vehicleData;
       } else {
-        const errorMatch = xml.match(/<Message>([\s\S]*?)<\/Message>/) || xml.match(/<Vehicle>([\s\S]*?)<\/Vehicle>/);
-        const errMsg = errorMatch ? errorMatch[1] : 'No vehicle JSON found in response';
-        this.logger.warn(`[RTO Lookup] Failed to parse vehicle details. Response: ${errMsg}`);
+        const errorMatch =
+          xml.match(/<Message>([\s\S]*?)<\/Message>/) ||
+          xml.match(/<Vehicle>([\s\S]*?)<\/Vehicle>/);
+        const errMsg = errorMatch
+          ? errorMatch[1]
+          : 'No vehicle JSON found in response';
+        this.logger.warn(
+          `[RTO Lookup] Failed to parse vehicle details. Response: ${errMsg}`,
+        );
         return null;
       }
     } catch (error: any) {
-      this.logger.error(`[RTO Lookup] Error contacting RegCheck API: ${error.message}`);
+      this.logger.error(
+        `[RTO Lookup] Error contacting RegCheck API: ${error.message}`,
+      );
       return null;
     }
   }
@@ -220,11 +307,11 @@ export class CatalogService implements OnModuleInit {
 
   async updateVehicle(
     id: string,
-    ownerId: string,          // ← now required, checked against vehicle
+    ownerId: string, // ← now required, checked against vehicle
     dto: UpdateVehicleDto,
   ): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(id);
-    this.assertOwnership(vehicle, ownerId);   // ← ownership check
+    this.assertOwnership(vehicle, ownerId); // ← ownership check
 
     if (dto.isAvailable === true && vehicle.status !== VehicleStatus.ACTIVE) {
       throw new BadRequestException(
@@ -233,17 +320,20 @@ export class CatalogService implements OnModuleInit {
     }
 
     const updatedVehicle = this.vehicleRepository.merge(vehicle, dto);
-    return this.vehicleRepository.save(updatedVehicle);
+    const saved = await this.vehicleRepository.save(updatedVehicle);
+    await this.clearVehicleCaches(saved.id);
+    return saved;
   }
 
   async deleteVehicle(
     id: string,
-    ownerId: string,          // ← now required, checked against vehicle
+    ownerId: string, // ← now required, checked against vehicle
   ): Promise<{ deleted: boolean }> {
     const vehicle = await this.findVehicleOrThrow(id);
-    this.assertOwnership(vehicle, ownerId);   // ← ownership check
+    this.assertOwnership(vehicle, ownerId); // ← ownership check
 
     await this.vehicleRepository.softDelete(id);
+    await this.clearVehicleCaches(id);
     return { deleted: true };
   }
 
@@ -254,7 +344,9 @@ export class CatalogService implements OnModuleInit {
   async activateVehicle(id: string): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(id);
     vehicle.status = VehicleStatus.ACTIVE;
+    vehicle.isAvailable = true;
     const saved = await this.vehicleRepository.save(vehicle);
+    await this.clearVehicleCaches(saved.id);
 
     await this.sendNotification(
       saved.ownerId,
@@ -271,6 +363,7 @@ export class CatalogService implements OnModuleInit {
     vehicle.status = VehicleStatus.SUSPENDED;
     vehicle.isAvailable = false;
     const saved = await this.vehicleRepository.save(vehicle);
+    await this.clearVehicleCaches(saved.id);
 
     await this.sendNotification(
       saved.ownerId,
@@ -298,14 +391,16 @@ export class CatalogService implements OnModuleInit {
     const vehicle = await this.findVehicleOrThrow(id);
     this.assertOwnership(vehicle, ownerId);
 
-    if (isAvailable && vehicle.status !== VehicleStatus.ACTIVE) {
+    if (vehicle.status !== VehicleStatus.ACTIVE) {
       throw new BadRequestException(
-        'Only active vehicles can be set to online/available.',
+        'Only active vehicles can be toggled online or offline.',
       );
     }
 
     vehicle.isAvailable = isAvailable;
-    return this.vehicleRepository.save(vehicle);
+    const saved = await this.vehicleRepository.save(vehicle);
+    await this.clearVehicleCaches(saved.id);
+    return saved;
   }
 
   /**
@@ -332,10 +427,11 @@ export class CatalogService implements OnModuleInit {
         { isAvailable: true },
       );
     } else {
-      await this.vehicleRepository.update(
-        { ownerId },
-        { isAvailable: false },
-      );
+      await this.vehicleRepository.update({ ownerId }, { isAvailable: false });
+    }
+
+    for (const v of vehicles) {
+      await this.clearVehicleCaches(v.id);
     }
 
     return this.vehicleRepository.find({ where: { ownerId } });
@@ -366,7 +462,7 @@ export class CatalogService implements OnModuleInit {
       );
     }
 
-    this.assertValidDateRange(start, end);     // ← validate dates
+    this.assertValidDateRange(start, end); // ← validate dates
 
     const block = this.vehicleBlockRepository.create({
       vehicle,
@@ -376,6 +472,7 @@ export class CatalogService implements OnModuleInit {
       bookingId,
     });
     await this.vehicleBlockRepository.save(block);
+    await this.clearVehicleCaches(id);
 
     return this.getVehicle(id);
   }
@@ -405,12 +502,10 @@ export class CatalogService implements OnModuleInit {
     );
 
     if (activeVehicles.length === 0) {
-      throw new BadRequestException(
-        'No active vehicles found to block.',
-      );
+      throw new BadRequestException('No active vehicles found to block.');
     }
 
-    this.assertValidDateRange(start, end);     // ← validate dates
+    this.assertValidDateRange(start, end); // ← validate dates
 
     const blocks = activeVehicles.map((vehicle) =>
       this.vehicleBlockRepository.create({
@@ -421,6 +516,9 @@ export class CatalogService implements OnModuleInit {
       }),
     );
     await this.vehicleBlockRepository.save(blocks);
+    for (const vehicle of activeVehicles) {
+      await this.clearVehicleCaches(vehicle.id);
+    }
 
     return this.vehicleRepository.find({
       where: { ownerId },
@@ -445,9 +543,12 @@ export class CatalogService implements OnModuleInit {
       throw new NotFoundException(`Block with ID "${blockId}" not found`);
     }
 
-    this.assertOwnership(block.vehicle, ownerId);  // ← ownership check
+    this.assertOwnership(block.vehicle, ownerId); // ← ownership check
 
     await this.vehicleBlockRepository.delete(blockId);
+    if (block.vehicle) {
+      await this.clearVehicleCaches(block.vehicle.id);
+    }
     return { unblocked: true };
   }
 
@@ -455,9 +556,7 @@ export class CatalogService implements OnModuleInit {
    * Remove ALL owner-created blocks for all owner's vehicles.
    * Never removes BOOKED blocks — booking service manages those.
    */
-  async unblockAllOwnerVehicles(
-    ownerId: string,
-  ): Promise<VehicleEntity[]> {
+  async unblockAllOwnerVehicles(ownerId: string): Promise<VehicleEntity[]> {
     const vehicles = await this.vehicleRepository.find({
       where: { ownerId },
     });
@@ -469,11 +568,13 @@ export class CatalogService implements OnModuleInit {
     }
 
     for (const vehicle of vehicles) {
-      await this.vehicleBlockRepository.createQueryBuilder()
+      await this.vehicleBlockRepository
+        .createQueryBuilder()
         .delete()
         .where('vehicle_id = :vehicleId', { vehicleId: vehicle.id })
         .andWhere('reason = :reason', { reason: REASON.OWNER_BLOCKED })
         .execute();
+      await this.clearVehicleCaches(vehicle.id);
     }
 
     return this.vehicleRepository.find({
@@ -490,11 +591,21 @@ export class CatalogService implements OnModuleInit {
    * Check if a vehicle is available for a given date range.
    * Checks isAvailable flag AND overlapping blocks.
    */
-   async isVehicleAvailable(
+  async isVehicleAvailable(
     vehicleId: string,
     start: Date,
     end: Date,
   ): Promise<boolean> {
+    const cacheKey = `vehicle:availability:${vehicleId}:${this.toDateString(start)}:${this.toDateString(end)}`;
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached !== null) {
+        return cached === 'true';
+      }
+    } catch (err) {
+      // ignore cache read error
+    }
+
     const vehicle = await this.vehicleRepository.findOne({
       where: {
         id: vehicleId,
@@ -503,7 +614,12 @@ export class CatalogService implements OnModuleInit {
       },
     });
 
-    if (!vehicle) return false;   // offline or not active
+    if (!vehicle) {
+      try {
+        await this.redisService.set(cacheKey, 'false', 300);
+      } catch (err) {}
+      return false; // offline or not active
+    }
 
     // Check for any overlapping block
     const overlappingBlock = await this.vehicleBlockRepository.findOne({
@@ -514,7 +630,12 @@ export class CatalogService implements OnModuleInit {
       },
     });
 
-    return !overlappingBlock;     // true = available, false = blocked
+    const isAvail = !overlappingBlock;
+    try {
+      await this.redisService.set(cacheKey, isAvail ? 'true' : 'false', 300);
+    } catch (err) {}
+
+    return isAvail; // true = available, false = blocked
   }
 
   async updatePlateType(
@@ -526,9 +647,11 @@ export class CatalogService implements OnModuleInit {
   ): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(vehicleId);
     vehicle.plateType = plateType;
-    if (commercialPermitNumber !== undefined) vehicle.commercialPermitNumber = commercialPermitNumber;
+    if (commercialPermitNumber !== undefined)
+      vehicle.commercialPermitNumber = commercialPermitNumber;
     if (permitType !== undefined) vehicle.permitType = permitType;
-    if (permitExpiryDate !== undefined) vehicle.permitExpiryDate = permitExpiryDate;
+    if (permitExpiryDate !== undefined)
+      vehicle.permitExpiryDate = permitExpiryDate;
     return this.vehicleRepository.save(vehicle);
   }
 
@@ -541,10 +664,13 @@ export class CatalogService implements OnModuleInit {
     eventPackage?: any,
   ): Promise<VehicleEntity> {
     const vehicle = await this.findVehicleOrThrow(vehicleId);
-    if (perKmOutstation !== undefined) vehicle.perKmOutstation = perKmOutstation;
+    if (perKmOutstation !== undefined)
+      vehicle.perKmOutstation = perKmOutstation;
     if (perHourLocal !== undefined) vehicle.perHourLocal = perHourLocal;
-    if (minimumBookingHours !== undefined) vehicle.minimumBookingHours = minimumBookingHours;
-    if (nightChargePercentage !== undefined) vehicle.nightChargePercentage = nightChargePercentage;
+    if (minimumBookingHours !== undefined)
+      vehicle.minimumBookingHours = minimumBookingHours;
+    if (nightChargePercentage !== undefined)
+      vehicle.nightChargePercentage = nightChargePercentage;
     if (eventPackage !== undefined) vehicle.eventPackage = eventPackage;
     return this.vehicleRepository.save(vehicle);
   }
@@ -552,13 +678,22 @@ export class CatalogService implements OnModuleInit {
   async getPricing(vehicleId: string): Promise<any> {
     const vehicle = await this.findVehicleOrThrow(vehicleId);
     return {
-      perKmOutstation: vehicle.perKmOutstation ? parseFloat(vehicle.perKmOutstation.toString()) : 0,
-      perHourLocal: vehicle.perHourLocal ? parseFloat(vehicle.perHourLocal.toString()) : 0,
+      perKmOutstation: vehicle.perKmOutstation
+        ? parseFloat(vehicle.perKmOutstation.toString())
+        : 0,
+      perHourLocal: vehicle.perHourLocal
+        ? parseFloat(vehicle.perHourLocal.toString())
+        : 0,
       minimumBookingHours: vehicle.minimumBookingHours || 4,
       nightChargePercentage: vehicle.nightChargePercentage || 20,
-      eventPackage: vehicle.eventPackage || { halfDay: 0, fullDay: 0, weddingPackage: 0 },
+      eventPackage: vehicle.eventPackage || {
+        halfDay: 0,
+        fullDay: 0,
+        weddingPackage: 0,
+      },
       advancePercentage: vehicle.advancePercentage || 25,
-      cancellationPolicy: "Free cancellation before 24 hours. 25% advance forfeited after that.",
+      cancellationPolicy:
+        'Free cancellation before 24 hours. 25% advance forfeited after that.',
     };
   }
 }

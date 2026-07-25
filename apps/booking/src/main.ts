@@ -9,14 +9,17 @@ import {
 async function bootstrap() {
   assertBookingServiceProtoExists();
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(BookingModule, {
-    transport: Transport.GRPC,
-    options: {
-      package: 'booking',
-      protoPath: BOOKING_SERVICE_PROTO_PATH,
-      url: '0.0.0.0:50053',
-    }
-  });
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    BookingModule,
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: 'booking',
+        protoPath: BOOKING_SERVICE_PROTO_PATH,
+        url: '0.0.0.0:50053',
+      },
+    },
+  );
   await app.listen();
 }
 bootstrap();

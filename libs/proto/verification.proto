@@ -12,9 +12,26 @@ service VerificationService {
   rpc RejectVerification (RejectVerificationRequest) returns (RejectVerificationResponse);
   rpc ApproveVerification (ApproveVerificationRequest) returns (ApproveVerificationResponse);
   rpc SubmitVehicleDocs(SubmitVehicleDocsRequest) returns (SubmitVehicleDocsResponse);
+  rpc UploadUserKyc (UploadUserKycRequest) returns (VerificationStatusResponse);
+  rpc GetUserKycStatus (GetUserKycStatusRequest) returns (VerificationStatusResponse);
+  rpc SubmitUserKyc (SubmitUserKycRequest) returns (SubmitKycDocResponse);
 }
 
 message Empty {}
+
+message UploadUserKycRequest {
+  string userId = 1;
+  string docType = 2;
+  string fileUrl = 3;
+}
+
+message GetUserKycStatusRequest {
+  string userId = 1;
+}
+
+message SubmitUserKycRequest {
+  string userId = 1;
+}
 
 message UploadDocRequest {
   string userId = 1;

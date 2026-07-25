@@ -1,7 +1,10 @@
 import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import * as microservices from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
-import { BookingServiceClient, BOOKING_SERVICE_NAME } from '../../../../libs/types/booking';
+import {
+  BookingServiceClient,
+  BOOKING_SERVICE_NAME,
+} from '../../../../libs/types/booking';
 
 @Injectable()
 export class BookingIntegrationService implements OnModuleInit {
@@ -13,7 +16,8 @@ export class BookingIntegrationService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.bookingService = this.client.getService<BookingServiceClient>(BOOKING_SERVICE_NAME);
+    this.bookingService =
+      this.client.getService<BookingServiceClient>(BOOKING_SERVICE_NAME);
   }
 
   async getBooking(bookingId: string): Promise<any | null> {
@@ -63,7 +67,11 @@ export class BookingIntegrationService implements OnModuleInit {
     }
   }
 
-  async updateBookingStatus(bookingId: string, status: string, visibleStatus: string): Promise<void> {
+  async updateBookingStatus(
+    bookingId: string,
+    status: string,
+    visibleStatus: string,
+  ): Promise<void> {
     try {
       await lastValueFrom(
         this.bookingService.updateBookingStatus({

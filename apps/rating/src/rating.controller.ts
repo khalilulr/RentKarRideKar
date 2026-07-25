@@ -24,7 +24,8 @@ export class RatingController {
 
   private handleError(apiName: string, error: any) {
     console.error(`[Error in RatingController.${apiName}]:`, error);
-    const message = error.response?.message || error.message || 'Internal server error';
+    const message =
+      error.response?.message || error.message || 'Internal server error';
     throw new RpcException(message);
   }
 
@@ -35,7 +36,9 @@ export class RatingController {
   @GrpcMethod('RatingService', 'SubmitReview')
   async submitReview(request: any) {
     try {
-      const validated = new ZodValidationPipe(CreateReviewSchema).transform(request) as any;
+      const validated = new ZodValidationPipe(CreateReviewSchema).transform(
+        request,
+      ) as any;
       const reviewerId = request.reviewerId || 'usr_reviewer_default';
       const id = await this.reviewService.submitReview(reviewerId, validated);
       return { success: true, id };
@@ -48,8 +51,13 @@ export class RatingController {
   async likeReview(request: any) {
     try {
       console.log('Received LikeReview request:', request);
-      const validated = new ZodValidationPipe(LikeReviewSchema).transform(request) as any;
-      const likesCount = await this.reviewService.likeReview(validated.reviewId, validated.userId);
+      const validated = new ZodValidationPipe(LikeReviewSchema).transform(
+        request,
+      ) as any;
+      const likesCount = await this.reviewService.likeReview(
+        validated.reviewId,
+        validated.userId,
+      );
       return { success: true, likesCount };
     } catch (e) {
       this.handleError('LikeReview', e);
@@ -104,9 +112,15 @@ export class RatingController {
   @GrpcMethod('RatingService', 'RespondToReview')
   async respondToReview(request: any) {
     try {
-      const validated = new ZodValidationPipe(RespondReviewSchema).transform(request) as any;
+      const validated = new ZodValidationPipe(RespondReviewSchema).transform(
+        request,
+      ) as any;
       const userId = request.userId || 'usr_reviewee_default';
-      await this.reviewService.respondToReview(userId, request.reviewId, validated.responseText);
+      await this.reviewService.respondToReview(
+        userId,
+        request.reviewId,
+        validated.responseText,
+      );
       return { success: true, message: 'Response submitted successfully' };
     } catch (e) {
       this.handleError('RespondToReview', e);
@@ -120,9 +134,15 @@ export class RatingController {
   @GrpcMethod('RatingService', 'CancelBooking')
   async cancelBooking(request: any) {
     try {
-      const validated = new ZodValidationPipe(CancelBookingSchema).transform(request) as any;
+      const validated = new ZodValidationPipe(CancelBookingSchema).transform(
+        request,
+      ) as any;
       const userId = request.userId || 'usr_canceller_default';
-      const result = await this.cancellationService.cancelBooking(userId, request.bookingId, validated);
+      const result = await this.cancellationService.cancelBooking(
+        userId,
+        request.bookingId,
+        validated,
+      );
       return result;
     } catch (e) {
       this.handleError('CancelBooking', e);
@@ -132,7 +152,9 @@ export class RatingController {
   @GrpcMethod('RatingService', 'GetCancellationStats')
   async getCancellationStats(request: any) {
     try {
-      return await this.cancellationService.getCancellationStats(request.userId);
+      return await this.cancellationService.getCancellationStats(
+        request.userId,
+      );
     } catch (e) {
       this.handleError('GetCancellationStats', e);
     }
@@ -141,7 +163,9 @@ export class RatingController {
   @GrpcMethod('RatingService', 'GetCancellationDeadline')
   async getCancellationDeadline(request: any) {
     try {
-      return await this.cancellationService.getCancellationDeadline(request.bookingId);
+      return await this.cancellationService.getCancellationDeadline(
+        request.bookingId,
+      );
     } catch (e) {
       this.handleError('GetCancellationDeadline', e);
     }

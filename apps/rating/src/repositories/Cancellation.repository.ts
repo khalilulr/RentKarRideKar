@@ -27,9 +27,13 @@ export class CancellationRepository {
     return this.repo.findOne({ where: { bookingId } });
   }
 
-  async countCancellationsByUser(userId: string): Promise<{ total: number; late: number }> {
+  async countCancellationsByUser(
+    userId: string,
+  ): Promise<{ total: number; late: number }> {
     const total = await this.repo.count({ where: { cancelledById: userId } });
-    const late = await this.repo.count({ where: { cancelledById: userId, isLate: true } });
+    const late = await this.repo.count({
+      where: { cancelledById: userId, isLate: true },
+    });
     return { total, late };
   }
 }

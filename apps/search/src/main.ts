@@ -9,14 +9,17 @@ import {
 async function bootstrap() {
   assertSearchAndCatalogServiceProtoExists();
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(SearchModule, {
-    transport: Transport.GRPC,
-    options: {
-      package: 'searchAndCatalog',
-      protoPath: SEARCH_AND_CATALOG_SERVICE_PROTO_PATH,
-      url: '0.0.0.0:50055',
-    }
-  });
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    SearchModule,
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: 'searchAndCatalog',
+        protoPath: SEARCH_AND_CATALOG_SERVICE_PROTO_PATH,
+        url: '0.0.0.0:50055',
+      },
+    },
+  );
   await app.listen();
 }
 bootstrap();

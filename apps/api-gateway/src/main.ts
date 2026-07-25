@@ -5,9 +5,9 @@ import { RpcExceptionFilter } from 'apps/common/src/rpc-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(ApiGatewayModule, {
-    bodyParser: false, 
+    bodyParser: false,
   });
-  
+
   // Manually add JSON and urlencoded parsers (excludes multipart)
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.use((req: any, res: any, next: any) => {
@@ -38,4 +38,3 @@ async function bootstrap() {
   await app.listen(process.env.port ?? 3000);
 }
 bootstrap();
-

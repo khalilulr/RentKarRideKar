@@ -1,16 +1,16 @@
-import { 
-  Column, 
+import {
+  Column,
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
-  Entity, 
-  ManyToOne, 
-  PrimaryGeneratedColumn, 
-  JoinColumn 
-} from "typeorm";
-import { DocumentType } from "../enum/document_type.enum";
-import { DocumentStatus } from "../enum/document_status.enum";
-import { KycVerificationEntity } from "./kyc-verification.entity";
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  JoinColumn,
+} from 'typeorm';
+import { DocumentType } from '../enum/document_type.enum';
+import { DocumentStatus } from '../enum/document_status.enum';
+import { KycVerificationEntity } from './kyc-verification.entity';
 
 @Entity('kyc_documents')
 export class DocumentEntity {
@@ -20,13 +20,13 @@ export class DocumentEntity {
   @Column({
     type: 'enum',
     enum: DocumentType,
-    name: 'document_type'
+    name: 'document_type',
   })
   documentType: DocumentType;
 
-  @Column({ 
-    type: 'varchar', 
-    name: 'document_url' 
+  @Column({
+    type: 'varchar',
+    name: 'document_url',
   })
   documentUrl: string;
 
@@ -34,20 +34,24 @@ export class DocumentEntity {
     type: 'enum',
     enum: DocumentStatus,
     default: DocumentStatus.PENDING,
-    name: 'status'
+    name: 'status',
   })
   status: DocumentStatus;
 
-  @Column({ 
-    type: 'text', 
-    nullable: true, 
-    name: 'rejection_reason' 
+  @Column({
+    type: 'text',
+    nullable: true,
+    name: 'rejection_reason',
   })
   rejectionReason?: string;
 
-  @ManyToOne(() => KycVerificationEntity, (verification) => verification.documents, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => KycVerificationEntity,
+    (verification) => verification.documents,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'verification_id' })
   verification: KycVerificationEntity;
 

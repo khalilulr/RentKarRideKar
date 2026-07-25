@@ -23,8 +23,14 @@ export class ReviewRepository {
     return this.repo.findOne({ where: { id } });
   }
 
-  async findByBookingRoleAndTarget(bookingId: string, reviewerRole: 'owner' | 'passenger', targetType: 'driver' | 'vehicle' | 'passenger'): Promise<Review | null> {
-    return this.repo.findOne({ where: { bookingId, reviewerRole, targetType } });
+  async findByBookingRoleAndTarget(
+    bookingId: string,
+    reviewerRole: 'owner' | 'passenger',
+    targetType: 'driver' | 'vehicle' | 'passenger',
+  ): Promise<Review | null> {
+    return this.repo.findOne({
+      where: { bookingId, reviewerRole, targetType },
+    });
   }
 
   async findBothReviewsForBooking(bookingId: string): Promise<Review[]> {
@@ -48,7 +54,8 @@ export class ReviewRepository {
     limit: number = 20,
   ): Promise<{ data: Review[]; nextCursor: string | null; total: number }> {
     // 1. Get total count
-    const totalQuery = this.repo.createQueryBuilder('review')
+    const totalQuery = this.repo
+      .createQueryBuilder('review')
       .where('review.reviewee_id = :revieweeId', { revieweeId })
       .andWhere('review.revealed_at IS NOT NULL');
 
@@ -59,7 +66,8 @@ export class ReviewRepository {
     const total = await totalQuery.getCount();
 
     // 2. Fetch paginated data
-    const queryBuilder = this.repo.createQueryBuilder('review')
+    const queryBuilder = this.repo
+      .createQueryBuilder('review')
       .where('review.reviewee_id = :revieweeId', { revieweeId })
       .andWhere('review.revealed_at IS NOT NULL');
 
@@ -82,15 +90,15 @@ export class ReviewRepository {
         const cursorRating = parseInt(cursorRatingStr, 10);
         queryBuilder.andWhere(
           `(review.overall_rating < :cursorRating OR ` +
-          `(review.overall_rating = :cursorRating AND review.submitted_at < :cursorDate) OR ` +
-          `(review.overall_rating = :cursorRating AND review.submitted_at = :cursorDate AND review.id < :cursorId))`,
-          { cursorRating, cursorDate, cursorId }
+            `(review.overall_rating = :cursorRating AND review.submitted_at < :cursorDate) OR ` +
+            `(review.overall_rating = :cursorRating AND review.submitted_at = :cursorDate AND review.id < :cursorId))`,
+          { cursorRating, cursorDate, cursorId },
         );
       } else {
         // Default cursor sorting: (submitted_at < cursorDate) OR (submitted_at = cursorDate AND id < cursorId)
         queryBuilder.andWhere(
           `(review.submitted_at < :cursorDate OR (review.submitted_at = :cursorDate AND review.id < :cursorId))`,
-          { cursorDate, cursorId }
+          { cursorDate, cursorId },
         );
       }
     }
@@ -117,9 +125,13 @@ export class ReviewRepository {
     if (hasNext && paginatedData.length > 0) {
       const lastItem = paginatedData[paginatedData.length - 1];
       if (sortBy === 'rating') {
-        nextCursor = Buffer.from(`${lastItem.overallRating}_${lastItem.submittedAt.toISOString()}_${lastItem.id}`).toString('base64');
+        nextCursor = Buffer.from(
+          `${lastItem.overallRating}_${lastItem.submittedAt.toISOString()}_${lastItem.id}`,
+        ).toString('base64');
       } else {
-        nextCursor = Buffer.from(`${lastItem.submittedAt.toISOString()}_${lastItem.id}`).toString('base64');
+        nextCursor = Buffer.from(
+          `${lastItem.submittedAt.toISOString()}_${lastItem.id}`,
+        ).toString('base64');
       }
     }
 
@@ -130,7 +142,9 @@ export class ReviewRepository {
     };
   }
 
-  async findRevealedReviewsForCalculation(revieweeId: string): Promise<Review[]> {
+  async findRevealedReviewsForCalculation(
+    revieweeId: string,
+  ): Promise<Review[]> {
     return this.repo.find({
       where: {
         revieweeId,

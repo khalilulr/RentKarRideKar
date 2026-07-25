@@ -21,11 +21,11 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
     try {
       const payload = await this.jwtService.decodeToken(token);
-      
+
       // Attach both payload and raw token to request for downstream use (like blacklisting)
-      request.user = payload; 
+      request.user = payload;
       request.accessToken = token;
-      
+
       return true;
     } catch (error) {
       throw new UnauthorizedException(error.message || 'Invalid token');

@@ -5,13 +5,12 @@
 // source: libs/proto/verification.proto
 
 /* eslint-disable */
-import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
-import { Observable } from "rxjs";
+import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
+import { Observable } from 'rxjs';
 
-export const protobufPackage = "verification";
+export const protobufPackage = 'verification';
 
-export interface Empty {
-}
+export interface Empty {}
 
 export interface UploadDocRequest {
   userId: string;
@@ -126,82 +125,170 @@ export interface SubmitVehicleDocsResponse {
   status: string;
 }
 
-export const VERIFICATION_PACKAGE_NAME = "verification";
+export interface UploadUserKycRequest {
+  userId: string;
+  docType: string;
+  fileUrl: string;
+}
+
+export interface GetUserKycStatusRequest {
+  userId: string;
+}
+
+export interface SubmitUserKycRequest {
+  userId: string;
+}
+
+export const VERIFICATION_PACKAGE_NAME = 'verification';
 
 export interface VerificationServiceClient {
   uploadDoc(request: UploadDocRequest): Observable<VerificationStatusResponse>;
-
-  getVerificationStatus(request: GetVerificationStatusRequest): Observable<VerificationStatusResponse>;
-
+  getVerificationStatus(
+    request: GetVerificationStatusRequest,
+  ): Observable<VerificationStatusResponse>;
+  getVehicleVerificationStatus(
+    request: GetVehicleVerificationStatusRequest,
+  ): Observable<VerificationStatusResponse>;
   submitKycDoc(request: SubmitKycDocRequest): Observable<SubmitKycDocResponse>;
-
   pendingStatusDocs(request: Empty): Observable<PendingStatusDocsResponse>;
-
-  reviewDocument(request: ReviewDocumentRequest): Observable<ReviewDocumentResponse>;
-
-  rejectVerification(request: RejectVerificationRequest): Observable<RejectVerificationResponse>;
-
-  approveVerification(request: ApproveVerificationRequest): Observable<ApproveVerificationResponse>;
-
-  submitVehicleDocs(request: SubmitVehicleDocsRequest): Observable<SubmitVehicleDocsResponse>;
+  reviewDocument(
+    request: ReviewDocumentRequest,
+  ): Observable<ReviewDocumentResponse>;
+  rejectVerification(
+    request: RejectVerificationRequest,
+  ): Observable<RejectVerificationResponse>;
+  approveVerification(
+    request: ApproveVerificationRequest,
+  ): Observable<ApproveVerificationResponse>;
+  submitVehicleDocs(
+    request: SubmitVehicleDocsRequest,
+  ): Observable<SubmitVehicleDocsResponse>;
+  uploadUserKyc(
+    request: UploadUserKycRequest,
+  ): Observable<VerificationStatusResponse>;
+  getUserKycStatus(
+    request: GetUserKycStatusRequest,
+  ): Observable<VerificationStatusResponse>;
+  submitUserKyc(
+    request: SubmitUserKycRequest,
+  ): Observable<SubmitKycDocResponse>;
 }
 
 export interface VerificationServiceController {
   uploadDoc(
     request: UploadDocRequest,
-  ): Promise<VerificationStatusResponse> | Observable<VerificationStatusResponse> | VerificationStatusResponse;
-
+  ):
+    | Promise<VerificationStatusResponse>
+    | Observable<VerificationStatusResponse>
+    | VerificationStatusResponse;
   getVerificationStatus(
     request: GetVerificationStatusRequest,
-  ): Promise<VerificationStatusResponse> | Observable<VerificationStatusResponse> | VerificationStatusResponse;
-
+  ):
+    | Promise<VerificationStatusResponse>
+    | Observable<VerificationStatusResponse>
+    | VerificationStatusResponse;
+  getVehicleVerificationStatus(
+    request: GetVehicleVerificationStatusRequest,
+  ):
+    | Promise<VerificationStatusResponse>
+    | Observable<VerificationStatusResponse>
+    | VerificationStatusResponse;
   submitKycDoc(
     request: SubmitKycDocRequest,
-  ): Promise<SubmitKycDocResponse> | Observable<SubmitKycDocResponse> | SubmitKycDocResponse;
-
+  ):
+    | Promise<SubmitKycDocResponse>
+    | Observable<SubmitKycDocResponse>
+    | SubmitKycDocResponse;
   pendingStatusDocs(
     request: Empty,
-  ): Promise<PendingStatusDocsResponse> | Observable<PendingStatusDocsResponse> | PendingStatusDocsResponse;
-
+  ):
+    | Promise<PendingStatusDocsResponse>
+    | Observable<PendingStatusDocsResponse>
+    | PendingStatusDocsResponse;
   reviewDocument(
     request: ReviewDocumentRequest,
-  ): Promise<ReviewDocumentResponse> | Observable<ReviewDocumentResponse> | ReviewDocumentResponse;
-
+  ):
+    | Promise<ReviewDocumentResponse>
+    | Observable<ReviewDocumentResponse>
+    | ReviewDocumentResponse;
   rejectVerification(
     request: RejectVerificationRequest,
-  ): Promise<RejectVerificationResponse> | Observable<RejectVerificationResponse> | RejectVerificationResponse;
-
+  ):
+    | Promise<RejectVerificationResponse>
+    | Observable<RejectVerificationResponse>
+    | RejectVerificationResponse;
   approveVerification(
     request: ApproveVerificationRequest,
-  ): Promise<ApproveVerificationResponse> | Observable<ApproveVerificationResponse> | ApproveVerificationResponse;
-
+  ):
+    | Promise<ApproveVerificationResponse>
+    | Observable<ApproveVerificationResponse>
+    | ApproveVerificationResponse;
   submitVehicleDocs(
     request: SubmitVehicleDocsRequest,
-  ): Promise<SubmitVehicleDocsResponse> | Observable<SubmitVehicleDocsResponse> | SubmitVehicleDocsResponse;
+  ):
+    | Promise<SubmitVehicleDocsResponse>
+    | Observable<SubmitVehicleDocsResponse>
+    | SubmitVehicleDocsResponse;
+  uploadUserKyc(
+    request: UploadUserKycRequest,
+  ):
+    | Promise<VerificationStatusResponse>
+    | Observable<VerificationStatusResponse>
+    | VerificationStatusResponse;
+  getUserKycStatus(
+    request: GetUserKycStatusRequest,
+  ):
+    | Promise<VerificationStatusResponse>
+    | Observable<VerificationStatusResponse>
+    | VerificationStatusResponse;
+  submitUserKyc(
+    request: SubmitUserKycRequest,
+  ):
+    | Promise<SubmitKycDocResponse>
+    | Observable<SubmitKycDocResponse>
+    | SubmitKycDocResponse;
 }
 
 export function VerificationServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "uploadDoc",
-      "getVerificationStatus",
-      "submitKycDoc",
-      "pendingStatusDocs",
-      "reviewDocument",
-      "rejectVerification",
-      "approveVerification",
-      "submitVehicleDocs",
+      'uploadDoc',
+      'getVerificationStatus',
+      'getVehicleVerificationStatus',
+      'submitKycDoc',
+      'pendingStatusDocs',
+      'reviewDocument',
+      'rejectVerification',
+      'approveVerification',
+      'submitVehicleDocs',
+      'uploadUserKyc',
+      'getUserKycStatus',
+      'submitUserKyc',
     ];
     for (const method of grpcMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcMethod("VerificationService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcMethod('VerificationService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
     const grpcStreamMethods: string[] = [];
     for (const method of grpcStreamMethods) {
-      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
-      GrpcStreamMethod("VerificationService", method)(constructor.prototype[method], method, descriptor);
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(
+        constructor.prototype,
+        method,
+      );
+      GrpcStreamMethod('VerificationService', method)(
+        constructor.prototype[method],
+        method,
+        descriptor,
+      );
     }
   };
 }
 
-export const VERIFICATION_SERVICE_NAME = "VerificationService";
+export const VERIFICATION_SERVICE_NAME = 'VerificationService';

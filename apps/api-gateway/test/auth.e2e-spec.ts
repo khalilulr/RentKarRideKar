@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe, UnauthorizedException } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  UnauthorizedException,
+} from '@nestjs/common';
 import request from 'supertest';
 import { ApiGatewayModule } from './../src/api-gateway.module';
 import cookieParser from 'cookie-parser';
@@ -45,11 +49,13 @@ describe('AuthController (e2e)', () => {
     app = moduleFixture.createNestApplication();
 
     app.use(cookieParser());
-    app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
 
     jwtService = moduleFixture.get<JwtService>(JwtService);
     redisService = moduleFixture.get<RedisService>(RedisService);
@@ -76,14 +82,26 @@ describe('AuthController (e2e)', () => {
     };
 
     it('should verify OTP and set refresh token cookie', async () => {
-      const accessToken = jwtService.sign({ userId: mockUser.id, Roles: mockUser.roles, activePerspective: mockUser.activePerspective, type: 'access', id: 'jti-1' });
-      const refreshToken = jwtService.sign({ userId: mockUser.id, type: 'refresh', id: 'jti-2' });
+      const accessToken = jwtService.sign({
+        userId: mockUser.id,
+        Roles: mockUser.roles,
+        activePerspective: mockUser.activePerspective,
+        type: 'access',
+        id: 'jti-1',
+      });
+      const refreshToken = jwtService.sign({
+        userId: mockUser.id,
+        type: 'refresh',
+        id: 'jti-2',
+      });
 
-      mockAuthService.verifyOtp.mockReturnValue(of({
-        user: mockUser,
-        accessToken,
-        refreshToken,
-      }));
+      mockAuthService.verifyOtp.mockReturnValue(
+        of({
+          user: mockUser,
+          accessToken,
+          refreshToken,
+        }),
+      );
 
       const res = await request(app.getHttpServer())
         .post('/auth/verify-otp')
@@ -96,8 +114,14 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should allow access with valid token', async () => {
-      const accessToken = jwtService.sign({ userId: mockUser.id, Roles: mockUser.roles, activePerspective: mockUser.activePerspective, type: 'access', id: 'jti-3' });
-      
+      const accessToken = jwtService.sign({
+        userId: mockUser.id,
+        Roles: mockUser.roles,
+        activePerspective: mockUser.activePerspective,
+        type: 'access',
+        id: 'jti-3',
+      });
+
       mockAuthService.getMe.mockReturnValue(of({ user: mockUser }));
 
       const res = await request(app.getHttpServer())
@@ -110,14 +134,19 @@ describe('AuthController (e2e)', () => {
 
     it('should reject blacklisted token', async () => {
       const jti = 'jti-blacklisted';
-      const accessToken = jwtService.sign({ userId: mockUser.id, Roles: mockUser.roles, activePerspective: mockUser.activePerspective, type: 'access', id: jti });
-      
+      const accessToken = jwtService.sign({
+        userId: mockUser.id,
+        Roles: mockUser.roles,
+        activePerspective: mockUser.activePerspective,
+        type: 'access',
+        id: jti,
+      });
+
       // Simulate blacklisting in Redis
       mockRedisService.get.mockImplementation(async (key) => {
         if (key === `blacklist:token:${jti}`) return 'true';
         return null;
       });
-
 
       const res = await request(app.getHttpServer())
         .get('/auth/me')
@@ -128,15 +157,31 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should refresh token using cookie', async () => {
-      const oldRefreshToken = jwtService.sign({ userId: mockUser.id, type: 'refresh', id: 'jti-old' });
-      const newAccessToken = jwtService.sign({ userId: mockUser.id, Roles: mockUser.roles, activePerspective: mockUser.activePerspective, type: 'access', id: 'jti-new-access' });
-      const newRefreshToken = jwtService.sign({ userId: mockUser.id, type: 'refresh', id: 'jti-new-refresh' });
+      const oldRefreshToken = jwtService.sign({
+        userId: mockUser.id,
+        type: 'refresh',
+        id: 'jti-old',
+      });
+      const newAccessToken = jwtService.sign({
+        userId: mockUser.id,
+        Roles: mockUser.roles,
+        activePerspective: mockUser.activePerspective,
+        type: 'access',
+        id: 'jti-new-access',
+      });
+      const newRefreshToken = jwtService.sign({
+        userId: mockUser.id,
+        type: 'refresh',
+        id: 'jti-new-refresh',
+      });
 
-      mockAuthService.refreshToken.mockReturnValue(of({
-        user: mockUser,
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      }));
+      mockAuthService.refreshToken.mockReturnValue(
+        of({
+          user: mockUser,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        }),
+      );
 
       const res = await request(app.getHttpServer())
         .post('/auth/refresh-token')
@@ -144,7 +189,9 @@ describe('AuthController (e2e)', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.accessToken).toBe(newAccessToken);
-      expect(res.header['set-cookie'][0]).toContain(`refreshToken=${newRefreshToken}`);
+      expect(res.header['set-cookie'][0]).toContain(
+        `refreshToken=${newRefreshToken}`,
+      );
     });
 
     it('should reject invalid refresh token', async () => {
@@ -158,8 +205,19 @@ describe('AuthController (e2e)', () => {
     it('should logout and clear cookie', async () => {
       const jti = 'jti-logout';
       const exp = Math.floor(Date.now() / 1000) + 3600;
-      const accessToken = jwtService.sign({ userId: mockUser.id, Roles: mockUser.roles, activePerspective: mockUser.activePerspective, type: 'access', id: jti, exp });
-      const refreshToken = jwtService.sign({ userId: mockUser.id, type: 'refresh', id: 'jti-refresh' });
+      const accessToken = jwtService.sign({
+        userId: mockUser.id,
+        Roles: mockUser.roles,
+        activePerspective: mockUser.activePerspective,
+        type: 'access',
+        id: jti,
+        exp,
+      });
+      const refreshToken = jwtService.sign({
+        userId: mockUser.id,
+        type: 'refresh',
+        id: 'jti-refresh',
+      });
 
       mockAuthService.logout.mockReturnValue(of({ message: 'Logged out' }));
 
@@ -170,10 +228,12 @@ describe('AuthController (e2e)', () => {
 
       expect(res.status).toBe(201);
       expect(res.header['set-cookie'][0]).toContain('refreshToken=;'); // Cookie cleared
-      expect(mockAuthService.logout).toHaveBeenCalledWith(expect.objectContaining({
-        userId: mockUser.id,
-        jti: jti,
-      }));
+      expect(mockAuthService.logout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: mockUser.id,
+          jti: jti,
+        }),
+      );
     });
   });
 });

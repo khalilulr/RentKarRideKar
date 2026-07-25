@@ -63,6 +63,18 @@ export class DiscountController implements OnModuleInit {
   // User APIs
   // ─────────────────────────────────────────────────────────────
 
+  @Post('offer/apply-referral')
+  @UseGuards(JwtAuthGuard)
+  applyReferral(
+    @CurrentUser() user: any,
+    @Body() body: { referralCode: string },
+  ): Observable<any> {
+    return this.discountService.applyReferral({
+      referralCode: body.referralCode,
+      userId: user.userId,
+    });
+  }
+
   @Post('offers/validate-code')
   @UseGuards(JwtAuthGuard)
   validateCode(

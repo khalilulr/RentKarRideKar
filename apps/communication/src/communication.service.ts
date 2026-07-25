@@ -1,4 +1,11 @@
-import { Injectable, Logger, ConflictException, ForbiddenException, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, IsNull } from 'typeorm';
 import { ChatRoom } from './entities/chat-room.entity';
@@ -38,11 +45,12 @@ export class CommunicationService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.authService = this.authClient.getService<AuthServiceClient>('AuthService');
+    this.authService =
+      this.authClient.getService<AuthServiceClient>('AuthService');
 
     // Poll for pending scheduled notifications every 10 seconds
     setInterval(() => {
-      this.processScheduledNotifications().catch(err => {
+      this.processScheduledNotifications().catch((err) => {
         this.logger.error('Error processing scheduled notifications:', err);
       });
     }, 10000);
@@ -52,9 +60,14 @@ export class CommunicationService implements OnModuleInit {
   // 1. Chat Rooms and Messages Logic
   // ─────────────────────────────────────────────────────────────
 
-  async openChatRooms(bookingId: string, passengerId: string, driverId: string, ownerId: string) {
+  async openChatRooms(
+    bookingId: string,
+    passengerId: string,
+    driverId: string,
+    ownerId: string,
+  ) {
     this.logger.log(`Opening chat rooms for booking ${bookingId}`);
-    
+
     // Create/find Passenger-Driver Room
     let pdRoom = await this.chatRoomRepo.findOne({
       where: { bookingId, roomType: 'passenger_driver' },
@@ -94,10 +107,7 @@ export class CommunicationService implements OnModuleInit {
 
   async closeChatRooms(bookingId: string) {
     this.logger.log(`Closing chat rooms for booking ${bookingId}`);
-    await this.chatRoomRepo.update(
-      { bookingId },
-      { status: 'readonly' },
-    );
+    await this.chatRoomRepo.update({ bookingId }, { status: 'readonly' });
     return { success: true };
   }
 
@@ -115,19 +125,17 @@ export class CommunicationService implements OnModuleInit {
     if (!room) {
       return { allowed: false, roomStatus: '' };
     }
-    const allowed = room.participantAId === userId || room.participantBId === userId;
+    const allowed =
+      room.participantAId === userId || room.participantBId === userId;
     return { allowed, roomStatus: room.status };
   }
 
   async listRooms(userId: string, role: string) {
     this.logger.log(`Listing rooms for user ${userId} (${role})`);
-    
+
     // Find all chat rooms where the user is either participant A or participant B
     const rooms = await this.chatRoomRepo.find({
-      where: [
-        { participantAId: userId },
-        { participantBId: userId },
-      ],
+      where: [{ participantAId: userId }, { participantBId: userId }],
       order: { createdAt: 'DESC' },
     });
 
@@ -147,6 +155,60 @@ export class CommunicationService implements OnModuleInit {
         },
       });
 
+      const isPassenger = userId === room.participantAId;
+      const otherParticipantId = isPassenger
+        ? room.participantBId
+        : room.participantAId;
+
+      let otherRole = 'Passenger';
+      if (isPassenger) {
+        otherRole = room.roomType === 'passenger_driver' ? 'Driver' : 'Owner';
+      }
+
+      // Fetch other participant's actual name
+      let otherName = isPassenger
+        ? room.roomType === 'passenger_driver'
+          ? 'Driver'
+          : 'Owner'
+        : 'Passenger';
+      try {
+        const userRes = await lastValueFrom(
+          this.authService.getMe({ userId: otherParticipantId }),
+        );
+        if (userRes?.user?.name) {
+          otherName = userRes.user.name;
+        }
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to fetch user info for ${otherParticipantId}: ${err.message}`,
+        );
+      }
+
+      // Fetch route/trip details from the database schema (shared booking database)
+      let route = 'Jadugoda → Jamshedpur';
+      let pickupDatetime = new Date().toISOString();
+      try {
+        const tripInfo = await this.chatRoomRepo.manager.query(
+          `SELECT pickup_address, drop_address, pickup_datetime FROM order_vehicles WHERE order_id = $1 LIMIT 1`,
+          [room.bookingId],
+        );
+        if (tripInfo && tripInfo.length > 0) {
+          const first = tripInfo[0];
+          const pickupArea =
+            first.pickup_address?.split(',')[0].trim() || 'Jadugoda';
+          const dropArea =
+            first.drop_address?.split(',')[0].trim() || 'Jamshedpur';
+          route = `${pickupArea} → ${dropArea}`;
+          if (first.pickup_datetime) {
+            pickupDatetime = new Date(first.pickup_datetime).toISOString();
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to query trip info for order ${room.bookingId}: ${err.message}`,
+        );
+      }
+
       result.push({
         roomId: room.id,
         bookingId: room.bookingId,
@@ -156,28 +218,45 @@ export class CommunicationService implements OnModuleInit {
           ? { content: lastMsg.content, sentAt: lastMsg.sentAt.toISOString() }
           : null,
         unreadCount,
+        otherParticipant: {
+          id: otherParticipantId,
+          name: otherName,
+          role: otherRole,
+        },
+        route,
+        pickupDatetime,
       });
     }
 
     return { rooms: result };
   }
 
-  async getMessages(roomId: string, userId: string, limit = 50, beforeMessageId?: string) {
+  async getMessages(
+    roomId: string,
+    userId: string,
+    limit = 50,
+    beforeMessageId?: string,
+  ) {
     // Verify user has access to room
     const access = await this.verifyChatAccess(roomId, userId);
     if (!access.allowed) {
       throw new ForbiddenException('You do not have access to this chat room');
     }
 
-    const queryBuilder = this.messageRepo.createQueryBuilder('message')
+    const queryBuilder = this.messageRepo
+      .createQueryBuilder('message')
       .where('message.room_id = :roomId', { roomId })
       .orderBy('message.sent_at', 'DESC')
       .limit(limit);
 
     if (beforeMessageId) {
-      const beforeMsg = await this.messageRepo.findOne({ where: { id: beforeMessageId } });
+      const beforeMsg = await this.messageRepo.findOne({
+        where: { id: beforeMessageId },
+      });
       if (beforeMsg) {
-        queryBuilder.andWhere('message.sent_at < :sentAt', { sentAt: beforeMsg.sentAt });
+        queryBuilder.andWhere('message.sent_at < :sentAt', {
+          sentAt: beforeMsg.sentAt,
+        });
       }
     }
 
@@ -199,7 +278,7 @@ export class CommunicationService implements OnModuleInit {
     }
 
     return {
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         id: m.id,
         senderId: m.senderId,
         content: m.content,
@@ -211,7 +290,12 @@ export class CommunicationService implements OnModuleInit {
     };
   }
 
-  async sendMessage(roomId: string, senderId: string, content: string, contentType = 'text') {
+  async sendMessage(
+    roomId: string,
+    senderId: string,
+    content: string,
+    contentType = 'text',
+  ) {
     const room = await this.chatRoomRepo.findOne({ where: { id: roomId } });
     if (!room) {
       throw new NotFoundException('Chat room not found');
@@ -220,7 +304,9 @@ export class CommunicationService implements OnModuleInit {
       throw new ForbiddenException('Chat room is archived and read-only');
     }
     if (room.participantAId !== senderId && room.participantBId !== senderId) {
-      throw new ForbiddenException('You are not a participant in this chat room');
+      throw new ForbiddenException(
+        'You are not a participant in this chat room',
+      );
     }
 
     // Save message to Postgres
@@ -234,11 +320,18 @@ export class CommunicationService implements OnModuleInit {
     message = await this.messageRepo.save(message);
 
     // Sync to Firebase Realtime DB (Mock/Log behavior)
-    this.logger.log(`[Firebase Realtime DB Sync] Room: ${roomId}, Message ID: ${message.id}, Sender: ${senderId}, Content: "${content}"`);
+    this.logger.log(
+      `[Firebase Realtime DB Sync] Room: ${roomId}, Message ID: ${message.id}, Sender: ${senderId}, Content: "${content}"`,
+    );
 
     // Send FCM Notification (Mock/Log behavior)
-    const recipientId = room.participantAId === senderId ? room.participantBId : room.participantAId;
-    this.logger.log(`[FCM Notification] Sending push to recipient ${recipientId} for new message in room ${roomId}`);
+    const recipientId =
+      room.participantAId === senderId
+        ? room.participantBId
+        : room.participantAId;
+    this.logger.log(
+      `[FCM Notification] Sending push to recipient ${recipientId} for new message in room ${roomId}`,
+    );
 
     return {
       messageId: message.id,
@@ -253,7 +346,8 @@ export class CommunicationService implements OnModuleInit {
     }
 
     // Mark messages sent by the other participant as read
-    const result = await this.messageRepo.createQueryBuilder()
+    const result = await this.messageRepo
+      .createQueryBuilder()
       .update(Message)
       .set({ readAt: new Date() })
       .where('room_id = :roomId', { roomId })
@@ -268,16 +362,30 @@ export class CommunicationService implements OnModuleInit {
   // 2. Call Sessions Logic (Twilio + Redis)
   // ─────────────────────────────────────────────────────────────
 
-  async activateCallProxy(bookingId: string, passengerId: string, driverId: string, ownerId: string) {
-    this.logger.log(`Activating call proxy state in Redis for booking ${bookingId}`);
+  async activateCallProxy(
+    bookingId: string,
+    passengerId: string,
+    driverId: string,
+    ownerId: string,
+  ) {
+    this.logger.log(
+      `Activating call proxy state in Redis for booking ${bookingId}`,
+    );
     // Save state in Redis for the 45-min active pickup window
-    const data = JSON.stringify({ passengerId, driverId, ownerId, status: 'active' });
+    const data = JSON.stringify({
+      passengerId,
+      driverId,
+      ownerId,
+      status: 'active',
+    });
     await this.redisService.set(`booking:${bookingId}:proxy`, data, 86400); // 24 hour max ttl
     return { proxySessionId: bookingId, success: true };
   }
 
   async deactivateCallProxy(bookingId: string, reason: string) {
-    this.logger.log(`Deactivating call proxy in Redis for booking ${bookingId} due to: ${reason}`);
+    this.logger.log(
+      `Deactivating call proxy in Redis for booking ${bookingId} due to: ${reason}`,
+    );
     await this.redisService.del(`booking:${bookingId}:proxy`);
     // End any open call sessions in database
     await this.callSessionRepo.update(
@@ -289,9 +397,13 @@ export class CommunicationService implements OnModuleInit {
 
   async initiateCall(bookingId: string, callerId: string, callTo: string) {
     // 1. Validate call proxy window in Redis
-    const proxyStateRaw = await this.redisService.get(`booking:${bookingId}:proxy`);
+    const proxyStateRaw = await this.redisService.get(
+      `booking:${bookingId}:proxy`,
+    );
     if (!proxyStateRaw) {
-      throw new ForbiddenException('Call proxy window is not open or booking state is inactive');
+      throw new ForbiddenException(
+        'Call proxy window is not open or booking state is inactive',
+      );
     }
 
     const proxyState = JSON.parse(proxyStateRaw);
@@ -301,7 +413,9 @@ export class CommunicationService implements OnModuleInit {
     } else if (callTo === 'owner') {
       calleeId = proxyState.ownerId;
     } else {
-      throw new ConflictException('Invalid callee role. Choose "driver" or "owner"');
+      throw new ConflictException(
+        'Invalid callee role. Choose "driver" or "owner"',
+      );
     }
 
     if (!calleeId) {
@@ -313,12 +427,15 @@ export class CommunicationService implements OnModuleInit {
       where: { bookingId, status: 'active' },
     });
     if (activeSession) {
-      throw new ConflictException('An active call session already exists for this booking');
+      throw new ConflictException(
+        'An active call session already exists for this booking',
+      );
     }
 
     // Mock Twilio virtual number allocation
     const virtualNumber = '+919999999999';
-    const twilioCallSid = 'CA' + Math.random().toString(36).substring(2, 15).toUpperCase();
+    const twilioCallSid =
+      'CA' + Math.random().toString(36).substring(2, 15).toUpperCase();
 
     // 3. Save call session to Postgres
     let session = this.callSessionRepo.create({
@@ -333,7 +450,9 @@ export class CommunicationService implements OnModuleInit {
     session = await this.callSessionRepo.save(session);
 
     // Trigger mock Twilio Call bridge
-    this.logger.log(`[Twilio Call Bridge] Bridging caller ${callerId} to callee ${calleeId} using virtual number ${virtualNumber}`);
+    this.logger.log(
+      `[Twilio Call Bridge] Bridging caller ${callerId} to callee ${calleeId} using virtual number ${virtualNumber}`,
+    );
 
     return {
       callSessionId: session.id,
@@ -343,7 +462,9 @@ export class CommunicationService implements OnModuleInit {
   }
 
   async endCall(callSessionId: string) {
-    const session = await this.callSessionRepo.findOne({ where: { id: callSessionId } });
+    const session = await this.callSessionRepo.findOne({
+      where: { id: callSessionId },
+    });
     if (!session) {
       throw new NotFoundException('Call session not found');
     }
@@ -351,7 +472,9 @@ export class CommunicationService implements OnModuleInit {
     if (session.status === 'ended') {
       return {
         duration: session.durationSeconds || 0,
-        endedAt: session.closedAt ? session.closedAt.toISOString() : new Date().toISOString(),
+        endedAt: session.closedAt
+          ? session.closedAt.toISOString()
+          : new Date().toISOString(),
       };
     }
 
@@ -363,7 +486,9 @@ export class CommunicationService implements OnModuleInit {
     session.durationSeconds = duration;
     await this.callSessionRepo.save(session);
 
-    this.logger.log(`[Call Session Ended] Session ${callSessionId} closed. Duration: ${duration}s`);
+    this.logger.log(
+      `[Call Session Ended] Session ${callSessionId} closed. Duration: ${duration}s`,
+    );
     return {
       duration,
       endedAt: endedAt.toISOString(),
@@ -371,12 +496,18 @@ export class CommunicationService implements OnModuleInit {
   }
 
   async handleTwilioWebhook(payload: any) {
-    this.logger.log(`[Twilio Webhook Received] CallSid: ${payload.CallSid}, Status: ${payload.CallStatus}, Duration: ${payload.Duration}`);
-    const session = await this.callSessionRepo.findOne({ where: { twilioCallSid: payload.CallSid } });
+    this.logger.log(
+      `[Twilio Webhook Received] CallSid: ${payload.CallSid}, Status: ${payload.CallStatus}, Duration: ${payload.Duration}`,
+    );
+    const session = await this.callSessionRepo.findOne({
+      where: { twilioCallSid: payload.CallSid },
+    });
     if (session) {
       session.status = 'ended';
       session.closedAt = new Date();
-      session.durationSeconds = payload.Duration ? parseInt(payload.Duration, 10) : 0;
+      session.durationSeconds = payload.Duration
+        ? parseInt(payload.Duration, 10)
+        : 0;
       await this.callSessionRepo.save(session);
     }
     return { success: true };
@@ -386,8 +517,16 @@ export class CommunicationService implements OnModuleInit {
   // 3. SOS Alerting Logic (Supabase + Twilio SMS + Redis Pub/Sub + FCM)
   // ─────────────────────────────────────────────────────────────
 
-  async triggerSos(bookingId: string, triggeredBy: string, role: string, latitude: number, longitude: number) {
-    this.logger.warn(`!!! SOS ALERT !!! Booking: ${bookingId}, Triggered By: ${triggeredBy} (${role}), Coordinates: (${latitude}, ${longitude})`);
+  async triggerSos(
+    bookingId: string,
+    triggeredBy: string,
+    role: string,
+    latitude: number,
+    longitude: number,
+  ) {
+    this.logger.warn(
+      `!!! SOS ALERT !!! Booking: ${bookingId}, Triggered By: ${triggeredBy} (${role}), Coordinates: (${latitude}, ${longitude})`,
+    );
 
     // 1. Write SOS event to PostgreSQL in a transaction
     let sosEvent = this.sosEventRepo.create({
@@ -415,11 +554,15 @@ export class CommunicationService implements OnModuleInit {
     this.logger.log(`[Redis Pub/Sub] Published SOS alert to 'sos:active'`);
 
     // 3. FCM Push (Mock)
-    this.logger.log(`[FCM SOS Push] Emitted high-priority emergency notifications to driver, owner, and support desk.`);
+    this.logger.log(
+      `[FCM SOS Push] Emitted high-priority emergency notifications to driver, owner, and support desk.`,
+    );
 
     // 4. SMS via Twilio to emergency contacts (Mock)
     const mapLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-    this.logger.log(`[Twilio Emergency SMS] Sent SMS to emergency contacts: "EMERGENCY: User ${triggeredBy} triggered SOS for booking ${bookingId}. Location: ${mapLink}"`);
+    this.logger.log(
+      `[Twilio Emergency SMS] Sent SMS to emergency contacts: "EMERGENCY: User ${triggeredBy} triggered SOS for booking ${bookingId}. Location: ${mapLink}"`,
+    );
 
     // Return immediately (async behavior of SMS / Push satisfies "Return immediately — do not wait for SMS delivery")
     return {
@@ -458,7 +601,9 @@ export class CommunicationService implements OnModuleInit {
     event.resolvedBy = resolvedBy;
     await this.sosEventRepo.save(event);
 
-    this.logger.log(`[SOS Resolved] Event ${sosId} resolved by ${resolvedBy}. Notes: "${notes || 'None'}"`);
+    this.logger.log(
+      `[SOS Resolved] Event ${sosId} resolved by ${resolvedBy}. Notes: "${notes || 'None'}"`,
+    );
     return {
       sosId: event.id,
       resolvedAt: event.resolvedAt.toISOString(),
@@ -469,20 +614,32 @@ export class CommunicationService implements OnModuleInit {
   // 4. Notifications & 2Factor Messaging Logic
   // ─────────────────────────────────────────────────────────────
 
-  private async trigger2Factor(mobile: string, content: string, channel: string) {
+  private async trigger2Factor(
+    mobile: string,
+    content: string,
+    channel: string,
+  ) {
     const apiKey = this.configService.get<string>('TWOFACTOR_API_KEY');
     if (!apiKey) {
-      this.logger.log(`[2Factor Simulation] (No API Key set) Channel: ${channel}, To: ${mobile}, Content: "${content}"`);
+      this.logger.log(
+        `[2Factor Simulation] (No API Key set) Channel: ${channel}, To: ${mobile}, Content: "${content}"`,
+      );
       return;
     }
 
     try {
-      this.logger.log(`[2Factor Send] Sending ${channel} to ${mobile} via 2Factor...`);
+      this.logger.log(
+        `[2Factor Send] Sending ${channel} to ${mobile} via 2Factor...`,
+      );
       const url = `https://2factor.in/API/V1/${apiKey}/SMS/${mobile}/${encodeURIComponent(content)}`;
       const response = await axios.get(url);
-      this.logger.log(`[2Factor Response] Status: ${response.status}, Data: ${JSON.stringify(response.data)}`);
+      this.logger.log(
+        `[2Factor Response] Status: ${response.status}, Data: ${JSON.stringify(response.data)}`,
+      );
     } catch (e: any) {
-      this.logger.error(`[2Factor Error] Failed to send ${channel} via 2Factor: ${e.message}`);
+      this.logger.error(
+        `[2Factor Error] Failed to send ${channel} via 2Factor: ${e.message}`,
+      );
     }
   }
 
@@ -491,19 +648,25 @@ export class CommunicationService implements OnModuleInit {
     let name = 'User';
     try {
       if (this.authService && typeof this.authService.getMe === 'function') {
-        const userRes = await lastValueFrom(this.authService.getMe({ userId: notif.userId }));
+        const userRes = await lastValueFrom(
+          this.authService.getMe({ userId: notif.userId }),
+        );
         if (userRes?.user) {
           mobile = userRes.user.mobile || '';
           name = userRes.user.name || 'User';
         }
       }
     } catch (err: any) {
-      this.logger.error(`Failed to fetch user info for notification: ${err.message}`);
+      this.logger.error(
+        `Failed to fetch user info for notification: ${err.message}`,
+      );
     }
 
     // Handle in-app channel
     if (notif.channel === 'in-app' || notif.channel === 'both') {
-      this.logger.log(`[In-App Notification] To: ${name} (${notif.userId}), Title: "${notif.title}", Content: "${notif.content}"`);
+      this.logger.log(
+        `[In-App Notification] To: ${name} (${notif.userId}), Title: "${notif.title}", Content: "${notif.content}"`,
+      );
     }
 
     // Handle WhatsApp channel
@@ -511,7 +674,9 @@ export class CommunicationService implements OnModuleInit {
       if (mobile) {
         await this.trigger2Factor(mobile, notif.content, 'WhatsApp');
       } else {
-        this.logger.warn(`Cannot send WhatsApp notification to user ${notif.userId}: No mobile number registered`);
+        this.logger.warn(
+          `Cannot send WhatsApp notification to user ${notif.userId}: No mobile number registered`,
+        );
       }
     }
 
@@ -534,7 +699,8 @@ export class CommunicationService implements OnModuleInit {
       content,
       channel,
       status: delayMinutes > 0 ? 'PENDING' : 'SENT',
-      scheduledAt: delayMinutes > 0 ? new Date(Date.now() + delayMinutes * 60000) : null,
+      scheduledAt:
+        delayMinutes > 0 ? new Date(Date.now() + delayMinutes * 60000) : null,
       externalId: externalId || null,
       createdAt: new Date(),
     });
@@ -544,7 +710,9 @@ export class CommunicationService implements OnModuleInit {
     if (delayMinutes === 0) {
       await this.sendActualNotification(saved);
     } else {
-      this.logger.log(`[Scheduled Notification] Scheduled ${channel} notification for user ${userId} in ${delayMinutes} minutes. External ID: ${externalId || 'None'}`);
+      this.logger.log(
+        `[Scheduled Notification] Scheduled ${channel} notification for user ${userId} in ${delayMinutes} minutes. External ID: ${externalId || 'None'}`,
+      );
     }
 
     return {
@@ -562,7 +730,9 @@ export class CommunicationService implements OnModuleInit {
       for (const notif of notifs) {
         notif.status = 'CANCELLED';
         await this.notificationRepo.save(notif);
-        this.logger.log(`[Cancelled Notification] Cancelled pending scheduled notification ID: ${notif.id}, External ID: ${externalId}`);
+        this.logger.log(
+          `[Cancelled Notification] Cancelled pending scheduled notification ID: ${notif.id}, External ID: ${externalId}`,
+        );
       }
     }
 
@@ -589,15 +759,24 @@ export class CommunicationService implements OnModuleInit {
     if (userId) {
       await this.sendNotification(userId, title, content, channel);
     } else if (group) {
-      this.logger.log(`[Admin Group Notification] Sending notification to group ${group}: "${title}"`);
+      this.logger.log(
+        `[Admin Group Notification] Sending notification to group ${group}: "${title}"`,
+      );
       let users: any[] = [];
       try {
-        if (this.authService && typeof this.authService.listUsersByRole === 'function') {
-          const res = await lastValueFrom(this.authService.listUsersByRole({ role: group }));
+        if (
+          this.authService &&
+          typeof this.authService.listUsersByRole === 'function'
+        ) {
+          const res = await lastValueFrom(
+            this.authService.listUsersByRole({ role: group }),
+          );
           users = res?.users || [];
         }
       } catch (err: any) {
-        this.logger.error(`Failed to list users for group ${group}: ${err.message}`);
+        this.logger.error(
+          `Failed to list users for group ${group}: ${err.message}`,
+        );
       }
 
       for (const user of users) {
@@ -610,7 +789,8 @@ export class CommunicationService implements OnModuleInit {
 
   async processScheduledNotifications() {
     const now = new Date();
-    const pending = await this.notificationRepo.createQueryBuilder('notification')
+    const pending = await this.notificationRepo
+      .createQueryBuilder('notification')
       .where('notification.status = :status', { status: 'PENDING' })
       .andWhere('notification.scheduled_at <= :now', { now })
       .getMany();
@@ -619,7 +799,9 @@ export class CommunicationService implements OnModuleInit {
       try {
         await this.sendActualNotification(notif);
       } catch (err: any) {
-        this.logger.error(`Failed to send scheduled notification ${notif.id}: ${err.message}`);
+        this.logger.error(
+          `Failed to send scheduled notification ${notif.id}: ${err.message}`,
+        );
       }
     }
   }

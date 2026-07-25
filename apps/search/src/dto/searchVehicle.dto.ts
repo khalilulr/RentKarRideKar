@@ -17,9 +17,7 @@ import { Type } from 'class-transformer';
 
 import { VehicleCategory } from '../enum/vehicleCategory.enum';
 
-
 export class SearchVehicleDto {
-
   @IsNumber()
   fromLat: number;
 
@@ -38,7 +36,6 @@ export class SearchVehicleDto {
    */
   @IsDateString()
   startDate: string;
-
 
   @IsOptional()
   @IsDateString()

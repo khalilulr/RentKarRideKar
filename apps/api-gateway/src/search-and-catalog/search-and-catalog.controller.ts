@@ -41,9 +41,10 @@ export class SearchAndCatalogController implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.searchAndCatalogService = this.client.getService<SearchAndCatalogServiceClient>(
-      SEARCH_AND_CATALOG_SERVICE_NAME,
-    );
+    this.searchAndCatalogService =
+      this.client.getService<SearchAndCatalogServiceClient>(
+        SEARCH_AND_CATALOG_SERVICE_NAME,
+      );
   }
 
   // ==========================================================================
@@ -112,8 +113,10 @@ export class SearchAndCatalogController implements OnModuleInit {
   async rtoLookup(@Param('plate') plate: string): Promise<any> {
     try {
       const cleanReg = plate.replace(/[\s-]/g, '').toUpperCase();
-      console.log(`[RTO Gateway Lookup] Querying RegCheck API for registration: ${cleanReg}`);
-      
+      console.log(
+        `[RTO Gateway Lookup] Querying RegCheck API for registration: ${cleanReg}`,
+      );
+
       const xmlPayload = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
 <soap:Body>
@@ -124,13 +127,17 @@ export class SearchAndCatalogController implements OnModuleInit {
 </soap:Body>
 </soap:Envelope>`;
 
-      const response = await axios.post('https://www.regcheck.org.uk/api/reg.asmx', xmlPayload, {
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          SOAPAction: 'http://regcheck.org.uk/CheckIndia',
+      const response = await axios.post(
+        'https://www.regcheck.org.uk/api/reg.asmx',
+        xmlPayload,
+        {
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            SOAPAction: 'http://regcheck.org.uk/CheckIndia',
+          },
+          timeout: 8000,
         },
-        timeout: 8000,
-      });
+      );
 
       const xml = response.data;
       const match = xml.match(/<vehicleJson>([\s\S]*?)<\/vehicleJson>/);
@@ -145,17 +152,23 @@ export class SearchAndCatalogController implements OnModuleInit {
         console.log(`[RTO Gateway Lookup] Verified successfully:`, vehicleData);
         return { success: true, data: vehicleData };
       } else {
-        const errorMatch = xml.match(/<Message>([\s\S]*?)<\/Message>/) || xml.match(/<Vehicle>([\s\S]*?)<\/Vehicle>/);
-        const errMsg = errorMatch ? errorMatch[1] : 'No vehicle JSON found in response';
+        const errorMatch =
+          xml.match(/<Message>([\s\S]*?)<\/Message>/) ||
+          xml.match(/<Vehicle>([\s\S]*?)<\/Vehicle>/);
+        const errMsg = errorMatch
+          ? errorMatch[1]
+          : 'No vehicle JSON found in response';
         console.warn(`[RTO Gateway Lookup] Failed response parsed: ${errMsg}`);
         return { success: false, error: errMsg };
       }
     } catch (error: any) {
-      console.error(`[RTO Gateway Lookup] Exception calling RegCheck API:`, error.message);
+      console.error(
+        `[RTO Gateway Lookup] Exception calling RegCheck API:`,
+        error.message,
+      );
       return { success: false, error: error.message };
     }
   }
-
 
   // 2. POST ROUTES
 
@@ -182,30 +195,39 @@ export class SearchAndCatalogController implements OnModuleInit {
     @UploadedFiles() files?: Express.Multer.File[],
   ): Observable<any> {
     const performRegister = (photos: string[]) => {
-      return (this.searchAndCatalogService.registerVehicle({
-        ownerId: user.userId,
-        vehicleCategory: body.vehicleCategory ?? '',
-        make: body.make ?? '',
-        model: body.model ?? '',
-        variant: body.variant ?? '',
-        registrationNumber: body.registrationNumber ?? '',
-        seatingCapacity: body.seatingCapacity ?? '',
-        color: body.color ?? '',
-        hasAC: body.hasAC ?? false,
-        manufacturingYear: body.manufacturingYear ? Number(body.manufacturingYear) : 0,
-        serviceRadius: body.serviceRadius ? Number(body.serviceRadius) : 0,
-        homeLat: body.homeLat ? Number(body.homeLat) : 0,
-        homeLng: body.homeLng ? Number(body.homeLng) : 0,
-        homeAddress: body.homeAddress ?? '',
-        vehiclePhotos: photos,
-        fuelType: body.fuelType ?? '',
-        transmission: body.transmission ?? '',
-        plateType: body.plateType ?? 'WHITE',
-        rtoRawDataJson: body.rtoRawDataJson ?? '{}',
-      }) as Observable<any>).pipe(
+      return (
+        this.searchAndCatalogService.registerVehicle({
+          ownerId: user.userId,
+          vehicleCategory: body.vehicleCategory ?? '',
+          make: body.make ?? '',
+          model: body.model ?? '',
+          variant: body.variant ?? '',
+          registrationNumber: body.registrationNumber ?? '',
+          seatingCapacity: body.seatingCapacity ?? '',
+          color: body.color ?? '',
+          hasAC: body.hasAC ?? false,
+          manufacturingYear: body.manufacturingYear
+            ? Number(body.manufacturingYear)
+            : 0,
+          serviceRadius: body.serviceRadius ? Number(body.serviceRadius) : 0,
+          homeLat: body.homeLat ? Number(body.homeLat) : 0,
+          homeLng: body.homeLng ? Number(body.homeLng) : 0,
+          homeAddress: body.homeAddress ?? '',
+          vehiclePhotos: photos,
+          fuelType: body.fuelType ?? '',
+          transmission: body.transmission ?? '',
+          plateType: body.plateType ?? 'WHITE',
+          rtoRawDataJson: body.rtoRawDataJson ?? '{}',
+        }) as Observable<any>
+      ).pipe(
         catchError((err) => {
-          console.error('[SearchAndCatalogController] Error calling registerVehicle microservice:', err);
-          throw new InternalServerErrorException(err.message || 'Error registering vehicle');
+          console.error(
+            '[SearchAndCatalogController] Error calling registerVehicle microservice:',
+            err,
+          );
+          throw new InternalServerErrorException(
+            err.message || 'Error registering vehicle',
+          );
         }),
       );
     };
@@ -214,14 +236,21 @@ export class SearchAndCatalogController implements OnModuleInit {
       return from(this.cloudinaryService.uploadFiles(files)).pipe(
         mergeMap((urls) => performRegister(urls)),
         catchError((err) => {
-          console.error('[SearchAndCatalogController] Error uploading files/pipeline:', err);
-          throw new InternalServerErrorException(err.message || 'Error uploading files to Cloudinary');
+          console.error(
+            '[SearchAndCatalogController] Error uploading files/pipeline:',
+            err,
+          );
+          throw new InternalServerErrorException(
+            err.message || 'Error uploading files to Cloudinary',
+          );
         }),
       );
     }
 
     const defaultPhotos = body.vehiclePhotos
-      ? (Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos : [body.vehiclePhotos])
+      ? Array.isArray(body.vehiclePhotos)
+        ? body.vehiclePhotos
+        : [body.vehiclePhotos]
       : [];
     return performRegister(defaultPhotos);
   }
@@ -305,29 +334,47 @@ export class SearchAndCatalogController implements OnModuleInit {
     @UploadedFiles() files?: Express.Multer.File[],
   ): Observable<any> {
     const performUpdate = (photos?: string[]) => {
-      return (this.searchAndCatalogService.updateVehicle({
-        id,
-        ownerId: user.userId,
-        vehicleCategory: body.vehicleCategory || undefined,
-        make: body.make || undefined,
-        model: body.model || undefined,
-        variant: body.variant || undefined,
-        registrationNumber: body.registrationNumber || undefined,
-        seatingCapacity: body.seatingCapacity || undefined,
-        color: body.color || undefined,
-        hasAC: body.hasAC !== undefined ? body.hasAC : undefined,
-        manufacturingYear: body.manufacturingYear ? Number(body.manufacturingYear) : (undefined as any),
-        serviceRadius: body.serviceRadius ? Number(body.serviceRadius) : (undefined as any),
-        homeLat: body.homeLat ? Number(body.homeLat) : (undefined as any),
-        homeLng: body.homeLng ? Number(body.homeLng) : (undefined as any),
-        homeAddress: body.homeAddress || undefined,
-        vehiclePhotos: photos !== undefined ? photos : (body.vehiclePhotos ? (Array.isArray(body.vehiclePhotos) ? body.vehiclePhotos : [body.vehiclePhotos]) : undefined),
-        fuelType: body.fuelType || undefined,
-        transmission: body.transmission || undefined,
-      }) as Observable<any>).pipe(
+      return (
+        this.searchAndCatalogService.updateVehicle({
+          id,
+          ownerId: user.userId,
+          vehicleCategory: body.vehicleCategory || undefined,
+          make: body.make || undefined,
+          model: body.model || undefined,
+          variant: body.variant || undefined,
+          registrationNumber: body.registrationNumber || undefined,
+          seatingCapacity: body.seatingCapacity || undefined,
+          color: body.color || undefined,
+          hasAC: body.hasAC !== undefined ? body.hasAC : undefined,
+          manufacturingYear: body.manufacturingYear
+            ? Number(body.manufacturingYear)
+            : (undefined as any),
+          serviceRadius: body.serviceRadius
+            ? Number(body.serviceRadius)
+            : (undefined as any),
+          homeLat: body.homeLat ? Number(body.homeLat) : (undefined as any),
+          homeLng: body.homeLng ? Number(body.homeLng) : (undefined as any),
+          homeAddress: body.homeAddress || undefined,
+          vehiclePhotos:
+            photos !== undefined
+              ? photos
+              : body.vehiclePhotos
+                ? Array.isArray(body.vehiclePhotos)
+                  ? body.vehiclePhotos
+                  : [body.vehiclePhotos]
+                : undefined,
+          fuelType: body.fuelType || undefined,
+          transmission: body.transmission || undefined,
+        }) as Observable<any>
+      ).pipe(
         catchError((err) => {
-          console.error('[SearchAndCatalogController] Error calling updateVehicle microservice:', err);
-          throw new InternalServerErrorException(err.message || 'Error updating vehicle');
+          console.error(
+            '[SearchAndCatalogController] Error calling updateVehicle microservice:',
+            err,
+          );
+          throw new InternalServerErrorException(
+            err.message || 'Error updating vehicle',
+          );
         }),
       );
     };
@@ -336,8 +383,13 @@ export class SearchAndCatalogController implements OnModuleInit {
       return from(this.cloudinaryService.uploadFiles(files)).pipe(
         mergeMap((urls) => performUpdate(urls)),
         catchError((err) => {
-          console.error('[SearchAndCatalogController] Error uploading files/pipeline:', err);
-          throw new InternalServerErrorException(err.message || 'Error uploading files to Cloudinary');
+          console.error(
+            '[SearchAndCatalogController] Error uploading files/pipeline:',
+            err,
+          );
+          throw new InternalServerErrorException(
+            err.message || 'Error uploading files to Cloudinary',
+          );
         }),
       );
     }
@@ -350,7 +402,13 @@ export class SearchAndCatalogController implements OnModuleInit {
   blockVehicle(
     @Param('id') id: string,
     @CurrentUser() user: any,
-    @Body() body: { startDate: string; endDate: string; reason?: string; bookingId?: string },
+    @Body()
+    body: {
+      startDate: string;
+      endDate: string;
+      reason?: string;
+      bookingId?: string;
+    },
   ): Observable<any> {
     return this.searchAndCatalogService.blockVehicle({
       id,
@@ -402,10 +460,7 @@ export class SearchAndCatalogController implements OnModuleInit {
 
   @Patch(':id/plate-type')
   @UseGuards(JwtAuthGuard, VehicleOwnerGuard)
-  updatePlateType(
-    @Param('id') id: string,
-    @Body() body: any,
-  ): Observable<any> {
+  updatePlateType(@Param('id') id: string, @Body() body: any): Observable<any> {
     return this.searchAndCatalogService.updatePlateType({
       vehicleId: id,
       plateType: body.plateType,
@@ -417,10 +472,7 @@ export class SearchAndCatalogController implements OnModuleInit {
 
   @Put(':id/pricing')
   @UseGuards(JwtAuthGuard, VehicleOwnerGuard)
-  setPricing(
-    @Param('id') id: string,
-    @Body() body: any,
-  ): Observable<any> {
+  setPricing(@Param('id') id: string, @Body() body: any): Observable<any> {
     return this.searchAndCatalogService.setPricing({
       vehicleId: id,
       perKmOutstation: body.perKmOutstation,
@@ -432,9 +484,7 @@ export class SearchAndCatalogController implements OnModuleInit {
   }
 
   @Get(':id/pricing')
-  getPricing(
-    @Param('id') id: string,
-  ): Observable<any> {
+  getPricing(@Param('id') id: string): Observable<any> {
     return this.searchAndCatalogService.getPricing({ vehicleId: id });
   }
 }

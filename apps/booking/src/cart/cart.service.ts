@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, NotFoundException, Inject, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Inject,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { ClientGrpc } from '@nestjs/microservices';
@@ -11,10 +17,7 @@ import {
   SearchAndCatalogServiceClient,
   SEARCH_AND_CATALOG_SERVICE_NAME,
 } from 'libs/types/search-and-catalog';
-import {
-  AuthServiceClient,
-  AUTH_SERVICE_NAME,
-} from 'libs/types/auth-service';
+import { AuthServiceClient, AUTH_SERVICE_NAME } from 'libs/types/auth-service';
 import {
   DiscountServiceClient,
   DISCOUNT_SERVICE_NAME,
@@ -33,10 +36,12 @@ export class CartService implements OnModuleInit {
     @InjectRepository(CartItem)
     private readonly cartItemRepository: Repository<CartItem>,
     private readonly pricingService: PricingService,
-    @Inject('SEARCH_AND_CATALOG_SERVICE') private readonly searchClient: ClientGrpc,
+    @Inject('SEARCH_AND_CATALOG_SERVICE')
+    private readonly searchClient: ClientGrpc,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientGrpc,
     @Inject('DISCOUNT_SERVICE') private readonly discountClient: ClientGrpc,
-    @Inject('COMMUNICATION_SERVICE') private readonly communicationClient: ClientGrpc,
+    @Inject('COMMUNICATION_SERVICE')
+    private readonly communicationClient: ClientGrpc,
   ) {}
 
   onModuleInit() {
@@ -45,21 +50,18 @@ export class CartService implements OnModuleInit {
         this.searchClient,
         SEARCH_AND_CATALOG_SERVICE_NAME,
       );
-    this.authService =
-      this.clientGetService<AuthServiceClient>(
-        this.authClient,
-        AUTH_SERVICE_NAME,
-      );
-    this.discountService =
-      this.clientGetService<DiscountServiceClient>(
-        this.discountClient,
-        DISCOUNT_SERVICE_NAME,
-      );
-    this.communicationService =
-      this.clientGetService<any>(
-        this.communicationClient,
-        'CommunicationService',
-      );
+    this.authService = this.clientGetService<AuthServiceClient>(
+      this.authClient,
+      AUTH_SERVICE_NAME,
+    );
+    this.discountService = this.clientGetService<DiscountServiceClient>(
+      this.discountClient,
+      DISCOUNT_SERVICE_NAME,
+    );
+    this.communicationService = this.clientGetService<any>(
+      this.communicationClient,
+      'CommunicationService',
+    );
   }
 
   async sendNotification(
@@ -71,7 +73,10 @@ export class CartService implements OnModuleInit {
     externalId?: string,
   ) {
     try {
-      if (this.communicationService && typeof this.communicationService.sendNotification === 'function') {
+      if (
+        this.communicationService &&
+        typeof this.communicationService.sendNotification === 'function'
+      ) {
         await lastValueFrom(
           this.communicationService.sendNotification({
             userId,
@@ -84,23 +89,35 @@ export class CartService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[CartService] Failed to send notification via gRPC:', e.message);
+      console.error(
+        '[CartService] Failed to send notification via gRPC:',
+        e.message,
+      );
     }
   }
 
   async cancelNotification(externalId: string) {
     try {
-      if (this.communicationService && typeof this.communicationService.cancelNotification === 'function') {
+      if (
+        this.communicationService &&
+        typeof this.communicationService.cancelNotification === 'function'
+      ) {
         await lastValueFrom(
           this.communicationService.cancelNotification({ externalId }),
         );
       }
     } catch (e: any) {
-      console.error('[CartService] Failed to cancel notification via gRPC:', e.message);
+      console.error(
+        '[CartService] Failed to cancel notification via gRPC:',
+        e.message,
+      );
     }
   }
 
-  private clientGetService<T extends object>(client: ClientGrpc, name: string): T {
+  private clientGetService<T extends object>(
+    client: ClientGrpc,
+    name: string,
+  ): T {
     try {
       return client.getService<T>(name);
     } catch (e) {
@@ -109,7 +126,12 @@ export class CartService implements OnModuleInit {
   }
 
   // Haversine formula to check service radius
-  private getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private getDistanceInKm(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
     const R = 6371;
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
@@ -193,7 +215,9 @@ export class CartService implements OnModuleInit {
 
     // 3. Check if already in cart
     const cart = await this.getOrCreateCart(passengerId);
-    const alreadyInCart = cart.items.some((item) => item.vehicleId === vehicleId);
+    const alreadyInCart = cart.items.some(
+      (item) => item.vehicleId === vehicleId,
+    );
     if (alreadyInCart) {
       throw new BadRequestException({
         error: 'ALREADY_IN_CART',
@@ -222,12 +246,24 @@ export class CartService implements OnModuleInit {
     if (isAvailableRes && !isAvailableRes.isAvailable) {
       throw new BadRequestException({
         error: 'VEHICLE_UNAVAILABLE',
-        message: 'This vehicle is already booked for these dates. Try another date or vehicle.',
+        message:
+          'This vehicle is already booked for these dates. Try another date or vehicle.',
       });
     }
 
     // 5. Calculate and lock pricing
-    const pricing = this.pricingService.calculatePricing(totalDays || 1);
+    const pricing = await this.pricingService.calculatePricing(
+      totalDays || 1,
+      vehicle,
+      pickupLat,
+      pickupLng,
+      dropLat,
+      dropLng,
+      returnDatetime,
+      pickupDatetime,
+      0,
+      tripType,
+    );
 
     const cartItem = this.cartItemRepository.create({
       cart,
@@ -244,10 +280,11 @@ export class CartService implements OnModuleInit {
       totalDays: totalDays || 1,
       expiresAt: new Date(Date.now() + 60 * 60000), // 1 hour price lock expiration
       // Lock exact prices
-      lockedBaseFare: pricing.breakdown.baseFare,
-      lockedDriverFees: pricing.breakdown.driverFees,
+      lockedBaseFare: pricing.basePrice,
+      lockedDriverFees: 0,
       lockedTotalPrice: pricing.total,
       priceLockedAt: new Date(),
+      priceBreakdown: pricing,
     });
 
     await this.cartItemRepository.save(cartItem);
@@ -287,17 +324,14 @@ export class CartService implements OnModuleInit {
         rating: 4.8,
         totalTrips: 23,
         photos: vehicle.vehiclePhotos || [],
+        plateType: vehicle.plateType || 'WHITE',
       },
       owner: {
         id: vehicle.ownerId,
         name: ownerName,
         rating: ownerRating,
       },
-      pricing: {
-        total: pricing.total,
-        breakdown: pricing.breakdown,
-        advanceRequired: pricing.advanceRequired,
-      },
+      pricing: pricing,
       pickupDatetime: cartItem.pickupDatetime.toISOString(),
       tripType: cartItem.tripType,
       expiresAt: '',
@@ -306,7 +340,7 @@ export class CartService implements OnModuleInit {
 
   async viewCart(passengerId: string, promoCode?: string) {
     const cart = await this.getOrCreateCart(passengerId);
-    const items:any = [];
+    const items: any = [];
     let originalAmount = 0;
 
     for (const item of cart.items) {
@@ -332,8 +366,24 @@ export class CartService implements OnModuleInit {
       }
 
       // Read directly from the locked cart prices snapshot
-      const price = Number(item.lockedTotalPrice);
-      originalAmount += price;
+      let priceBreakdown = item.priceBreakdown;
+      if (!priceBreakdown) {
+        priceBreakdown = {
+          basePrice:
+            Number(item.lockedBaseFare) || Number(item.lockedTotalPrice),
+          gst: 0,
+          platformFee: 0,
+          discount: 0,
+          total: Number(item.lockedTotalPrice),
+          advancePercentage: 25,
+          advanceAmount: Math.round(Number(item.lockedTotalPrice) * 0.25),
+          balanceAmount:
+            Number(item.lockedTotalPrice) -
+            Math.round(Number(item.lockedTotalPrice) * 0.25),
+          currency: 'INR',
+        };
+      }
+      originalAmount += priceBreakdown.total;
 
       const pickupArea = item.pickupAddress.split(',')[0].trim();
       const dropArea = item.dropAddress.split(',')[0].trim();
@@ -348,16 +398,19 @@ export class CartService implements OnModuleInit {
           seatingCapacity: vehicle?.seatingCapacity || 'SIX_SEVEN',
           rating: 4.8,
           photos: vehicle?.vehiclePhotos || [],
+          plateType: vehicle?.plateType || 'WHITE',
         },
         owner: {
           name: ownerName,
           rating: ownerRating,
         },
         pickupDatetime: item.pickupDatetime.toISOString(),
-        returnDatetime: item.returnDatetime ? item.returnDatetime.toISOString() : undefined,
+        returnDatetime: item.returnDatetime
+          ? item.returnDatetime.toISOString()
+          : undefined,
         route: `${pickupArea} → ${dropArea}`,
         tripType: item.tripType,
-        price,
+        price: priceBreakdown,
         expiresAt: item.expiresAt ? item.expiresAt.toISOString() : '',
         pickupAddress: item.pickupAddress,
         dropAddress: item.dropAddress,
@@ -365,41 +418,65 @@ export class CartService implements OnModuleInit {
       });
     }
 
-    let discountAmount = 0;
-    let totalAmount = originalAmount;
+    let totalBasePrice = 0;
+    let totalGst = 0;
+    let totalPlatformFee = 0;
+    let totalDiscount = 0;
+    let totalAmount = 0;
 
-    if (promoCode && originalAmount > 0) {
+    for (const item of items) {
+      const pb = item.price;
+      totalBasePrice += pb.basePrice || 0;
+      totalGst += pb.gst || 0;
+      totalPlatformFee += pb.platformFee || 0;
+      totalDiscount += pb.discount || 0;
+      totalAmount += pb.total || 0;
+    }
+
+    if (promoCode && totalAmount > 0) {
       try {
-        if (this.discountService && typeof this.discountService.validateCode === 'function') {
+        if (
+          this.discountService &&
+          typeof this.discountService.validateCode === 'function'
+        ) {
           const validateRes = await lastValueFrom(
             this.discountService.validateCode({
               code: promoCode,
               userId: passengerId,
-              originalPrice: originalAmount,
+              originalPrice: totalAmount,
             }),
           );
           if (validateRes && validateRes.isValid) {
-            discountAmount = Number(validateRes.discountAmount);
+            const promoDiscount = Number(validateRes.discountAmount);
+            totalDiscount += promoDiscount;
             totalAmount = Number(validateRes.discountedPrice);
           }
         }
       } catch (e: any) {
-        console.error('[DiscountService] Failed to validate code during viewCart:', e?.message);
+        console.error(
+          '[DiscountService] Failed to validate code during viewCart:',
+          e?.message,
+        );
       }
     }
 
-    const totalAdvance = Math.round(totalAmount * 0.25);
+    const advancePercent = 0.25;
+    const totalAdvance = Math.round(totalAmount * advancePercent);
+    const balanceAmount = totalAmount - totalAdvance;
 
     return {
       cartId: cart.id,
       items,
       summary: {
         totalVehicles: items.length,
+        basePrice: totalBasePrice,
+        gst: totalGst,
+        platformFee: totalPlatformFee,
+        discount: totalDiscount,
         totalAmount,
-        totalAdvance,
-        originalAmount,
-        discountAmount,
-        promoCode: promoCode || '',
+        advanceAmount: totalAdvance,
+        balanceAmount,
+        currency: 'INR',
       },
       expiresAt: '',
     };

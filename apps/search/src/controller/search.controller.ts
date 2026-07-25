@@ -26,25 +26,43 @@ function mapVehicle(v: any): types.Vehicle {
     isAvailable: v.isAvailable,
     fuelType: v.fuelType || '',
     transmission: v.transmission || '',
-    createdAt: (v.createdAt instanceof Date) ? v.createdAt.toISOString() : (v.createdAt || ''),
-    updatedAt: (v.updatedAt instanceof Date) ? v.updatedAt.toISOString() : (v.updatedAt || ''),
+    createdAt:
+      v.createdAt instanceof Date
+        ? v.createdAt.toISOString()
+        : v.createdAt || '',
+    updatedAt:
+      v.updatedAt instanceof Date
+        ? v.updatedAt.toISOString()
+        : v.updatedAt || '',
     blocks: (v.blocks || []).map((b: any) => ({
       id: b.id,
       startDate: b.startDate,
       endDate: b.endDate,
       reason: b.reason,
       bookingId: b.bookingId || '',
-      createdAt: (b.createdAt instanceof Date) ? b.createdAt.toISOString() : (b.createdAt || ''),
+      createdAt:
+        b.createdAt instanceof Date
+          ? b.createdAt.toISOString()
+          : b.createdAt || '',
     })),
     plateType: v.plateType || 'WHITE',
     commercialPermitNumber: v.commercialPermitNumber || '',
     permitType: v.permitType || '',
-    permitExpiryDate: v.permitExpiryDate ? (v.permitExpiryDate instanceof Date ? v.permitExpiryDate.toISOString() : v.permitExpiryDate) : '',
-    perKmOutstation: v.perKmOutstation ? parseFloat(v.perKmOutstation.toString()) : 0,
+    permitExpiryDate: v.permitExpiryDate
+      ? v.permitExpiryDate instanceof Date
+        ? v.permitExpiryDate.toISOString()
+        : v.permitExpiryDate
+      : '',
+    perKmOutstation: v.perKmOutstation
+      ? parseFloat(v.perKmOutstation.toString())
+      : 0,
     perHourLocal: v.perHourLocal ? parseFloat(v.perHourLocal.toString()) : 0,
     minimumBookingHours: v.minimumBookingHours || 0,
     nightChargePercentage: v.nightChargePercentage || 0,
-    eventPackage: typeof v.eventPackage === 'string' ? JSON.parse(v.eventPackage) : (v.eventPackage || null),
+    eventPackage:
+      typeof v.eventPackage === 'string'
+        ? JSON.parse(v.eventPackage)
+        : v.eventPackage || null,
     advancePercentage: v.advancePercentage || 0,
     rtoRawDataJson: v.rtoRawData ? JSON.stringify(v.rtoRawData) : '{}',
   };
@@ -55,7 +73,9 @@ export class SearchController implements Partial<types.SearchAndCatalogServiceCo
   constructor(private readonly searchService: SearchService) {}
 
   @GrpcMethod('SearchAndCatalogService', 'SearchVehicles')
-  async searchVehicles(request: types.SearchVehiclesRequest): Promise<types.ListVehiclesResponse> {
+  async searchVehicles(
+    request: types.SearchVehiclesRequest,
+  ): Promise<types.ListVehiclesResponse> {
     const fromCoords = request.from.split(',').map((s) => parseFloat(s.trim()));
     const toCoords = request.to.split(',').map((s) => parseFloat(s.trim()));
 
@@ -67,7 +87,7 @@ export class SearchController implements Partial<types.SearchAndCatalogServiceCo
       startDate: request.date,
       endDate: request.date,
       time: request.time || undefined,
-      vehicleType: request.vehicleType as any || undefined,
+      vehicleType: (request.vehicleType as any) || undefined,
       seats: request.seats || undefined,
       color: request.color || undefined,
       ac: request.ac !== undefined ? request.ac : undefined,
@@ -78,19 +98,25 @@ export class SearchController implements Partial<types.SearchAndCatalogServiceCo
   }
 
   @GrpcMethod('SearchAndCatalogService', 'GetMyVehicles')
-  async getMyVehicles(request: types.GetMyVehiclesRequest): Promise<types.ListVehiclesResponse> {
+  async getMyVehicles(
+    request: types.GetMyVehiclesRequest,
+  ): Promise<types.ListVehiclesResponse> {
     const vehicles = await this.searchService.getMyVehicles(request.ownerId);
     return { vehicles: vehicles.map(mapVehicle) };
   }
 
   @GrpcMethod('SearchAndCatalogService', 'GetVehicleById')
-  async getVehicleById(request: types.GetVehicleByIdRequest): Promise<types.VehicleResponse> {
+  async getVehicleById(
+    request: types.GetVehicleByIdRequest,
+  ): Promise<types.VehicleResponse> {
     const vehicle = await this.searchService.getVehicleById(request.id);
     return { vehicle: mapVehicle(vehicle) };
   }
 
   @GrpcMethod('SearchAndCatalogService', 'SearchVehiclesByCity')
-  async searchVehiclesByCity(request: types.SearchVehiclesByCityRequest): Promise<types.ListVehiclesResponse> {
+  async searchVehiclesByCity(
+    request: types.SearchVehiclesByCityRequest,
+  ): Promise<types.ListVehiclesResponse> {
     const coords = request.city.split(',').map((s) => parseFloat(s.trim()));
     if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
       const [lat, lng] = coords;
@@ -102,9 +128,10 @@ export class SearchController implements Partial<types.SearchAndCatalogServiceCo
   }
 
   @GrpcMethod('SearchAndCatalogService', 'GetAllVehicles')
-  async getAllVehicles(request: types.GetAllVehiclesRequest): Promise<types.ListVehiclesResponse> {
+  async getAllVehicles(
+    request: types.GetAllVehiclesRequest,
+  ): Promise<types.ListVehiclesResponse> {
     const vehicles = await this.searchService.getAllVehicles();
     return { vehicles: vehicles.map(mapVehicle) };
   }
 }
-

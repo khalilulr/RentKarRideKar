@@ -34,25 +34,33 @@ export class JwtAuthGuard implements CanActivate {
       }
 
       // Check specific Token Blacklist (JTI)
-      const isBlacklisted = await this.redisService.get(`blacklist:token:${payload.id}`);
+      const isBlacklisted = await this.redisService.get(
+        `blacklist:token:${payload.id}`,
+      );
       if (isBlacklisted) {
-        throw new UnauthorizedException('This specific session has been revoked');
+        throw new UnauthorizedException(
+          'This specific session has been revoked',
+        );
       }
 
       // Check "Logout All" with timestamp
-      const logoutAllTimestamp = await this.redisService.get(`blacklist:all:${payload.userId}`);
+      const logoutAllTimestamp = await this.redisService.get(
+        `blacklist:all:${payload.userId}`,
+      );
       if (logoutAllTimestamp) {
         const logoutTime = parseInt(logoutAllTimestamp, 10);
         // If token was issued BEFORE or AT THE SAME TIME as the logout-all event, it's invalid
         if (payload.iat <= logoutTime) {
-          throw new UnauthorizedException('All sessions were revoked. Please login again.');
+          throw new UnauthorizedException(
+            'All sessions were revoked. Please login again.',
+          );
         }
       }
 
       // Attach to request
       request['user'] = payload;
       request['accessToken'] = token;
-    } catch (error:any) {
+    } catch (error: any) {
       this.logger.error(`Token verification failed: ${error.message}`);
       if (error instanceof UnauthorizedException) {
         throw error;

@@ -314,7 +314,7 @@ services:
     container_name: communication_service_app
     restart: always
     depends_on:
-      communication_db:
+      booking_db:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -325,11 +325,11 @@ services:
       - .env.development
     environment:
       - PORT=3003
-      - COMMUNICATION_DB_HOST=communication_db
+      - COMMUNICATION_DB_HOST=booking_db
       - COMMUNICATION_DB_PORT=5432
       - COMMUNICATION_DB_USER=postgres
       - COMMUNICATION_DB_PASSWORD=ashif1234
-      - COMMUNICATION_DB_NAME=rkrk_communication_db
+      - COMMUNICATION_DB_NAME=rkrk_booking_db
     volumes:
       - .:/app
       - /app/node_modules

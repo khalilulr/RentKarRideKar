@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';           // ← default import, not * as
+import request from 'supertest'; // ← default import, not * as
 import { ApiGatewayModule } from './../src/api-gateway.module';
 
 describe('ApiGatewayController (e2e)', () => {

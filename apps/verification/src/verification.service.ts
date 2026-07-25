@@ -1,6 +1,6 @@
 import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Role } from './enum/role.enum';
 import { KycVerificationEntity } from './entity/kyc-verification.entity';
 import { DocumentEntity } from './entity/document.entity';
@@ -14,6 +14,12 @@ import { lastValueFrom } from 'rxjs';
 @Injectable()
 export class VerificationService implements OnModuleInit {
   private communicationService: any;
+
+  private requiredUserKycDocs: DocumentType[] = [
+    DocumentType.AADHAAR_FRONT,
+    DocumentType.AADHAAR_BACK,
+    DocumentType.SELFIE,
+  ];
 
   /**
    * Required docs for USER KYC — keyed by role.
@@ -46,6 +52,8 @@ export class VerificationService implements OnModuleInit {
     DocumentType.PERMIT,
   ];
 
+  private searchAndCatalogService: any;
+
   constructor(
     @InjectRepository(KycVerificationEntity)
     private readonly kycRepository: Repository<KycVerificationEntity>,
@@ -53,15 +61,30 @@ export class VerificationService implements OnModuleInit {
     private readonly docRepository: Repository<DocumentEntity>,
     @Inject('COMMUNICATION_SERVICE')
     private readonly communicationClient: ClientGrpc,
+    @Inject('SEARCH_AND_CATALOG_SERVICE')
+    private readonly searchClient: ClientGrpc,
   ) {}
 
   onModuleInit() {
-    this.communicationService = this.communicationClient.getService<any>('CommunicationService');
+    this.communicationService = this.communicationClient.getService<any>(
+      'CommunicationService',
+    );
+    this.searchAndCatalogService = this.searchClient.getService<any>(
+      'SearchAndCatalogService',
+    );
   }
 
-  async sendNotification(userId: string, title: string, content: string, channel = 'both') {
+  async sendNotification(
+    userId: string,
+    title: string,
+    content: string,
+    channel = 'both',
+  ) {
     try {
-      if (this.communicationService && typeof this.communicationService.sendNotification === 'function') {
+      if (
+        this.communicationService &&
+        typeof this.communicationService.sendNotification === 'function'
+      ) {
         await lastValueFrom(
           this.communicationService.sendNotification({
             userId,
@@ -73,7 +96,10 @@ export class VerificationService implements OnModuleInit {
         );
       }
     } catch (e: any) {
-      console.error('[VerificationService] Failed to send notification via gRPC:', e.message);
+      console.error(
+        '[VerificationService] Failed to send notification via gRPC:',
+        e.message,
+      );
     }
   }
 
@@ -101,7 +127,7 @@ export class VerificationService implements OnModuleInit {
 
       if (!verification) {
         verification = this.kycRepository.create({
-          userId,   // owner's userId for reference
+          userId, // owner's userId for reference
           vehicleId,
           role,
           status: KycStatus.PENDING,
@@ -149,19 +175,55 @@ export class VerificationService implements OnModuleInit {
     return this.getVerificationStatus(userId, role);
   }
 
-  /**
-   * Returns user KYC status for a specific role.
-   */
-  async getVerificationStatus(userId: string, role: Role) {
-    const verification = await this.kycRepository.findOne({
-      where: { userId, role },
+  async uploadUserKyc(userId: string, docType: DocumentType, fileUrl: string) {
+    let verification = await this.kycRepository.findOne({
+      where: {
+        userId,
+        vehicleId: IsNull(),
+        role: IsNull(),
+        status: KycStatus.PENDING,
+      },
+    });
+
+    if (!verification) {
+      verification = this.kycRepository.create({
+        userId,
+        status: KycStatus.PENDING,
+      });
+      await this.kycRepository.save(verification);
+    }
+
+    // Check if this document type was already uploaded — if so, update URL
+    const existingDoc = await this.docRepository.findOne({
+      where: { verification: { id: verification.id }, documentType: docType },
+    });
+
+    if (existingDoc) {
+      existingDoc.documentUrl = fileUrl;
+      existingDoc.status = DocumentStatus.PENDING; // reset status on re-upload
+      await this.docRepository.save(existingDoc);
+    } else {
+      const newDoc = this.docRepository.create({
+        documentType: docType,
+        documentUrl: fileUrl,
+        verification,
+      });
+      await this.docRepository.save(newDoc);
+    }
+
+    return this.getUserKycStatus(userId);
+  }
+
+  async getUserKycStatus(userId: string) {
+    const verifications = await this.kycRepository.find({
+      where: { userId, vehicleId: IsNull() },
       relations: ['documents'],
       order: { createdAt: 'DESC' },
     });
 
-    const requiredDocs = this.requiredUserDocs[role] ?? [];
+    const requiredDocs = this.requiredUserKycDocs;
 
-    if (!verification) {
+    if (!verifications || verifications.length === 0) {
       return {
         verificationId: '',
         status: KycStatus.NONE as string,
@@ -172,8 +234,193 @@ export class VerificationService implements OnModuleInit {
       };
     }
 
+    // Collect all documents across personal verifications
+    const allDocs: DocumentEntity[] = [];
+    const seenTypes = new Set<string>();
+    let overallStatus: KycStatus = KycStatus.NONE;
+    let verificationId = verifications[0].id;
+    let rejectionReason = verifications[0].rejectionReason || '';
+    let submittedAt =
+      verifications[0].submittedAt || verifications[0].createdAt;
+
+    for (const v of verifications) {
+      if (v.documents) {
+        for (const doc of v.documents) {
+          if (!seenTypes.has(doc.documentType)) {
+            seenTypes.add(doc.documentType);
+            allDocs.push(doc);
+          }
+        }
+      }
+
+      // Determine overall status
+      if (
+        v.status === KycStatus.VERIFIED ||
+        (v.status as string) === 'APPROVED'
+      ) {
+        overallStatus = KycStatus.VERIFIED;
+        verificationId = v.id;
+        rejectionReason = v.rejectionReason || '';
+        submittedAt = v.submittedAt || v.createdAt;
+      } else if (
+        v.status === KycStatus.PENDING &&
+        overallStatus !== KycStatus.VERIFIED
+      ) {
+        overallStatus = KycStatus.PENDING;
+        verificationId = v.id;
+        submittedAt = v.submittedAt || v.createdAt;
+      } else if (
+        v.status === KycStatus.REJECTED &&
+        overallStatus === KycStatus.NONE
+      ) {
+        overallStatus = KycStatus.REJECTED;
+        verificationId = v.id;
+        rejectionReason = v.rejectionReason || '';
+      }
+    }
+
+    if (overallStatus === KycStatus.NONE && verifications.length > 0) {
+      overallStatus = verifications[0].status;
+    }
+
+    const missing = requiredDocs.filter((type) => !seenTypes.has(type));
+
+    return {
+      verificationId,
+      status: overallStatus as string,
+      rejectionReason,
+      isComplete: missing.length === 0,
+      missingDocs: missing as string[],
+      documents: allDocs.map((d) => ({
+        documentId: d.id,
+        documentType: d.documentType,
+        documentUrl: d.documentUrl,
+        status: d.status,
+        rejectionReason: d.rejectionReason || '',
+        uploadedAt: d.createdAt
+          ? d.createdAt.toISOString()
+          : new Date().toISOString(),
+      })),
+    };
+  }
+
+  async submitUserKyc(userId: string) {
+    let kycDetail = await this.kycRepository.findOne({
+      where: { userId, vehicleId: IsNull(), role: IsNull() },
+      relations: ['documents'],
+    });
+
+    if (!kycDetail) {
+      // Look for any personal verification record (vehicleId null/empty) to submit
+      kycDetail = await this.kycRepository.findOne({
+        where: { userId, vehicleId: IsNull() },
+        relations: ['documents'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    if (!kycDetail) {
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'KYC details not found',
+      });
+    }
+
+    const requiredDocuments = this.requiredUserKycDocs;
+
+    const uploadedDocumentTypes = kycDetail.documents.map(
+      (doc) => doc.documentType,
+    );
+
+    const missingDocuments = requiredDocuments.filter(
+      (requiredDoc) => !uploadedDocumentTypes.includes(requiredDoc),
+    );
+
+    if (missingDocuments.length > 0) {
+      throw new RpcException({
+        code: 3, // INVALID_ARGUMENT
+        message: `Some required documents are missing: ${missingDocuments.join(', ')}`,
+      });
+    }
+
+    kycDetail.status = KycStatus.PENDING;
+    kycDetail.submittedAt = new Date();
+    await this.kycRepository.save(kycDetail);
+
+    await this.sendNotification(
+      userId,
+      'KYC Verification Pending',
+      'Your KYC document submission is complete and pending admin review.',
+      'both',
+    );
+
+    return {
+      message: 'KYC submitted successfully',
+      role: '',
+      status: kycDetail.status,
+    };
+  }
+
+  /**
+   * Returns user KYC status for a specific role.
+   */
+  async getVerificationStatus(userId: string, role: Role) {
+    let verification = await this.kycRepository.findOne({
+      where: { userId, role },
+      relations: ['documents'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const requiredDocs = this.requiredUserDocs[role] ?? [];
+
+    if (!verification) {
+      verification = this.kycRepository.create({
+        userId,
+        role,
+        status: KycStatus.NONE,
+      });
+      await this.kycRepository.save(verification);
+      verification.documents = [];
+    }
+
+    // Auto-populate missing identity documents from any of the user's personal verifications if available
+    const verifications = await this.kycRepository.find({
+      where: { userId, vehicleId: IsNull() },
+      relations: ['documents'],
+    });
+
+    const existingDocTypes = verification.documents.map((d) => d.documentType);
+
+    for (const v of verifications) {
+      if (v.id === verification.id) continue;
+      if (v.documents && v.documents.length > 0) {
+        const docsToCopy = v.documents.filter(
+          (d) =>
+            (d.documentType === DocumentType.AADHAAR_FRONT ||
+              d.documentType === DocumentType.AADHAAR_BACK ||
+              d.documentType === DocumentType.SELFIE) &&
+            !existingDocTypes.includes(d.documentType),
+        );
+
+        for (const doc of docsToCopy) {
+          const copiedDoc = this.docRepository.create({
+            documentType: doc.documentType,
+            documentUrl: doc.documentUrl,
+            status: doc.status,
+            rejectionReason: doc.rejectionReason,
+            verification,
+          });
+          await this.docRepository.save(copiedDoc);
+          verification.documents.push(copiedDoc);
+          existingDocTypes.push(doc.documentType);
+        }
+      }
+    }
+
     const uploadedTypes = verification.documents.map((d) => d.documentType);
-    const missing = requiredDocs.filter((type) => !uploadedTypes.includes(type));
+    const missing = requiredDocs.filter(
+      (type) => !uploadedTypes.includes(type),
+    );
 
     return {
       verificationId: verification.id,
@@ -204,7 +451,31 @@ export class VerificationService implements OnModuleInit {
       order: { createdAt: 'DESC' },
     });
 
-    const requiredDocs = this.requiredVehicleDocs;
+    let plateType = 'YELLOW';
+    try {
+      if (this.searchAndCatalogService) {
+        const vehicleRes: any = await lastValueFrom(
+          this.searchAndCatalogService.getVehicle({ id: vehicleId }),
+        );
+        if (vehicleRes && vehicleRes.vehicle && vehicleRes.vehicle.plateType) {
+          plateType = vehicleRes.vehicle.plateType.toUpperCase();
+        }
+      }
+    } catch (e) {
+      console.error(
+        '[VerificationService] Error fetching vehicle plate type:',
+        e,
+      );
+    }
+
+    const requiredDocs =
+      plateType === 'WHITE'
+        ? [
+            DocumentType.RC_BOOK,
+            DocumentType.INSURANCE,
+            DocumentType.PUC_CERTIFICATE,
+          ]
+        : this.requiredVehicleDocs;
 
     if (!verification) {
       return {
@@ -219,7 +490,9 @@ export class VerificationService implements OnModuleInit {
     }
 
     const uploadedTypes = verification.documents.map((d) => d.documentType);
-    const missing = requiredDocs.filter((type) => !uploadedTypes.includes(type));
+    const missing = requiredDocs.filter(
+      (type) => !uploadedTypes.includes(type),
+    );
 
     return {
       verificationId: verification.id,
@@ -246,16 +519,53 @@ export class VerificationService implements OnModuleInit {
    * Checks all required user docs are uploaded before submitting.
    */
   async submitKycDoc(userId: string, role: Role) {
-    const kycDetail = await this.kycRepository.findOne({
+    let kycDetail = await this.kycRepository.findOne({
       where: { userId, role },
       relations: ['documents'],
     });
 
     if (!kycDetail) {
-      throw new RpcException({
-        code: 5, // NOT_FOUND
-        message: 'KYC details not found',
+      kycDetail = this.kycRepository.create({
+        userId,
+        role,
+        status: KycStatus.NONE,
       });
+      await this.kycRepository.save(kycDetail);
+      kycDetail.documents = [];
+    }
+
+    // Auto-populate missing identity documents from any of the user's personal verifications if available
+    const verifications = await this.kycRepository.find({
+      where: { userId, vehicleId: IsNull() },
+      relations: ['documents'],
+    });
+
+    const existingDocTypes = kycDetail.documents.map((d) => d.documentType);
+
+    for (const v of verifications) {
+      if (v.id === kycDetail.id) continue;
+      if (v.documents && v.documents.length > 0) {
+        const docsToCopy = v.documents.filter(
+          (d) =>
+            (d.documentType === DocumentType.AADHAAR_FRONT ||
+              d.documentType === DocumentType.AADHAAR_BACK ||
+              d.documentType === DocumentType.SELFIE) &&
+            !existingDocTypes.includes(d.documentType),
+        );
+
+        for (const doc of docsToCopy) {
+          const copiedDoc = this.docRepository.create({
+            documentType: doc.documentType,
+            documentUrl: doc.documentUrl,
+            status: doc.status,
+            rejectionReason: doc.rejectionReason,
+            verification: kycDetail,
+          });
+          await this.docRepository.save(copiedDoc);
+          kycDetail.documents.push(copiedDoc);
+          existingDocTypes.push(doc.documentType);
+        }
+      }
     }
 
     const requiredDocuments = this.requiredUserDocs[role];
@@ -321,7 +631,33 @@ export class VerificationService implements OnModuleInit {
       (doc) => doc.documentType,
     );
 
-    const missingDocuments = this.requiredVehicleDocs.filter(
+    let plateType = 'YELLOW';
+    try {
+      if (this.searchAndCatalogService) {
+        const vehicleRes: any = await lastValueFrom(
+          this.searchAndCatalogService.getVehicle({ id: vehicleId }),
+        );
+        if (vehicleRes && vehicleRes.vehicle && vehicleRes.vehicle.plateType) {
+          plateType = vehicleRes.vehicle.plateType.toUpperCase();
+        }
+      }
+    } catch (e) {
+      console.error(
+        '[VerificationService] Error fetching vehicle plate type:',
+        e,
+      );
+    }
+
+    const requiredDocs =
+      plateType === 'WHITE'
+        ? [
+            DocumentType.RC_BOOK,
+            DocumentType.INSURANCE,
+            DocumentType.PUC_CERTIFICATE,
+          ]
+        : this.requiredVehicleDocs;
+
+    const missingDocuments = requiredDocs.filter(
       (requiredDoc) => !uploadedDocumentTypes.includes(requiredDoc),
     );
 
@@ -363,7 +699,7 @@ export class VerificationService implements OnModuleInit {
         verificationId: v.id,
         userId: v.userId,
         vehicleId: v.vehicleId || '',
-        role: v.role,
+        role: v.role || '',
         status: v.status,
         submittedAt: v.submittedAt
           ? v.submittedAt.toISOString()
@@ -407,10 +743,43 @@ export class VerificationService implements OnModuleInit {
 
     if (doc.verification && doc.verification.status === KycStatus.PENDING) {
       const role = doc.verification.role;
-      // Use correct required docs list based on whether this is vehicle or user verification
-      const mandatoryDocs = doc.verification.vehicleId
-        ? this.requiredVehicleDocs
-        : (this.requiredUserDocs[role] ?? []);
+      let mandatoryDocs: DocumentType[] = [];
+      if (doc.verification.vehicleId) {
+        let plateType = 'YELLOW';
+        try {
+          if (this.searchAndCatalogService) {
+            const vehicleRes: any = await lastValueFrom(
+              this.searchAndCatalogService.getVehicle({
+                id: doc.verification.vehicleId,
+              }),
+            );
+            if (
+              vehicleRes &&
+              vehicleRes.vehicle &&
+              vehicleRes.vehicle.plateType
+            ) {
+              plateType = vehicleRes.vehicle.plateType.toUpperCase();
+            }
+          }
+        } catch (e) {
+          console.error(
+            '[VerificationService] Error fetching vehicle plate type:',
+            e,
+          );
+        }
+        mandatoryDocs =
+          plateType === 'WHITE'
+            ? [
+                DocumentType.RC_BOOK,
+                DocumentType.INSURANCE,
+                DocumentType.PUC_CERTIFICATE,
+              ]
+            : this.requiredVehicleDocs;
+      } else {
+        mandatoryDocs = role
+          ? (this.requiredUserDocs[role] ?? [])
+          : this.requiredUserKycDocs;
+      }
 
       if (
         status === DocumentStatus.REJECTED &&

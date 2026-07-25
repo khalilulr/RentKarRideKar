@@ -92,8 +92,12 @@ describe('Ratings & Cancellations Microservice Integration Tests', () => {
         reviewText: 'Polite passenger.',
       });
 
-      const updatedReview1 = await reviewRepo.findOne({ where: { id: review1Id } });
-      const updatedReview2 = await reviewRepo.findOne({ where: { id: review2Id } });
+      const updatedReview1 = await reviewRepo.findOne({
+        where: { id: review1Id },
+      });
+      const updatedReview2 = await reviewRepo.findOne({
+        where: { id: review2Id },
+      });
 
       expect(updatedReview1?.revealedAt).not.toBeNull();
       expect(updatedReview2?.revealedAt).not.toBeNull();
@@ -115,7 +119,12 @@ describe('Ratings & Cancellations Microservice Integration Tests', () => {
       });
 
       mockBookingIntegration.getOrderVehicles.mockResolvedValue([
-        { id: 'ov_1', vehicle_id: vehicleId, owner_id: ownerId, completed_at: new Date() },
+        {
+          id: 'ov_1',
+          vehicle_id: vehicleId,
+          owner_id: ownerId,
+          completed_at: new Date(),
+        },
       ]);
 
       const reviewId = await reviewService.submitReview(passengerId, {
@@ -149,7 +158,12 @@ describe('Ratings & Cancellations Microservice Integration Tests', () => {
       });
 
       mockBookingIntegration.getOrderVehicles.mockResolvedValue([
-        { id: 'ov_1', vehicle_id: vehicleId, owner_id: ownerId, completed_at: new Date() },
+        {
+          id: 'ov_1',
+          vehicle_id: vehicleId,
+          owner_id: ownerId,
+          completed_at: new Date(),
+        },
       ]);
 
       const reviewId = await reviewService.submitReview(passengerId, {
@@ -170,7 +184,9 @@ describe('Ratings & Cancellations Microservice Integration Tests', () => {
       expect(count1).toBe(1);
 
       // Attempting to like again with same user should throw error
-      await expect(reviewService.likeReview(reviewId, user1)).rejects.toThrow('You have already liked this review');
+      await expect(reviewService.likeReview(reviewId, user1)).rejects.toThrow(
+        'You have already liked this review',
+      );
 
       const count2 = await reviewService.likeReview(reviewId, user2);
       expect(count2).toBe(2);
@@ -203,9 +219,13 @@ describe('Ratings & Cancellations Microservice Integration Tests', () => {
 
       mockBookingIntegration.getOrderVehicles.mockResolvedValue([]);
 
-      const result = await cancellationService.cancelBooking(passengerId, bookingId, {
-        cancelledByRole: 'passenger',
-      });
+      const result = await cancellationService.cancelBooking(
+        passengerId,
+        bookingId,
+        {
+          cancelledByRole: 'passenger',
+        },
+      );
 
       expect(result.isLate).toBe(true);
       expect(result.penaltyApplied).toBe(true);

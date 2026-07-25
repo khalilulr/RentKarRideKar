@@ -16,7 +16,8 @@ export class RpcExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = exception.details || exception.message || 'Internal server error';
+    let message =
+      exception.details || exception.message || 'Internal server error';
 
     // Map gRPC status codes to HTTP status codes
     if (exception && typeof exception.code === 'number') {

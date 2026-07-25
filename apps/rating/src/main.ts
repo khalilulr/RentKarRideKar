@@ -9,14 +9,17 @@ import {
 async function bootstrap() {
   assertRatingServiceProtoExists();
 
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(RatingModule, {
-    transport: Transport.GRPC,
-    options: {
-      package: 'rating',
-      protoPath: RATING_SERVICE_PROTO_PATH,
-      url: '0.0.0.0:50054',
-    }
-  });
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    RatingModule,
+    {
+      transport: Transport.GRPC,
+      options: {
+        package: 'rating',
+        protoPath: RATING_SERVICE_PROTO_PATH,
+        url: '0.0.0.0:50054',
+      },
+    },
+  );
   await app.listen();
 }
 bootstrap();

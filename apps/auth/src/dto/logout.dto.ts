@@ -1,12 +1,10 @@
-import { IsString } from "class-validator";
-import { access } from "fs";
+import { IsString } from 'class-validator';
+import { access } from 'fs';
 
-export class LogoutDTO{
+export class LogoutDTO {
+  @IsString()
+  accessToken: string;
 
-    @IsString()
-    accessToken:string;
-
-    @IsString()
-    refreshToken:string;
-
+  @IsString()
+  refreshToken: string;
 }

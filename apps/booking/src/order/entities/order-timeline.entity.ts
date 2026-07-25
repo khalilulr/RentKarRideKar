@@ -25,6 +25,10 @@ export class OrderTimeline {
   @Column()
   description: string;
 
-  @Column({ type: 'timestamp', name: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    type: 'timestamp',
+    name: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   timestamp: Date;
 }

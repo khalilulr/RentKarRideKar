@@ -22,10 +22,7 @@ import { GrpcMethod } from '@nestjs/microservices';
 @Controller()
 @VerificationServiceControllerMethods()
 export class VerificationController implements VerificationServiceController {
-  constructor(
-    private readonly verificationService: VerificationService,
-  ) { }
-
+  constructor(private readonly verificationService: VerificationService) {}
 
   @GrpcMethod('VerificationService', 'UploadDoc')
   async uploadDoc(request: UploadDocRequest) {
@@ -34,7 +31,7 @@ export class VerificationController implements VerificationServiceController {
       request.role as Role,
       request.docType as DocumentType,
       request.fileUrl,
-      request.vehicleId || undefined,  // pass vehicleId if present
+      request.vehicleId || undefined, // pass vehicleId if present
     );
   }
 
@@ -47,7 +44,9 @@ export class VerificationController implements VerificationServiceController {
   }
 
   @GrpcMethod('VerificationService', 'GetVehicleVerificationStatus')
-  async getVehicleVerificationStatus(request: GetVehicleVerificationStatusRequest) {
+  async getVehicleVerificationStatus(
+    request: GetVehicleVerificationStatusRequest,
+  ) {
     return this.verificationService.getVehicleVerificationStatus(
       request.vehicleId,
       request.role as Role,
@@ -100,5 +99,24 @@ export class VerificationController implements VerificationServiceController {
       request.vehicleId,
       request.role as Role,
     );
+  }
+
+  @GrpcMethod('VerificationService', 'UploadUserKyc')
+  async uploadUserKyc(request: any) {
+    return this.verificationService.uploadUserKyc(
+      request.userId,
+      request.docType as DocumentType,
+      request.fileUrl,
+    );
+  }
+
+  @GrpcMethod('VerificationService', 'GetUserKycStatus')
+  async getUserKycStatus(request: any) {
+    return this.verificationService.getUserKycStatus(request.userId);
+  }
+
+  @GrpcMethod('VerificationService', 'SubmitUserKyc')
+  async submitUserKyc(request: any) {
+    return this.verificationService.submitUserKyc(request.userId);
   }
 }

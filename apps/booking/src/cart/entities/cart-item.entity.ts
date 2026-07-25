@@ -69,6 +69,9 @@ export class CartItem {
   @Column({ type: 'timestamp', name: 'price_locked_at' })
   priceLockedAt: Date;
 
+  @Column({ type: 'jsonb', name: 'price_breakdown', nullable: true })
+  priceBreakdown: any;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

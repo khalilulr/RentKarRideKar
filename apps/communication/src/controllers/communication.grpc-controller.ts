@@ -8,7 +8,12 @@ export class CommunicationGrpcController {
   constructor(private readonly commsService: CommunicationService) {}
 
   @GrpcMethod(COMMUNICATION_SERVICE_NAME, 'OpenChatRooms')
-  async openChatRooms(data: { bookingId: string; passengerId: string; driverId: string; ownerId: string }) {
+  async openChatRooms(data: {
+    bookingId: string;
+    passengerId: string;
+    driverId: string;
+    ownerId: string;
+  }) {
     return this.commsService.openChatRooms(
       data.bookingId,
       data.passengerId,
@@ -18,7 +23,12 @@ export class CommunicationGrpcController {
   }
 
   @GrpcMethod(COMMUNICATION_SERVICE_NAME, 'ActivateCallProxy')
-  async activateCallProxy(data: { bookingId: string; passengerId: string; driverId: string; ownerId: string }) {
+  async activateCallProxy(data: {
+    bookingId: string;
+    passengerId: string;
+    driverId: string;
+    ownerId: string;
+  }) {
     return this.commsService.activateCallProxy(
       data.bookingId,
       data.passengerId,

@@ -416,6 +416,42 @@ For all endpoints marked with **[Requires Authentication]**, the client must inc
 
 ## 4. Booking & Cart Service (`/cart` & `/orders`)
 
+### POST `/booking/calculate-price`
+* **Description**: Calculates fare estimation and pricing breakdown based on vehicle capacity, trip type, distance, and booking days.
+* **Request Body**:
+  ```json
+  {
+    "vehicleId": "vehicle_uuid",
+    "seatingCapacity": "5",
+    "tripType": "OUTSTATION",
+    "totalDays": 2,
+    "pickupLat": 22.65,
+    "pickupLng": 86.35,
+    "dropLat": 22.80,
+    "dropLng": 86.20,
+    "pickupDatetime": "2026-06-10T10:00:00Z",
+    "returnDatetime": "2026-06-12T10:00:00Z",
+    "discount": 0
+  }
+  ```
+* **Response Body**:
+  ```json
+  {
+    "basePrice": 240,
+    "gst": 43,
+    "platformFee": 7,
+    "discount": 0,
+    "total": 290,
+    "advancePercentage": 25,
+    "advanceAmount": 73,
+    "balanceAmount": 217,
+    "currency": "INR",
+    "seater": 5,
+    "tripType": "OUTSTATION",
+    "distanceKm": 20.01
+  }
+  ```
+
 ### POST `/cart/items` **[Requires Authentication]**
 * **Description**: Adds a vehicle to the passenger's checkout cart.
 * **Request Body**:
