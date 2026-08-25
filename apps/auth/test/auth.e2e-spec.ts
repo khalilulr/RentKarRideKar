@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AuthModule } from './../src/auth.module';
+import { AppModule } from './../src/app.module';
 import cookieParser from 'cookie-parser';
 import { DataSource } from 'typeorm';
 import { Msg91Service } from 'apps/common/src/msg91.service';
@@ -22,7 +22,7 @@ describe('AuthController (e2e)', () => {
   beforeAll(async () => {
     jest.setTimeout(60000);
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthModule],
+      imports: [AppModule],
     })
       .overrideProvider(Msg91Service)
       .useValue(mockMsg91Service)

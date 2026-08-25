@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest'; // ← default import, not * as
-import { AuthModule } from './../src/auth.module';
+import { AppModule } from './../src/app.module';
 import cookieParser from 'cookie-parser';
 
 describe('AuthController (e2e)', () => {
@@ -9,7 +9,7 @@ describe('AuthController (e2e)', () => {
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AuthModule],
+      imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();

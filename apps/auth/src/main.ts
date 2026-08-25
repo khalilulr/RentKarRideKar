@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AuthModule } from './auth.module';
+import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import {
@@ -11,7 +11,7 @@ async function bootstrap() {
   assertAuthServiceProtoExists();
 
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AuthModule,
+    AppModule,
     {
       transport: Transport.GRPC,
       options: {

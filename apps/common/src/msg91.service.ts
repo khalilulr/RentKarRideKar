@@ -28,6 +28,9 @@ export class Msg91Service {
           },
         },
       );
+      if(response.data.type !== 'success') {
+        throw new InternalServerErrorException('Failed to send OTP');
+      }
       return response.data;
     } catch (error) {
       throw new InternalServerErrorException('MSG91 Service Error');
